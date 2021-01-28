@@ -263,3 +263,9 @@ TSWLatexianTemp*
 
 # standalone packages
 *.sta
+*.jpg
+*.tgz
+VioDB/hockey_jpg
+VioDB/mix_jpg
+VioDB/movie_jpg
+VioDB/vif_jpg
