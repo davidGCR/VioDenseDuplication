@@ -145,7 +145,8 @@ if __name__ == '__main__':
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     config = Config(
         'densenet_lean',  # c3d, convlstm, densenet, densenet_lean
-        'hockey',
+        # 'hockey',
+        'rwf-2000',
         device=device,
         num_epoch=150,
         acc_baseline=0.92,
@@ -165,15 +166,23 @@ if __name__ == '__main__':
         'vif': {
             'lr': 1e-3,
             'batch_size': 16
+        },
+        'rwf-2000': {
+            'lr': 1e-2,
+            'batch_size': 32
         }
     }
 
-    for dataset in ['hockey', 'movie', 'vif']:
+    # for dataset in ['rwf-2000','hockey', 'movie', 'vif']:
+    for dataset in ['rwf-2000']:
         config.dataset = dataset
         config.train_batch = configs[dataset]['batch_size']
         config.val_batch = configs[dataset]['batch_size']
         config.learning_rate = configs[dataset]['lr']
         # 5 fold cross validation
-        for cv in range(1, 6):
-            config.num_cv = cv
-            main(config)
+        # for cv in range(1, 6):
+        #     config.num_cv = cv
+        #     main(config)
+
+        config.num_cv = 1
+        main(config)
