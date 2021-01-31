@@ -55,7 +55,7 @@ def get_video_names_and_labels(data, subset):
     return video_names, video_labels
 
 
-def make_dataset(root_path, annotation_path, subset):
+def make_dataset(root_path, annotation_path, subset, dataset_name):
     """
     :param root_path: xxx
     :param annotation_path: xxx.json
@@ -67,18 +67,21 @@ def make_dataset(root_path, annotation_path, subset):
 
     video_names, video_labels = get_video_names_and_labels(data, subset)
 
+    # print('video_names:', video_names)
+    # print('video_labels:', video_labels)
+
     class_to_index = get_labels(data)
     index_to_class = {}
     for name, label in class_to_index.items():
         index_to_class[label] = name
 
     dataset = []
-
-    for video_name, video_label in zip(video_names, video_labels):
+    if dataset_name == 'rwf-2000':
+      for video_name, video_label in zip(video_names, video_labels):
         video_path = os.path.join(
-            root_path, video_label, video_name
+            root_path, video_name
         )  # $1/$2/$3
-
+        print('video_path:', video_path)
         if not os.path.exists(video_path):
             continue
 
@@ -92,6 +95,26 @@ def make_dataset(root_path, annotation_path, subset):
         }
 
         dataset.append(video)
+    else:
+      for video_name, video_label in zip(video_names, video_labels):
+          video_path = os.path.join(
+              root_path, video_label, video_name
+          )  # $1/$2/$3
+          print('video_path:', video_path)
+          if not os.path.exists(video_path):
+              continue
+
+          n_frames = int(n_frames_loader(os.path.join(video_path, 'n_frames')))
+
+          video = {
+              'name': video_name,
+              'path': video_path,
+              'label': class_to_index[video_label],
+              'n_frames': n_frames
+          }
+
+          dataset.append(video)
+    print('dataset: ', dataset)
 
     return dataset, index_to_class
 
@@ -104,12 +127,15 @@ class VioDB(Dataset):
         subset,
         spatial_transform=None,
         temporal_transform=None,
-        target_transform=None
+        target_transform=None,
+        dataset_name=''
     ):
 
         self.videos, self.classes = make_dataset(
-            root_path, annotation_path, subset
+            root_path, annotation_path, subset, dataset_name
         )
+
+        print('self.videos: ', self.videos)
 
         self.spatial_transform = spatial_transform
         self.temporal_transform = temporal_transform

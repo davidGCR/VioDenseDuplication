@@ -27,27 +27,31 @@ def get_rwf_dataset(database_path):
     train_no_data = os.listdir(os.path.join(database_path, 'train', 'NonFight'))
 
     for file_name in train_no_data:
-        train_database[file_name] = {}
-        train_database[file_name]['subset'] = 'training'
-        train_database[file_name]['annotations'] = {'label': 'no'}
+        name = os.path.join('train', 'NonFight', file_name)
+        train_database[name] = {}
+        train_database[name]['subset'] = 'training'
+        train_database[name]['annotations'] = {'label': 'no'}
     for file_name in train_fi_data:
-        train_database[file_name] = {}
-        train_database[file_name]['subset'] = 'training'
-        train_database[file_name]['annotations'] = {'label': 'fi'}
+        name = os.path.join('train', 'Fight', file_name)
+        train_database[name] = {}
+        train_database[name]['subset'] = 'training'
+        train_database[name]['annotations'] = {'label': 'fi'}
 
     val_database = {}
     val_fi_data = os.listdir(os.path.join(database_path, 'val', 'Fight'))
     val_no_data = os.listdir(os.path.join(database_path, 'val', 'NonFight'))
 
     for file_name in val_no_data:
-        train_database[file_name] = {}
-        train_database[file_name]['subset'] = 'validation'
-        train_database[file_name]['annotations'] = {'label': 'no'}
+        name = os.path.join('val', 'NonFight', file_name)
+        train_database[name] = {}
+        train_database[name]['subset'] = 'validation'
+        train_database[name]['annotations'] = {'label': 'no'}
     
     for file_name in val_fi_data:
-        train_database[file_name] = {}
-        train_database[file_name]['subset'] = 'validation'
-        train_database[file_name]['annotations'] = {'label': 'fi'}
+        name = os.path.join('val', 'Fight', file_name)
+        train_database[name] = {}
+        train_database[name]['subset'] = 'validation'
+        train_database[name]['annotations'] = {'label': 'fi'}
     
     return train_database, val_database
 

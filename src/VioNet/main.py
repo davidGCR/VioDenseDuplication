@@ -53,10 +53,14 @@ def main(config):
     target_transform = Label()
 
     train_batch = config.train_batch
-
-    train_data = VioDB(g_path + '/VioDB/{}_jpg/'.format(dataset),
+    if dataset == 'rwf-2000':
+      train_data = VioDB(g_path + '/VioDB/{}_jpg/frames/'.format(dataset),
                        g_path + '/VioDB/{}_jpg{}.json'.format(dataset, cv), 'training',
-                       spatial_transform, temporal_transform, target_transform)
+                       spatial_transform, temporal_transform, target_transform, dataset)
+    else:
+      train_data = VioDB(g_path + '/VioDB/{}_jpg/'.format(dataset),
+                        g_path + '/VioDB/{}_jpg{}.json'.format(dataset, cv), 'training',
+                        spatial_transform, temporal_transform, target_transform)
     train_loader = DataLoader(train_data,
                               batch_size=train_batch,
                               shuffle=True,
@@ -72,9 +76,14 @@ def main(config):
 
     val_batch = config.val_batch
 
-    val_data = VioDB(g_path + '/VioDB/{}_jpg/'.format(dataset),
+    if dataset == 'rwf-2000':
+      val_data = VioDB(g_path + '/VioDB/{}_jpg/frames/'.format(dataset),
                      g_path + '/VioDB/{}_jpg{}.json'.format(dataset, cv), 'validation',
-                     spatial_transform, temporal_transform, target_transform)
+                     spatial_transform, temporal_transform, target_transform, dataset)
+    else:
+      val_data = VioDB(g_path + '/VioDB/{}_jpg/'.format(dataset),
+                      g_path + '/VioDB/{}_jpg{}.json'.format(dataset, cv), 'validation',
+                      spatial_transform, temporal_transform, target_transform)
     val_loader = DataLoader(val_data,
                             batch_size=val_batch,
                             shuffle=False,
