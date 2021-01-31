@@ -16,6 +16,8 @@ from target_transforms import Label, Video
 
 from utils import Log
 
+g_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+print('main g_path:', g_path)
 
 def main(config):
     # load model
@@ -52,8 +54,8 @@ def main(config):
 
     train_batch = config.train_batch
 
-    train_data = VioDB('../VioDB/{}_jpg/'.format(dataset),
-                       '../VioDB/{}_jpg{}.json'.format(dataset, cv), 'training',
+    train_data = VioDB(g_path + '/VioDB/{}_jpg/'.format(dataset),
+                       g_path + '/VioDB/{}_jpg{}.json'.format(dataset, cv), 'training',
                        spatial_transform, temporal_transform, target_transform)
     train_loader = DataLoader(train_data,
                               batch_size=train_batch,
@@ -70,8 +72,8 @@ def main(config):
 
     val_batch = config.val_batch
 
-    val_data = VioDB('../VioDB/{}_jpg/'.format(dataset),
-                     '../VioDB/{}_jpg{}.json'.format(dataset, cv), 'validation',
+    val_data = VioDB(g_path + '/VioDB/{}_jpg/'.format(dataset),
+                     g_path + '/VioDB/{}_jpg{}.json'.format(dataset, cv), 'validation',
                      spatial_transform, temporal_transform, target_transform)
     val_loader = DataLoader(val_data,
                             batch_size=val_batch,

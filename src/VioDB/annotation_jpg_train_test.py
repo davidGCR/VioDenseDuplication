@@ -11,6 +11,46 @@ def load_labels(database_path):
 
     return labels
 
+def load_labels_rwf(database_path):
+    # if os.path.isdir(database_path):
+    #     labels = os.listdir(database_path)
+    labels = ['fi','no']
+    return labels
+
+def get_rwf_dataset(database_path):
+    if not os.path.exists(database_path):
+        raise IOError('not exist path')
+
+    train_database = {}
+
+    train_fi_data = os.listdir(os.path.join(database_path, 'train', 'Fight'))
+    train_no_data = os.listdir(os.path.join(database_path, 'train', 'NonFight'))
+
+    for file_name in train_no_data:
+        train_database[file_name] = {}
+        train_database[file_name]['subset'] = 'training'
+        train_database[file_name]['annotations'] = {'label': 'no'}
+    for file_name in train_fi_data:
+        train_database[file_name] = {}
+        train_database[file_name]['subset'] = 'training'
+        train_database[file_name]['annotations'] = {'label': 'fi'}
+
+    val_database = {}
+    val_fi_data = os.listdir(os.path.join(database_path, 'val', 'Fight'))
+    val_no_data = os.listdir(os.path.join(database_path, 'val', 'NonFight'))
+
+    for file_name in val_no_data:
+        train_database[file_name] = {}
+        train_database[file_name]['subset'] = 'validation'
+        train_database[file_name]['annotations'] = {'label': 'no'}
+    
+    for file_name in val_fi_data:
+        train_database[file_name] = {}
+        train_database[file_name]['subset'] = 'validation'
+        train_database[file_name]['annotations'] = {'label': 'fi'}
+    
+    return train_database, val_database
+
 
 def get_dataset(database_path):
     if not os.path.exists(database_path):
@@ -64,9 +104,22 @@ def generate_annotation(database_path, dst_json_path):
     with open(dst_json_path, 'w') as dst_file:
         json.dump(dst_data, dst_file)
 
+def generate_annotation_rwf(database_path, dst_json_path):
+    labels = load_labels_rwf(database_path)
+    train_database, val_database = get_rwf_dataset(database_path)
+
+    dst_data = {}
+    dst_data['labels'] = labels
+    dst_data['database'] = {}
+    dst_data['database'].update(train_database)
+    dst_data['database'].update(val_database)
+
+    with open(dst_json_path, 'w') as dst_file:
+        json.dump(dst_data, dst_file)
 
 if __name__ == '__main__':
     database_path = sys.argv[1]
     dst_json_path = database_path + '.json'
 
-    generate_annotation(database_path, dst_json_path)
+    # generate_annotation(database_path, dst_json_path)
+    generate_annotation_rwf(database_path, dst_json_path)
