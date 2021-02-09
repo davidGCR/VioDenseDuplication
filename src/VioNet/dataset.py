@@ -1,24 +1,66 @@
 import os
 import json
-from PIL import Image
-
 import torch
 from torch.utils.data import Dataset
 
+from PIL import Image
+from dynamic_image import dynamic_image_v1
+import numpy as np
 
 def imread(path):
     with Image.open(path) as img:
         return img.convert('RGB')
 
+def get_video_frames(video_path):
+    # Initialize the frame number and create empty frame list
+    video = cv2.VideoCapture(video_path)
+    frame_list = []
 
-def video_loader(video_dir_path, frame_indices):
+    # Loop until there are no frames left.
+    try:
+        while True:
+            more_frames, frame = video.read()
+
+            if not more_frames:
+                break
+            else:
+                frame_list.append(frame)
+
+    finally:
+        video.release()
+
+    return frame_list
+
+
+
+def video_loader(video_dir_path, frame_indices, dataset_name):
     video = []
-    for i in frame_indices:
-        image_path = os.path.join(video_dir_path, 'image_{:05d}.jpg'.format(i))
-        if os.path.exists(image_path):
-            video.append(imread(image_path))
-        else:
-            return video
+    if isinstance(frame_indices[0], list):
+        for segment in frame_indices:
+            shot_frames = []
+            for i in segment:
+                image_path = os.path.join(video_dir_path, 'frame{}.jpg'.format(i)) if dataset_name == 'rwf-2000' else os.path.join(video_dir_path, 'image_{:05d}.jpg'.format(i))
+                # print('image_path:', image_path)
+                if os.path.exists(image_path):
+                    shot_frames.append(np.array(imread(image_path)))
+            imgPIL, img = dynamic_image_v1(shot_frames)
+            video.append(imgPIL)
+            
+    else:
+        for i in frame_indices:
+            image_path = os.path.join(video_dir_path, 'frame{}.jpg'.format(i)) if dataset_name == 'rwf-2000' else os.path.join(video_dir_path, 'image_{:05d}.jpg'.format(i))
+            # print('image_path:', image_path)
+            if os.path.exists(image_path):
+                video.append(imread(image_path))
+            else:
+                return video
+    # else:
+    #   for i in frame_indices:
+    #       image_path = os.path.join(video_dir_path, 'image_{:05d}.jpg'.format(i))
+    #       if os.path.exists(image_path):
+    #           video.append(imread(image_path))
+    #       else:
+    #           return video
 
     return video
 
@@ -81,11 +123,14 @@ def make_dataset(root_path, annotation_path, subset, dataset_name):
         video_path = os.path.join(
             root_path, video_name
         )  # $1/$2/$3
-        print('video_path:', video_path)
+        # print('video_path:', video_path)
         if not os.path.exists(video_path):
             continue
 
-        n_frames = int(n_frames_loader(os.path.join(video_path, 'n_frames')))
+        # n_frames = int(n_frames_loader(os.path.join(video_path, 'n_frames')))
+        n_frames = len(os.listdir(video_path))
+        # n_frames -= 1
+        # print('video_path:', video_path, n_frames)
 
         video = {
             'name': video_name,
@@ -100,11 +145,12 @@ def make_dataset(root_path, annotation_path, subset, dataset_name):
           video_path = os.path.join(
               root_path, video_label, video_name
           )  # $1/$2/$3
-          print('video_path:', video_path)
+          
           if not os.path.exists(video_path):
               continue
 
           n_frames = int(n_frames_loader(os.path.join(video_path, 'n_frames')))
+          
 
           video = {
               'name': video_name,
@@ -114,11 +160,13 @@ def make_dataset(root_path, annotation_path, subset, dataset_name):
           }
 
           dataset.append(video)
-    print('dataset: ', dataset)
+    # print('dataset: ', dataset)
 
     return dataset, index_to_class
 
+"""
 
+"""
 class VioDB(Dataset):
     def __init__(
         self,
@@ -128,20 +176,24 @@ class VioDB(Dataset):
         spatial_transform=None,
         temporal_transform=None,
         target_transform=None,
-        dataset_name=''
+        dataset_name='',
+        config=None
     ):
+        
 
         self.videos, self.classes = make_dataset(
             root_path, annotation_path, subset, dataset_name
         )
 
-        print('self.videos: ', self.videos)
+        # print('self.videos: ', self.videos)
+        # if config:
 
         self.spatial_transform = spatial_transform
         self.temporal_transform = temporal_transform
         self.target_transform = target_transform
 
         self.loader = video_loader
+        self.dataset_name = dataset_name
 
     def __getitem__(self, index):
 
@@ -149,10 +201,17 @@ class VioDB(Dataset):
         n_frames = self.videos[index]['n_frames']
         frames = list(range(1, 1 + n_frames))
 
+        # print('frames:', frames)
+
         if self.temporal_transform:
             frames = self.temporal_transform(frames)
 
-        clip = self.loader(path, frames)
+        # print('frames temporal_transform:', frames)
+
+        clip = self.loader(path, frames, self.dataset_name)
+        # print('path:',path)
+        # print('clip:',len(clip))
+        # print('clip:',len(clip))
 
         # clip list of images (H, W, C)
         if self.spatial_transform:

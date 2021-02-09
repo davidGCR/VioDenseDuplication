@@ -11,7 +11,7 @@ from config import Config
 
 from spatial_transforms import Compose, ToTensor, Normalize
 from spatial_transforms import GroupRandomHorizontalFlip, GroupRandomScaleCenterCrop, GroupScaleCenterCrop
-from temporal_transforms import CenterCrop, RandomCrop
+from temporal_transforms import CenterCrop, RandomCrop, SegmentsCrop
 from target_transforms import Label, Video
 
 from utils import Log
@@ -49,7 +49,9 @@ def main(config):
         [crop_method,
          GroupRandomHorizontalFlip(),
          ToTensor(), norm])
-    temporal_transform = RandomCrop(size=sample_duration, stride=stride)
+    # temporal_transform = RandomCrop(size=sample_duration, stride=stride)
+    temporal_transform = SegmentsCrop(size=sample_duration, segment_size=15, stride=stride, overlap=0.5)
+
     target_transform = Label()
 
     train_batch = config.train_batch
@@ -71,7 +73,8 @@ def main(config):
     crop_method = GroupScaleCenterCrop(size=sample_size)
     norm = Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     spatial_transform = Compose([crop_method, ToTensor(), norm])
-    temporal_transform = CenterCrop(size=sample_duration, stride=stride)
+    # temporal_transform = CenterCrop(size=sample_duration, stride=stride)
+    temporal_transform = SegmentsCrop(size=sample_duration, segment_size=15, stride=stride, overlap=0.5)
     target_transform = Label()
 
     val_batch = config.val_batch
@@ -132,6 +135,9 @@ def main(config):
 
     acc_baseline = config.acc_baseline
     loss_baseline = 1
+
+    # for i, (inputs, targets) in enumerate(val_loader):
+    #     print('inputs:', inputs.size())
 
     for i in range(config.num_epoch):
         train(i, train_loader, model, criterion, optimizer, device, batch_log,
