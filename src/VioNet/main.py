@@ -41,17 +41,22 @@ def main(config):
 
     # cross validation phase
     cv = config.num_cv
+    input_mode = config.input_mode
 
     # train set
     crop_method = GroupRandomScaleCenterCrop(size=sample_size)
-    norm = Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    
+    
+    if input_mode == 'rgb':
+        norm = Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        temporal_transform = RandomCrop(size=sample_duration, stride=stride)
+    elif input_mode == 'dynamic-images':
+        norm = Normalize([0.49778724, 0.49780366, 0.49776983], [0.09050678, 0.09017131, 0.0898702 ])
+        temporal_transform = SegmentsCrop(size=sample_duration, segment_size=15, stride=stride, overlap=0.5)
     spatial_transform = Compose(
         [crop_method,
          GroupRandomHorizontalFlip(),
          ToTensor(), norm])
-    # temporal_transform = RandomCrop(size=sample_duration, stride=stride)
-    temporal_transform = SegmentsCrop(size=sample_duration, segment_size=15, stride=stride, overlap=0.5)
-
     target_transform = Label()
 
     train_batch = config.train_batch
@@ -71,10 +76,15 @@ def main(config):
 
     # val set
     crop_method = GroupScaleCenterCrop(size=sample_size)
-    norm = Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    
+    
+    if input_mode == 'rgb':
+        norm = Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        temporal_transform = CenterCrop(size=sample_duration, stride=stride)
+    elif input_mode == 'dynamic-images':
+        norm = Normalize([0.49778724, 0.49780366, 0.49776983], [0.09050678, 0.09017131, 0.0898702 ])
+        temporal_transform = SegmentsCrop(size=sample_duration, segment_size=15, stride=stride, overlap=0.5)
     spatial_transform = Compose([crop_method, ToTensor(), norm])
-    # temporal_transform = CenterCrop(size=sample_duration, stride=stride)
-    temporal_transform = SegmentsCrop(size=sample_duration, segment_size=15, stride=stride, overlap=0.5)
     target_transform = Label()
 
     val_batch = config.val_batch
@@ -194,6 +204,7 @@ if __name__ == '__main__':
         config.train_batch = configs[dataset]['batch_size']
         config.val_batch = configs[dataset]['batch_size']
         config.learning_rate = configs[dataset]['lr']
+        config.input_mode = 'dynamic-images'
         # 5 fold cross validation
         # for cv in range(1, 6):
         #     config.num_cv = cv
