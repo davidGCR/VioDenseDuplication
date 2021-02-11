@@ -52,7 +52,7 @@ def main(config):
         temporal_transform = RandomCrop(size=sample_duration, stride=stride)
     elif input_mode == 'dynamic-images':
         norm = Normalize([0.49778724, 0.49780366, 0.49776983], [0.09050678, 0.09017131, 0.0898702 ])
-        temporal_transform = SegmentsCrop(size=sample_duration, segment_size=15, stride=stride, overlap=0.5)
+        temporal_transform = RandomSegmentsCrop(size=sample_duration, segment_size=15, stride=stride, overlap=0.5)
     spatial_transform = Compose(
         [crop_method,
          GroupRandomHorizontalFlip(),
