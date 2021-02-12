@@ -265,10 +265,10 @@ TSWLatexianTemp*
 *.sta
 *.jpg
 *.tgz
-/VioDB/hockey_jpg
-/VioDB/mix_jpg
-/VioDB/movie_jpg
-/VioDB/vif_jpg
-/VioDB/rwf_jpg
+VioDB/hockey_jpg/*
+VioDB/mix_jpg/*
+VioDB/movie_jpg/*
+VioDB/vif_jpg/*
+VioDB/rwf_jpg/*
 *.DS_Store
 .env2/
