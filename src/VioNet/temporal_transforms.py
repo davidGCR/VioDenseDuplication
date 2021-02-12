@@ -104,7 +104,7 @@ class RandomSegmentsCrop(object):
         segment0 = random.sample(indices[starts[0]:], 2*self.segment_size)
         segment0.sort()
         indices_segments = [segment0]
-        print(0, '\t',segment0)
+        # print(0, '\t',segment0)
         for i in range(1, len(starts),1):
             segment = random.sample(indices[starts[i]:], self.segment_size)
             segment.sort()

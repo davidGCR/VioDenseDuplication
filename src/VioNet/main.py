@@ -11,7 +11,7 @@ from config import Config
 
 from spatial_transforms import Compose, ToTensor, Normalize
 from spatial_transforms import GroupRandomHorizontalFlip, GroupRandomScaleCenterCrop, GroupScaleCenterCrop
-from temporal_transforms import CenterCrop, RandomCrop, SegmentsCrop
+from temporal_transforms import CenterCrop, RandomCrop, SegmentsCrop, RandomSegmentsCrop
 from target_transforms import Label, Video
 
 from utils import Log
