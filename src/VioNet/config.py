@@ -20,7 +20,8 @@ class Config:
             min_lr=1e-7,
             num_epoch=1000,
             input_mode='rgb',
-            temporal_transform = 'standar'
+            temporal_transform = 'standar',
+            segment_size = 2
     ):
 
         # VioNet models
@@ -67,3 +68,4 @@ class Config:
 
         self.input_mode = input_mode 
         self.temporal_transform = temporal_transform
+        self.segment_size = segment_size

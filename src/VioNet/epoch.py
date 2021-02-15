@@ -79,6 +79,7 @@ def train(
             'lr': optimizer.param_groups[0]['lr']
         }
     )
+    return losses.avg, accuracies.avg, optimizer.param_groups[0]['lr']
 
 
 def val(epoch, data_loader, model, criterion, device, val_log):

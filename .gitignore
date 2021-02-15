@@ -265,6 +265,8 @@ TSWLatexianTemp*
 *.sta
 *.jpg
 *.tgz
+*.csv
+*.pth
 VioDB/hockey_jpg/*
 VioDB/mix_jpg/*
 VioDB/movie_jpg/*

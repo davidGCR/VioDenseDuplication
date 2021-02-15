@@ -78,10 +78,13 @@ def load_annotation_data(data_file_path):
 
 def get_labels(data):
     class_labels_map = {}
-    index = 0
+    # index = 0
     for class_label in data['labels']:
+        index = 0 if class_label == "no" else 1
         class_labels_map[class_label] = index
-        index += 1
+
+        # class_labels_map[class_label] = index
+        # index += 1
     return class_labels_map
 
 

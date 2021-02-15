@@ -141,11 +141,11 @@ class RandomSegmentsCrop(object):
 
 
 if __name__ == '__main__':
-    # temp_transform = RandomSegmentsCrop(size=16, segment_size=15, stride=1, overlap=0.5)
+    temp_transform = SegmentsCrop(size=1, segment_size=30, stride=3, overlap=0.5)
     frames = list(range(1, 150))
-    # video_segments = temp_transform(frames)
+    frames = temp_transform(frames)
     # print('Video video_segments:\n', len(video_segments), '\n',video_segments)
-    temp_transform = KeyFrameCrop(size=16, stride=1)
+    # temp_transform = KeyFrameCrop(size=16, stride=1)
     # frames = list(range(1, 150))
-    frames = temp_transform(frames, None)
+    # frames = temp_transform(frames, None)
     print(frames)
