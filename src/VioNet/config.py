@@ -19,7 +19,8 @@ class Config:
             factor=0.1,
             min_lr=1e-7,
             num_epoch=1000,
-            input_mode='rgb'
+            input_mode='rgb',
+            temporal_transform = 'standar'
     ):
 
         # VioNet models
@@ -65,3 +66,4 @@ class Config:
         self.num_epoch = num_epoch
 
         self.input_mode = input_mode 
+        self.temporal_transform = temporal_transform

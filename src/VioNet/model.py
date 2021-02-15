@@ -14,8 +14,24 @@ def VioNet_C3D(config):
     device = config.device
     model = C3D(num_classes=2).to(device)
 
-    state_dict = torch.load('weights/C3D_Kinetics.pth')
-    model.load_state_dict(state_dict)
+    print(model)
+
+    state_dict = torch.load(g_path +'/VioNet/'+ 'weights/C3D_Kinetics.pth')
+    
+    # state_dict =state_dict['state_dict']
+
+    from collections import OrderedDict
+    new_state_dict = OrderedDict()
+    for k, v in state_dict.items():
+        if k[0:2] == 'fc':
+            continue
+        name = 'features.'+k # remove 'module.' of dataparallel
+        print(k, '\t',name)
+        new_state_dict[name]=v
+
+    model.load_state_dict(new_state_dict, strict=False)
+    
+    # model.load_state_dict(state_dict)
     params = model.parameters()
 
     return model, params

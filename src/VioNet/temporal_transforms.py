@@ -1,6 +1,8 @@
 import random
 import numpy as np
-
+import os
+import pandas as pd
+import re
 
 def crop(frames, start, size, stride):
     # todo more efficient
@@ -42,6 +44,30 @@ class RandomCrop(object):
         )
         # print('RandomCrop startr:', start)
         return crop(frames, start, self.size, self.stride)
+
+class KeyFrameCrop(object):
+    def __init__(self, size, stride=1):
+        self.size = size
+        self.stride = stride
+
+    def __call__(self, frames, tmp_annotation):
+        if tmp_annotation == None:
+            start = random.randint(
+                0, max(0,
+                    len(frames) - 1 - (self.size - 1) * self.stride)
+                )
+            return crop(frames, start, self.size, self.stride)
+        else:
+            df = pd.read_csv(tmp_annotation)
+            df.sort_values(by = 'violence', inplace=True, ascending=False)
+            frames = []
+            for i in range(self.size):
+                _, v_name = os.path.split(df.iloc[i]["imgpath"])
+                frame = int(re.search(r'\d+', v_name).group())
+                # print(v_name, frame)
+                frames.append(frame)
+            frames.sort()
+            return frames
 
 
 class SegmentsCrop(object):
@@ -97,29 +123,13 @@ class RandomSegmentsCrop(object):
         indices = list(range(0, len(frames)))
         starts = random.sample(indices[:-self.segment_size], self.segment_size)
         starts.sort()
-        # print('indices:', indices)
-        # print('starts:', starts)
-
-        # print('0000:' ,indices[starts[0]:])
         segment0 = random.sample(indices[starts[0]:], 2*self.segment_size)
         segment0.sort()
         indices_segments = [segment0]
-        # print(0, '\t',segment0)
         for i in range(1, len(starts),1):
             segment = random.sample(indices[starts[i]:], self.segment_size)
             segment.sort()
-            # print(i,'start:',starts[i], '\t',segment)
             indices_segments.append(segment)
-
-            
-
-        
-        
-        # indices = [x for x in range(0, len(frames), self.stride)]
-        
-        # indices_segments = [indices[x:x + self.segment_size] for x in range(0, len(indices), self.segment_size-self.overlap_length)]
-        # indices_segments = self.padding(indices_segments)
-        # # print('indices_segments:', len(indices_segments), indices_segments)
 
         video_segments = []
         for i, indices_segment in enumerate(indices_segments): #Generate segments using indices
@@ -131,7 +141,11 @@ class RandomSegmentsCrop(object):
 
 
 if __name__ == '__main__':
-    temp_transform = RandomSegmentsCrop(size=16, segment_size=15, stride=1, overlap=0.5)
+    # temp_transform = RandomSegmentsCrop(size=16, segment_size=15, stride=1, overlap=0.5)
     frames = list(range(1, 150))
-    video_segments = temp_transform(frames)
-    print('Video video_segments:\n', len(video_segments), '\n',video_segments)
+    # video_segments = temp_transform(frames)
+    # print('Video video_segments:\n', len(video_segments), '\n',video_segments)
+    temp_transform = KeyFrameCrop(size=16, stride=1)
+    # frames = list(range(1, 150))
+    frames = temp_transform(frames, None)
+    print(frames)

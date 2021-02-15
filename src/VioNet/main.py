@@ -11,7 +11,7 @@ from config import Config
 
 from spatial_transforms import Compose, ToTensor, Normalize
 from spatial_transforms import GroupRandomHorizontalFlip, GroupRandomScaleCenterCrop, GroupScaleCenterCrop
-from temporal_transforms import CenterCrop, RandomCrop, SegmentsCrop, RandomSegmentsCrop
+from temporal_transforms import CenterCrop, RandomCrop, SegmentsCrop, RandomSegmentsCrop, KeyFrameCrop
 from target_transforms import Label, Video
 
 from utils import Log
@@ -42,17 +42,27 @@ def main(config):
     # cross validation phase
     cv = config.num_cv
     input_mode = config.input_mode
-
+    temporal_transform = config.temporal_transform
     # train set
     crop_method = GroupRandomScaleCenterCrop(size=sample_size)
     
     
     if input_mode == 'rgb':
         norm = Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-        temporal_transform = RandomCrop(size=sample_duration, stride=stride)
+        
     elif input_mode == 'dynamic-images':
         norm = Normalize([0.49778724, 0.49780366, 0.49776983], [0.09050678, 0.09017131, 0.0898702 ])
+        
+
+    if temporal_transform == 'standar':
+        temporal_transform = RandomCrop(size=sample_duration, stride=stride)
+    elif temporal_transform == 'random-segments':
         temporal_transform = RandomSegmentsCrop(size=sample_duration, segment_size=15, stride=stride, overlap=0.5)
+    elif temporal_transform == 'keyframe':
+        temporal_transform = KeyFrameCrop(size=sample_duration, stride=stride)
+
+
+
     spatial_transform = Compose(
         [crop_method,
          GroupRandomHorizontalFlip(),
@@ -80,10 +90,18 @@ def main(config):
     
     if input_mode == 'rgb':
         norm = Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-        temporal_transform = CenterCrop(size=sample_duration, stride=stride)
+        
     elif input_mode == 'dynamic-images':
         norm = Normalize([0.49778724, 0.49780366, 0.49776983], [0.09050678, 0.09017131, 0.0898702 ])
+        
+    
+    if temporal_transform == 'standar':
+        temporal_transform = CenterCrop(size=sample_duration, stride=stride)
+    elif temporal_transform == 'random-segments':
         temporal_transform = SegmentsCrop(size=sample_duration, segment_size=15, stride=stride, overlap=0.5)
+    elif temporal_transform == 'keyframe':
+        temporal_transform = KeyFrameCrop(size=sample_duration, stride=stride)
+
     spatial_transform = Compose([crop_method, ToTensor(), norm])
     target_transform = Label()
 
@@ -168,10 +186,10 @@ def main(config):
 
 if __name__ == '__main__':
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    dataset = 'rwf-2000'
     config = Config(
         'densenet_lean',  # c3d, convlstm, densenet, densenet_lean
-        # 'hockey',
-        'rwf-2000',
+        dataset,
         device=device,
         num_epoch=150,
         acc_baseline=0.92,
@@ -199,16 +217,16 @@ if __name__ == '__main__':
     }
 
     # for dataset in ['rwf-2000','hockey', 'movie', 'vif']:
-    for dataset in ['rwf-2000']:
-        config.dataset = dataset
-        config.train_batch = configs[dataset]['batch_size']
-        config.val_batch = configs[dataset]['batch_size']
-        config.learning_rate = configs[dataset]['lr']
-        config.input_mode = 'dynamic-images'
-        # 5 fold cross validation
-        # for cv in range(1, 6):
-        #     config.num_cv = cv
-        #     main(config)
+    # config.dataset = dataset
+    config.train_batch = configs[dataset]['batch_size']
+    config.val_batch = configs[dataset]['batch_size']
+    config.learning_rate = configs[dataset]['lr']
+    config.input_mode = 'rgb' #rgb, dynamic-images
+    config.temporal_transform = 'keyframe' #standar, normal
+    # 5 fold cross validation
+    # for cv in range(1, 6):
+    #     config.num_cv = cv
+    #     main(config)
 
-        config.num_cv = 1
-        main(config)
+    config.num_cv = 1
+    main(config)
