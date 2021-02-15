@@ -69,6 +69,14 @@ class KeyFrameCrop(object):
             frames.sort()
             return frames
 
+class SegmentKeyFrameCrop(object):
+    def __init__(self, size, stride=1):
+        self.tt = KeyFrameCrop(size, stride)
+
+    def __call__(self, frames, tmp_annotation):
+        frames = self.tt(frames, tmp_annotation)
+        return [frames]
+
 
 class SegmentsCrop(object):
     def __init__(self, size, segment_size=15, stride=1, overlap=0.5):
@@ -141,11 +149,11 @@ class RandomSegmentsCrop(object):
 
 
 if __name__ == '__main__':
-    temp_transform = SegmentsCrop(size=1, segment_size=30, stride=3, overlap=0.5)
-    frames = list(range(1, 150))
-    frames = temp_transform(frames)
-    # print('Video video_segments:\n', len(video_segments), '\n',video_segments)
-    # temp_transform = KeyFrameCrop(size=16, stride=1)
+    # temp_transform = SegmentsCrop(size=1, segment_size=30, stride=3, overlap=0.5)
     # frames = list(range(1, 150))
-    # frames = temp_transform(frames, None)
+    # frames = temp_transform(frames)
+    # print('Video video_segments:\n', len(video_segments), '\n',video_segments)
+    temp_transform = SegmentKeyFrameCrop(size=16, stride=1)
+    frames = list(range(1, 150))
+    frames = temp_transform(frames, '/Users/davidchoqueluqueroman/Documents/CODIGOS/protest-detection-violence-estimation/rwf_predictions/train/Fight/oIEZ45OCmAw_3.csv')
     print(frames)

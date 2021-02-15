@@ -142,7 +142,7 @@ def main(config):
         if not os.path.exists(pth):
             os.mkdir(pth)
     
-    log_tsb_dir = tsb_path + '/{}_fps{}_{}_split{}_input({})_tempTransform({}).LOG.csv'.format(config.model, sample_duration,
+    log_tsb_dir = tsb_path + '/{}_fps{}_{}_split{}_input({})_tempTransform({})'.format(config.model, sample_duration,
                                                 dataset, cv, input_mode, temp_transform)
     print('tensorboard dir:', log_tsb_dir)                                                
     writer = SummaryWriter(log_tsb_dir)
