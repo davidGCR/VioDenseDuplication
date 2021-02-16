@@ -2,6 +2,24 @@ import torch.nn as nn
 from torchvision import models
 import torch
 
+def get_fine_tuning_params(model, index_layer):
+    if not index_layer == 0:
+        return model.parameters()
+
+    if index_layer == -1:
+        for name, param in model.named_parameters():
+            if name == 'linear':
+                param.requires_grad = True
+                break
+            else:
+                param.requires_grad = False
+
+        # for param in model.parameters():
+
+        #     param.requires_grad = False
+        return model.parameters()
+
+    
 class Identity(nn.Module):
   def __init__(self):
       super().__init__()
@@ -63,3 +81,8 @@ class ResNet(nn.Module):
         # x = x.max(dim=1).values
         x = self.linear(x)
         return x
+
+if __name__ == '__main__':
+    model = ResNet()
+    params = get_fine_tuning_params(model, -1)
+    print(params)

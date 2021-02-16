@@ -7,6 +7,7 @@ from models.densenet import densenet88, densenet121
 from models.convlstm import ConvLSTM
 from models.resnet import ResNet
 import os
+import models.resnet as rn
 
 g_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 print(g_path)
@@ -14,7 +15,7 @@ print(g_path)
 def VioNet_Resnet(config):
     device = config.device
     model = ResNet(num_classes=2).to(device)
-    params = model.parameters()
+    params = rn.get_fine_tuning_params(model, config.ft_begin_idx)
     return model, params
 
 def VioNet_C3D(config):

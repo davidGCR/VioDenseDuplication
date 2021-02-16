@@ -69,12 +69,36 @@ class KeyFrameCrop(object):
             frames.sort()
             return frames
 
-class SegmentKeyFrameCrop(object):
+class TrainKeyFrameCrop(object):
+    """ 
+    Key frame selection in positive samples and random in negative samples
+    """
     def __init__(self, size, stride=1):
         self.tt = KeyFrameCrop(size, stride)
 
     def __call__(self, frames, tmp_annotation):
         frames = self.tt(frames, tmp_annotation)
+        return [frames]
+
+class ValKeyFrameCrop(object):
+    """
+    Key frame selection in positive and negative samples
+    """
+    def __init__(self, size, stride=1):
+        self.size = size
+        self.stride = stride
+
+    def __call__(self, frames, tmp_annotation):
+        df = pd.read_csv(tmp_annotation)
+        df.sort_values(by = 'violence', inplace=True, ascending=False)
+        frames = []
+        for i in range(self.size):
+            _, v_name = os.path.split(df.iloc[i]["imgpath"])
+            frame = int(re.search(r'\d+', v_name).group())
+            # print(v_name, frame)
+            frames.append(frame)
+        frames.sort()
+        # return frames
         return [frames]
 
 

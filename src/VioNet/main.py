@@ -11,7 +11,7 @@ from config import Config
 
 from spatial_transforms import Compose, ToTensor, Normalize
 from spatial_transforms import GroupRandomHorizontalFlip, GroupRandomScaleCenterCrop, GroupScaleCenterCrop
-from temporal_transforms import CenterCrop, RandomCrop, SegmentsCrop, RandomSegmentsCrop, KeyFrameCrop
+from temporal_transforms import CenterCrop, RandomCrop, SegmentsCrop, RandomSegmentsCrop, KeyFrameCrop, TrainKeyFrameCrop, ValKeyFrameCrop
 from target_transforms import Label, Video
 
 from utils import Log
@@ -64,6 +64,8 @@ def main(config):
         temporal_transform = RandomCrop(size=sample_duration, stride=stride)
     elif temp_transform == 'segments':
         temporal_transform = SegmentsCrop(size=sample_duration, segment_size=config.segment_size, stride=stride, overlap=0.5)
+    elif temp_transform == 'segments-keyframe':
+        temporal_transform = TrainKeyFrameCrop(size=config.segment_size, stride=stride)
     elif temp_transform == 'random-segments':
         temporal_transform = RandomSegmentsCrop(size=sample_duration, segment_size=15, stride=stride, overlap=0.5)
     elif temp_transform == 'keyframe':
@@ -108,6 +110,8 @@ def main(config):
         temporal_transform = CenterCrop(size=sample_duration, stride=stride)
     elif temp_transform == 'segments':
         temporal_transform = SegmentsCrop(size=sample_duration, segment_size=config.segment_size, stride=stride, overlap=0.5)
+    elif temp_transform == 'segments-keyframe':
+        temporal_transform = ValKeyFrameCrop(size=config.segment_size, stride=stride)
     elif temp_transform == 'random-segments':
         temporal_transform = SegmentsCrop(size=sample_duration, segment_size=15, stride=stride, overlap=0.5)
     elif temp_transform == 'keyframe':
@@ -142,30 +146,31 @@ def main(config):
         if not os.path.exists(pth):
             os.mkdir(pth)
     
-    log_tsb_dir = tsb_path + '/{}_fps{}_{}_split{}_input({})_tempTransform({})'.format(config.model, sample_duration,
-                                                dataset, cv, input_mode, temp_transform)
+    log_tsb_dir = tsb_path + '/{}_fps{}_{}_split{}_input({})_tempTransform({})_Info({})'.format(config.model, sample_duration,
+                                                dataset, cv, input_mode, temp_transform, config.additional_info)
     print('tensorboard dir:', log_tsb_dir)                                                
     writer = SummaryWriter(log_tsb_dir)
 
     # log
     batch_log = Log(
-        log_path+'/{}_fps{}_{}_batch{}.log.csv'.format(
+        log_path+'/{}_fps{}_{}_batch{}_input({})_tempTransform({})_Info({}).log.csv'.format(
             config.model,
             sample_duration,
             dataset,
             cv,
+            input_mode, temp_transform, config.additional_info
         ), ['epoch', 'batch', 'iter', 'loss', 'acc', 'lr'])
     epoch_log = Log(
-        log_path+'/{}_fps{}_{}_epoch{}.log.csv'.format(config.model, sample_duration,
-                                               dataset, cv),
+        log_path+'/{}_fps{}_{}_epoch{}_input({})_tempTransform({})_Info({}).log.csv'.format(config.model, sample_duration,
+                                               dataset, cv, input_mode, temp_transform, config.additional_info),
         ['epoch', 'loss', 'acc', 'lr'])
     val_log = Log(
-        log_path+'/{}_fps{}_{}_val{}.log.csv'.format(config.model, sample_duration,
-                                             dataset, cv),
+        log_path+'/{}_fps{}_{}_val{}_input({})_tempTransform({})_Info({}).log.csv'.format(config.model, sample_duration,
+                                             dataset, cv, input_mode, temp_transform, config.additional_info),
         ['epoch', 'loss', 'acc'])
     
-    train_val_log = Log(log_path+'/{}_fps{}_{}_split{}_input({})_tempTransform({}).LOG.csv'.format(config.model, sample_duration,
-                                               dataset, cv, input_mode, temp_transform),
+    train_val_log = Log(log_path+'/{}_fps{}_{}_split{}_input({})_tempTransform({})_Info({}).LOG.csv'.format(config.model, sample_duration,
+                                               dataset, cv, input_mode, temp_transform, config.additional_info),
         ['epoch', 'train_loss', 'train_acc', 'lr', 'val_loss', 'val_acc'])
 
     # prepare
@@ -250,7 +255,7 @@ if __name__ == '__main__':
             'batch_size': 16
         },
         'rwf-2000': {
-            'lr': 1e-2,
+            'lr': 1e-4,
             'batch_size': 32
         }
     }
@@ -261,18 +266,20 @@ if __name__ == '__main__':
     config.val_batch = configs[dataset]['batch_size']
     config.learning_rate = configs[dataset]['lr']
     config.input_mode = 'dynamic-images' #rgb, dynamic-images
-    config.temporal_transform = 'segments' #standar, segments, random-segments, keyframe
+    config.temporal_transform = 'segments-keyframe' #standar, segments, segments-keyframe, random-segments, keyframe
     # 5 fold cross validation
     # for cv in range(1, 6):
     #     config.num_cv = cv
     #     main(config)
 
     ##### For 2D CNN ####
-    config.num_epoch = 20
+    config.num_epoch = 30
     config.sample_size = (224,224)
     config.sample_duration = 1 # Number of dynamic images
     config.segment_size = 30 # Number of frames for dynamic image
-    config.stride = 3 
+    config.stride = 1
+    config.ft_begin_idx = -1 # 0: train all layers, -1: freeze conv layers
+    config.additional_info = "KeyframesAllValSet-freezeConvLayers"
 
     config.num_cv = 1
     main(config)
