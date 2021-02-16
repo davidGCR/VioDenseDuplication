@@ -141,13 +141,13 @@ def main(config):
     chk_path = getFolder('VioNet_pth')
     tsb_path = getFolder('VioNet_tensorboard_log')
 
-    for pth in [log_path, chk_path, tsb_path]:
+    log_tsb_dir = tsb_path + '/{}_fps{}_{}_split{}_input({})_tempTransform({})_Info({})'.format(config.model, sample_duration,
+                                                dataset, cv, input_mode, temp_transform, config.additional_info)
+    for pth in [log_path, chk_path, tsb_path, log_tsb_dir]:
         # make dir
         if not os.path.exists(pth):
             os.mkdir(pth)
-    
-    log_tsb_dir = tsb_path + '/{}_fps{}_{}_split{}_input({})_tempTransform({})_Info({})'.format(config.model, sample_duration,
-                                                dataset, cv, input_mode, temp_transform, config.additional_info)
+
     print('tensorboard dir:', log_tsb_dir)                                                
     writer = SummaryWriter(log_tsb_dir)
 
