@@ -111,11 +111,11 @@ def main(config):
     elif temp_transform == 'segments':
         temporal_transform = SegmentsCrop(size=sample_duration, segment_size=config.segment_size, stride=stride, overlap=0.5)
     elif temp_transform == 'segments-keyframe':
-        temporal_transform = ValKeyFrameCrop(size=config.segment_size, stride=stride)
+        temporal_transform = ValKeyFrameCrop(size=config.segment_size, stride=stride, input_type=input_mode)
     elif temp_transform == 'random-segments':
         temporal_transform = SegmentsCrop(size=sample_duration, segment_size=15, stride=stride, overlap=0.5)
     elif temp_transform == 'keyframe':
-        temporal_transform = KeyFrameCrop(size=sample_duration, stride=stride)
+        temporal_transform = ValKeyFrameCrop(size=sample_duration, stride=stride, input_type=input_mode)
 
     spatial_transform = Compose([crop_method, ToTensor(), norm])
     target_transform = Label()
@@ -255,7 +255,7 @@ if __name__ == '__main__':
             'batch_size': 16
         },
         'rwf-2000': {
-            'lr': 1e-4,
+            'lr': 1e-5,
             'batch_size': 32
         }
     }
@@ -273,13 +273,13 @@ if __name__ == '__main__':
     #     main(config)
 
     ##### For 2D CNN ####
-    config.num_epoch = 30
+    config.num_epoch = 50
     config.sample_size = (224,224)
     config.sample_duration = 1 # Number of dynamic images
     config.segment_size = 30 # Number of frames for dynamic image
     config.stride = 1
     config.ft_begin_idx = -1 # 0: train all layers, -1: freeze conv layers
-    config.additional_info = "KeyframesAllValSet-freezeConvLayers"
+    config.additional_info = "KeyframesAllValSet-freezeConvLayers-2"
 
     config.num_cv = 1
     main(config)

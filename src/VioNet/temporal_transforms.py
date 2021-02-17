@@ -72,6 +72,7 @@ class KeyFrameCrop(object):
 class TrainKeyFrameCrop(object):
     """ 
     Key frame selection in positive samples and random in negative samples
+    Use for Dynamic images
     """
     def __init__(self, size, stride=1):
         self.tt = KeyFrameCrop(size, stride)
@@ -83,10 +84,12 @@ class TrainKeyFrameCrop(object):
 class ValKeyFrameCrop(object):
     """
     Key frame selection in positive and negative samples
+    Use for Dynamic images
     """
-    def __init__(self, size, stride=1):
+    def __init__(self, size, stride=1, input_type="rgb"):
         self.size = size
         self.stride = stride
+        self.input_type = input_type
 
     def __call__(self, frames, tmp_annotation):
         df = pd.read_csv(tmp_annotation)
@@ -98,8 +101,10 @@ class ValKeyFrameCrop(object):
             # print(v_name, frame)
             frames.append(frame)
         frames.sort()
-        # return frames
-        return [frames]
+        if self.input_type == "rgb":
+            return frames
+        elif self.input_type == "dynamic-images":
+            return [frames]
 
 
 class SegmentsCrop(object):
