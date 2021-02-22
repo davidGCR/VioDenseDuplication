@@ -5,12 +5,18 @@ import models.densenet as dn
 from models.c3d import C3D
 from models.densenet import densenet88, densenet121
 from models.convlstm import ConvLSTM
-from models.resnet import ResNet
+from models.models2D import ResNet, Densenet2D
 import os
-import models.resnet as rn
+import models.models2D as rn
 
 g_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-print(g_path)
+# print(g_path)
+
+def VioNet_Densenet2D(config):
+    device = config.device
+    model = Densenet2D(num_classes=2).to(device)
+    params = rn.get_fine_tuning_params(model, config.ft_begin_idx)
+    return model, params
 
 def VioNet_Resnet(config):
     device = config.device

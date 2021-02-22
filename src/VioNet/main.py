@@ -5,7 +5,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 
 from epoch import train, val, test
-from model import VioNet_C3D, VioNet_ConvLSTM, VioNet_densenet, VioNet_densenet_lean, VioNet_Resnet
+from model import VioNet_C3D, VioNet_ConvLSTM, VioNet_densenet, VioNet_densenet_lean, VioNet_Resnet, VioNet_Densenet2D
 from dataset import VioDB
 from config import Config
 
@@ -35,6 +35,8 @@ def main(config):
         model, params = VioNet_densenet_lean(config)
     elif config.model == 'resnet50':
         model, params = VioNet_Resnet(config)
+    elif config.model == 'densenet2D':
+        model, params = VioNet_Densenet2D(config)
     # default densenet
     else:
         model, params = VioNet_densenet_lean(config)
@@ -232,10 +234,10 @@ if __name__ == '__main__':
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     dataset = 'rwf-2000'
     config = Config(
-        'resnet50',  # c3d, convlstm, densenet, densenet_lean, resnet50
+        'densenet2D',  # c3d, convlstm, densenet, densenet_lean, resnet50, densenet2D
         dataset,
         device=device,
-        num_epoch=150,
+        # num_epoch=150,
         acc_baseline=0.92,
         ft_begin_idx=0,
     )
@@ -255,7 +257,7 @@ if __name__ == '__main__':
             'batch_size': 16
         },
         'rwf-2000': {
-            'lr': 1e-5,
+            'lr': 1e-3,
             'batch_size': 32
         }
     }
@@ -266,7 +268,7 @@ if __name__ == '__main__':
     config.val_batch = configs[dataset]['batch_size']
     config.learning_rate = configs[dataset]['lr']
     config.input_mode = 'dynamic-images' #rgb, dynamic-images
-    config.temporal_transform = 'segments-keyframe' #standar, segments, segments-keyframe, random-segments, keyframe
+    config.temporal_transform = 'segments' #standar, segments, segments-keyframe, random-segments, keyframe
     # 5 fold cross validation
     # for cv in range(1, 6):
     #     config.num_cv = cv
@@ -277,9 +279,9 @@ if __name__ == '__main__':
     config.sample_size = (224,224)
     config.sample_duration = 1 # Number of dynamic images
     config.segment_size = 30 # Number of frames for dynamic image
-    config.stride = 1
+    config.stride = 1 #for dynamic images it's frames to skip into a segment
     config.ft_begin_idx = -1 # 0: train all layers, -1: freeze conv layers
-    config.additional_info = "KeyframesAllValSet-freezeConvLayers-2"
+    config.additional_info = "no-keyframe"
 
     config.num_cv = 1
     main(config)
