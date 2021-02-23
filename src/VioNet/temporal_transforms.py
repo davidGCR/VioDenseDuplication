@@ -238,7 +238,7 @@ class RandomSegmentsCrop(object):
 
 
 if __name__ == '__main__':
-    temp_transform = GuidedKeyFrameCrop(size=1, segment_size=30, stride=1, overlap=0)
+    temp_transform = TrainGuidedKeyFrameCrop(size=1, segment_size=30, stride=1, overlap=0.5)
     # frames = list(range(1, 150))
     # frames = temp_transform(frames)
     # print('Video video_segments:\n', len(video_segments), '\n',video_segments)
