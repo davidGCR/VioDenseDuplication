@@ -3,7 +3,7 @@ from torchvision import models
 import torch
 
 def get_fine_tuning_params(model, index_layer):
-    if not index_layer == 0:
+    if index_layer == 0:
         return model.parameters()
 
     if index_layer == -1:
@@ -115,6 +115,6 @@ class Densenet2D(nn.Module):
 
 if __name__ == '__main__':
     model = Densenet2D()
-    params = get_fine_tuning_params(model, -1)
-    # print(params)
-    print(model)
+    params = get_fine_tuning_params(model, 0)
+    print(params)
+    # print(model)

@@ -69,6 +69,66 @@ class KeyFrameCrop(object):
             frames.sort()
             return frames
 
+class TrainGuidedKeyFrameCrop(object):
+    def __init__(self, size, segment_size=15, stride=1, overlap=0.5):
+        self.size = size
+        self.segment_size = segment_size
+        self.stride = stride
+        self.overlap = overlap
+        self.overlap_length = int(self.overlap*self.size)
+    
+    def __call__(self, frames, tmp_annotation):
+        if tmp_annotation == None:
+            start = random.randint(
+                0, max(0,
+                    len(frames) - 1 - (self.size - 1) * self.stride)
+                )
+            return crop(frames, start, self.size, self.stride)
+        else:
+            df = pd.read_csv(tmp_annotation)
+            df.sort_values(by = 'violence', inplace=True, ascending=False)
+            _, v_name = os.path.split(df.iloc[0]["imgpath"])
+            frame = int(re.search(r'\d+', v_name).group())
+            left_limit = frame - int(self.segment_size / 2)
+            right_limit = frame + int(self.segment_size / 2)
+            start = left_limit if frame - int(self.segment_size / 2) > 0 else 1
+            end = right_limit if frame + int(self.segment_size / 2) <= len(frames) else len(frames)
+
+            print('frame:{}, start:{}, end:{}'.format(frame, start, end))
+
+            frames = []
+            for i in range(start,end,1):
+                # print(v_name, frame)
+                frames.append(i)
+            return frames
+
+class ValGuidedKeyFrameCrop(object):
+    def __init__(self, size, segment_size=15, stride=1, overlap=0.5):
+        self.size = size
+        self.segment_size = segment_size
+        self.stride = stride
+        self.overlap = overlap
+        self.overlap_length = int(self.overlap*self.size)
+    
+    def __call__(self, frames, tmp_annotation):
+        df = pd.read_csv(tmp_annotation)
+        df.sort_values(by = 'violence', inplace=True, ascending=False)
+        _, v_name = os.path.split(df.iloc[0]["imgpath"])
+        frame = int(re.search(r'\d+', v_name).group())
+        left_limit = frame - int(self.segment_size / 2)
+        right_limit = frame + int(self.segment_size / 2)
+        start = left_limit if frame - int(self.segment_size / 2) > 0 else 1
+        end = right_limit if frame + int(self.segment_size / 2) <= len(frames) else len(frames)
+
+        print('frame:{}, start:{}, end:{}'.format(frame, start, end))
+
+        frames = []
+        for i in range(start,end,1):
+            # print(v_name, frame)
+            frames.append(i)
+        return frames
+    
+
 class TrainKeyFrameCrop(object):
     """ 
     Key frame selection in positive samples and random in negative samples
@@ -178,11 +238,16 @@ class RandomSegmentsCrop(object):
 
 
 if __name__ == '__main__':
-    # temp_transform = SegmentsCrop(size=1, segment_size=30, stride=3, overlap=0.5)
+    temp_transform = GuidedKeyFrameCrop(size=1, segment_size=30, stride=1, overlap=0)
     # frames = list(range(1, 150))
     # frames = temp_transform(frames)
     # print('Video video_segments:\n', len(video_segments), '\n',video_segments)
-    temp_transform = SegmentKeyFrameCrop(size=16, stride=1)
+    # temp_transform = KeyFrameCrop(size=16, stride=1)
+    
     frames = list(range(1, 150))
+
     frames = temp_transform(frames, '/Users/davidchoqueluqueroman/Documents/CODIGOS/protest-detection-violence-estimation/rwf_predictions/train/Fight/oIEZ45OCmAw_3.csv')
+    # temp_transform = CenterCrop(size=16, stride=1)
+    # temp_transform = RandomCrop(size=16, stride=1)
+    # frames = temp_transform(frames)
     print(frames)
