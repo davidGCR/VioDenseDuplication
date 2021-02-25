@@ -6,6 +6,7 @@ test/
 *.log
 *.DS_Store
 *.zip
-VioNet_tensorboard_log/
+VioNet_tensorboard_log/*
 .DS_Store
 **/.DS_Store
+*.numbers

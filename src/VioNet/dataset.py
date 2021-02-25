@@ -5,7 +5,7 @@ from torch.utils.data import Dataset
 
 from PIL import Image
 from dynamic_image import dynamic_image_v1
-from temporal_transforms import KeyFrameCrop, TrainKeyFrameCrop, ValKeyFrameCrop
+from temporal_transforms import KeyFrameCrop, TrainGuidedKeyFrameCrop, ValGuidedKeyFrameCrop
 import numpy as np
 
 def imread(path):
@@ -135,7 +135,8 @@ def make_dataset(root_path, annotation_path, subset, dataset_name, tmp_annotatio
         # n_frames = int(n_frames_loader(os.path.join(video_path, 'n_frames')))
         # print('subset: ',subset)
         n_frames = len(os.listdir(video_path))
-        tmp_annotation = None if video_label == "no" and subset == "training" else os.path.join(tmp_annotation_path, video_name) + '.csv'
+        # tmp_annotation = None if video_label == "no" and subset == "training" else os.path.join(tmp_annotation_path, video_name) + '.csv'
+         tmp_annotation = os.path.join(tmp_annotation_path, video_name) + '.csv'
 
         video = {
             'name': video_name,
@@ -211,7 +212,9 @@ class VioDB(Dataset):
         # print('frames:', frames)
 
         if self.temporal_transform:
-            if isinstance(self.temporal_transform, KeyFrameCrop) or isinstance(self.temporal_transform, TrainKeyFrameCrop) or isinstance(self.temporal_transform, ValKeyFrameCrop):
+            if isinstance(self.temporal_transform, KeyFrameCrop) 
+                            or isinstance(self.temporal_transform, TrainGuidedKeyFrameCrop) 
+                            or isinstance(self.temporal_transform, ValGuidedKeyFrameCrop):
                 frames = self.temporal_transform(frames, self.videos[index]['tmp_annotation'])
             else:        
                 frames = self.temporal_transform(frames)

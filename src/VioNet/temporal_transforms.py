@@ -45,7 +45,10 @@ class RandomCrop(object):
         # print('RandomCrop startr:', start)
         return crop(frames, start, self.size, self.stride)
 
-class KeyFrameCrop(object):
+class KeyFrameCrop_0(object):
+    """
+        Compute keyframes only if the annotation exist else load None
+    """
     def __init__(self, size, stride=1):
         self.size = size
         self.stride = stride
@@ -83,7 +86,8 @@ class TrainGuidedKeyFrameCrop(object):
                 0, max(0,
                     len(frames) - 1 - (self.size - 1) * self.stride)
                 )
-            return crop(frames, start, self.size, self.stride)
+            # print(frames)
+            return [crop(frames, start, self.size, self.stride)]
         else:
             df = pd.read_csv(tmp_annotation)
             df.sort_values(by = 'violence', inplace=True, ascending=False)
@@ -94,13 +98,14 @@ class TrainGuidedKeyFrameCrop(object):
             start = left_limit if frame - int(self.segment_size / 2) > 0 else 1
             end = right_limit if frame + int(self.segment_size / 2) <= len(frames) else len(frames)
 
-            print('frame:{}, start:{}, end:{}'.format(frame, start, end))
+            # print('frame:{}, start:{}, end:{}'.format(frame, start, end))
 
             frames = []
             for i in range(start,end,1):
                 # print(v_name, frame)
                 frames.append(i)
-            return frames
+            print(frames)
+            return [frames]
 
 class ValGuidedKeyFrameCrop(object):
     def __init__(self, size, segment_size=15, stride=1, overlap=0.5):
@@ -120,31 +125,30 @@ class ValGuidedKeyFrameCrop(object):
         start = left_limit if frame - int(self.segment_size / 2) > 0 else 1
         end = right_limit if frame + int(self.segment_size / 2) <= len(frames) else len(frames)
 
-        print('frame:{}, start:{}, end:{}'.format(frame, start, end))
+        # print('frame:{}, start:{}, end:{}'.format(frame, start, end))
 
         frames = []
         for i in range(start,end,1):
             # print(v_name, frame)
             frames.append(i)
-        return frames
+        return [frames]
     
 
-class TrainKeyFrameCrop(object):
-    """ 
-    Key frame selection in positive samples and random in negative samples
-    Use for Dynamic images
-    """
-    def __init__(self, size, stride=1):
-        self.tt = KeyFrameCrop(size, stride)
+# class TrainKeyFrameCrop(object):
+#     """ 
+#     Key frame selection in positive samples and random in negative samples
+#     Use for Dynamic images
+#     """
+#     def __init__(self, size, stride=1):
+#         self.tt = KeyFrameCrop(size, stride)
 
-    def __call__(self, frames, tmp_annotation):
-        frames = self.tt(frames, tmp_annotation)
-        return [frames]
+#     def __call__(self, frames, tmp_annotation):
+#         frames = self.tt(frames, tmp_annotation)
+#         return [frames]
 
-class ValKeyFrameCrop(object):
+class KeyFrameCrop(object):
     """
     Key frame selection in positive and negative samples
-    Use for Dynamic images
     """
     def __init__(self, size, stride=1, input_type="rgb"):
         self.size = size

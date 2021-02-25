@@ -11,7 +11,7 @@ from config import Config
 
 from spatial_transforms import Compose, ToTensor, Normalize
 from spatial_transforms import GroupRandomHorizontalFlip, GroupRandomScaleCenterCrop, GroupScaleCenterCrop
-from temporal_transforms import CenterCrop, RandomCrop, SegmentsCrop, RandomSegmentsCrop, KeyFrameCrop, TrainKeyFrameCrop, ValKeyFrameCrop, TrainGuidedKeyFrameCrop, ValGuidedKeyFrameCrop
+from temporal_transforms import CenterCrop, RandomCrop, SegmentsCrop, RandomSegmentsCrop, KeyFrameCrop, TrainGuidedKeyFrameCrop, ValGuidedKeyFrameCrop
 from target_transforms import Label, Video
 
 from utils import Log
@@ -66,12 +66,12 @@ def main(config):
         temporal_transform = RandomCrop(size=sample_duration, stride=stride)
     elif temp_transform == 'segments':
         temporal_transform = SegmentsCrop(size=sample_duration, segment_size=config.segment_size, stride=stride, overlap=0.5)
-    elif temp_transform == 'segments-keyframe':
-        temporal_transform = TrainKeyFrameCrop(size=config.segment_size, stride=stride)
-    elif temp_transform == 'random-segments':
-        temporal_transform = RandomSegmentsCrop(size=sample_duration, segment_size=15, stride=stride, overlap=0.5)
+    # elif temp_transform == 'segments-keyframe':
+    #     temporal_transform = TrainKeyFrameCrop(size=config.segment_size, stride=stride)
+    # elif temp_transform == 'random-segments':
+    #     temporal_transform = RandomSegmentsCrop(size=sample_duration, segment_size=15, stride=stride, overlap=0.5)
     elif temp_transform == 'keyframe':
-        temporal_transform = KeyFrameCrop(size=sample_duration, stride=stride)
+        temporal_transform = KeyFrameCrop(size=sample_duration, stride=stride, input_type=input_mode)
     elif temp_transform == 'guided-segment':
         temporal_transform = TrainGuidedKeyFrameCrop(size=sample_duration, segment_size=config.segment_size, stride=stride, overlap=0.5)
 
@@ -114,12 +114,12 @@ def main(config):
         temporal_transform = CenterCrop(size=sample_duration, stride=stride)
     elif temp_transform == 'segments':
         temporal_transform = SegmentsCrop(size=sample_duration, segment_size=config.segment_size, stride=stride, overlap=0.5)
-    elif temp_transform == 'segments-keyframe':
-        temporal_transform = ValKeyFrameCrop(size=config.segment_size, stride=stride, input_type=input_mode)
-    elif temp_transform == 'random-segments':
-        temporal_transform = SegmentsCrop(size=sample_duration, segment_size=15, stride=stride, overlap=0.5)
+    # elif temp_transform == 'segments-keyframe':
+    #     temporal_transform = KeyFrameCrop(size=sample_duration, stride=stride, input_type=input_mode)
+    # elif temp_transform == 'random-segments':
+    #     temporal_transform = SegmentsCrop(size=sample_duration, segment_size=15, stride=stride, overlap=0.5)
     elif temp_transform == 'keyframe':
-        temporal_transform = ValKeyFrameCrop(size=sample_duration, stride=stride, input_type=input_mode)
+        temporal_transform = KeyFrameCrop(size=sample_duration, stride=stride, input_type=input_mode)
     elif temp_transform == 'guided-segment':
         temporal_transform = ValGuidedKeyFrameCrop(size=sample_duration, segment_size=config.segment_size, stride=stride, overlap=0.5)
 
@@ -241,7 +241,7 @@ if __name__ == '__main__':
         'densenet2D',  # c3d, convlstm, densenet, densenet_lean, resnet50, densenet2D
         dataset,
         device=device,
-        # num_epoch=150,
+        num_epoch=50,
         acc_baseline=0.92,
         ft_begin_idx=0,
     )
@@ -279,7 +279,7 @@ if __name__ == '__main__':
     #     main(config)
 
     ##### For 2D CNN ####
-    config.num_epoch = 50
+    # config.num_epoch = 50
     config.sample_size = (224,224)
     config.sample_duration = 1 # Number of dynamic images
     config.segment_size = 30 # Number of frames for dynamic image
