@@ -277,10 +277,10 @@ class ProtestDataset(Dataset):
         # label = {'protest':protest, 'violence':violence, 'visattr':visattr}
         label = 0 if violence<self.thr else 1
 
-        sample = {"image":image, "label":label}
+        # sample = {"image":image, "label":label}
         if self.transform:
-            sample["image"] = self.transform(sample["image"])
-        return sample
+            image = self.transform(image)
+        return image, label
     
 if __name__ == "__main__":
     data_dir = "/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS/UCLA-protest"
@@ -322,3 +322,4 @@ if __name__ == "__main__":
         # measure data loading batch_time
         input, target = sample['image'], sample['label']
         print('target: ', target)
+        print('input: ', input.size())
