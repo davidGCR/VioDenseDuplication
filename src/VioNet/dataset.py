@@ -2,11 +2,15 @@ import os
 import json
 import torch
 from torch.utils.data import Dataset
+from torch.utils.data import DataLoader
 
 from PIL import Image
 from dynamic_image import dynamic_image_v1
 from temporal_transforms import KeyFrameCrop, TrainGuidedKeyFrameCrop, ValGuidedKeyFrameCrop
+from spatial_transforms import Lighting
+import torchvision.transforms as transforms
 import numpy as np
+import pandas as pd
 
 def imread(path):
     with Image.open(path) as img:
@@ -136,7 +140,7 @@ def make_dataset(root_path, annotation_path, subset, dataset_name, tmp_annotatio
         # print('subset: ',subset)
         n_frames = len(os.listdir(video_path))
         # tmp_annotation = None if video_label == "no" and subset == "training" else os.path.join(tmp_annotation_path, video_name) + '.csv'
-         tmp_annotation = os.path.join(tmp_annotation_path, video_name) + '.csv'
+        tmp_annotation = os.path.join(tmp_annotation_path, video_name) + '.csv'
 
         video = {
             'name': video_name,
@@ -212,9 +216,7 @@ class VioDB(Dataset):
         # print('frames:', frames)
 
         if self.temporal_transform:
-            if isinstance(self.temporal_transform, KeyFrameCrop) 
-                            or isinstance(self.temporal_transform, TrainGuidedKeyFrameCrop) 
-                            or isinstance(self.temporal_transform, ValGuidedKeyFrameCrop):
+            if isinstance(self.temporal_transform, KeyFrameCrop) or isinstance(self.temporal_transform, TrainGuidedKeyFrameCrop) or isinstance(self.temporal_transform, ValGuidedKeyFrameCrop):
                 frames = self.temporal_transform(frames, self.videos[index]['tmp_annotation'])
             else:        
                 frames = self.temporal_transform(frames)
@@ -241,3 +243,82 @@ class VioDB(Dataset):
 
     def __len__(self):
         return len(self.videos)
+
+class ProtestDataset(Dataset):
+    """
+    dataset for training and evaluation
+    """
+    def __init__(self, txt_file, img_dir, transform = None, thr=0.5):
+        """
+        Args:
+            txt_file: Path to txt file with annotation
+            img_dir: Directory with images
+            transform: Optional transform to be applied on a sample.
+        """
+        self.label_frame = pd.read_csv(txt_file, delimiter="\t").replace('-', 0)
+        self.img_dir = img_dir
+        self.transform = transform
+        self.thr = thr
+
+    def __len__(self):
+        return len(self.label_frame)
+
+    def __getitem__(self, idx):
+        imgpath = os.path.join(self.img_dir,
+                                self.label_frame.iloc[idx, 0])
+        image = imread(imgpath)
+        fname = self.label_frame.iloc[idx]["fname"]
+        violence = float(self.label_frame.iloc[idx]["violence"])
+        # print("fname: {}, violence: {}".format(fname, violence))
+
+        # protest = self.label_frame.iloc[idx, 1:2].as_matrix().astype('float')
+        # violence = self.label_frame.iloc[idx, 2:3].as_matrix().astype('float')
+        # visattr = self.label_frame.iloc[idx, 3:].as_matrix().astype('float')
+        # label = {'protest':protest, 'violence':violence, 'visattr':visattr}
+        label = 0 if violence<self.thr else 1
+
+        sample = {"image":image, "label":label}
+        if self.transform:
+            sample["image"] = self.transform(sample["image"])
+        return sample
+    
+if __name__ == "__main__":
+    data_dir = "/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS/UCLA-protest"
+    img_dir_train = os.path.join(data_dir, "img/train")
+    img_dir_val = os.path.join(data_dir, "img/test")
+    txt_file_train = os.path.join(data_dir, "annot_train.txt")
+    txt_file_val = os.path.join(data_dir, "annot_test.txt")
+
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
+    eigval = torch.Tensor([0.2175, 0.0188, 0.0045])
+    eigvec = torch.Tensor([[-0.5675,  0.7192,  0.4009],
+                            [-0.5808, -0.0045, -0.8140],
+                            [-0.5836, -0.6948,  0.4203]])
+
+
+    transform = transforms.Compose([
+                        transforms.RandomResizedCrop(224),
+                        transforms.RandomRotation(30),
+                        transforms.RandomHorizontalFlip(),
+                        transforms.ColorJitter(
+                            brightness = 0.4,
+                            contrast = 0.4,
+                            saturation = 0.4,
+                            ),
+                        transforms.ToTensor(),
+                        Lighting(0.1, eigval, eigvec),
+                        normalize,
+                    ])
+                    
+    train_dataset = ProtestDataset(txt_file_train, img_dir_train, transform)
+    train_loader = DataLoader(
+                    train_dataset,
+                    num_workers = 1,
+                    batch_size = 8,
+                    shuffle = False
+                    )
+    for i, sample in enumerate(train_loader):
+        # measure data loading batch_time
+        input, target = sample['image'], sample['label']
+        print('target: ', target)

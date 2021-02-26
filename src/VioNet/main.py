@@ -272,7 +272,7 @@ if __name__ == '__main__':
     config.val_batch = configs[dataset]['batch_size']
     config.learning_rate = configs[dataset]['lr']
     config.input_mode = 'dynamic-images' #rgb, dynamic-images
-    config.temporal_transform = 'segments' #standar, segments, segments-keyframe, random-segments, keyframe, guided-segment
+    config.temporal_transform = 'keyframe' #standar, segments, segments-keyframe, random-segments, keyframe, guided-segment
     # 5 fold cross validation
     # for cv in range(1, 6):
     #     config.num_cv = cv
@@ -282,7 +282,8 @@ if __name__ == '__main__':
     # config.num_epoch = 50
     config.sample_size = (224,224)
     config.sample_duration = 1 # Number of dynamic images
-    config.segment_size = 30 # Number of frames for dynamic image
+    # config.segment_size = 30 # Number of frames for dynamic image
+    config.sample_duration = 30
     config.stride = 1 #for dynamic images it's frames to skip into a segment
     config.ft_begin_idx = -1 # 0: train all layers, -1: freeze conv layers
     config.additional_info = "no-keyframe"

@@ -21,6 +21,7 @@ def train(
     end_time = time.time()
 
     for i, (inputs, targets) in enumerate(data_loader):
+        print('VioDB target: ',targets)
         inputs, targets = inputs.to(device), targets.to(device)
         data_time.update(time.time() - end_time)
 
