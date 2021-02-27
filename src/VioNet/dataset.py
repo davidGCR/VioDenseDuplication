@@ -269,18 +269,40 @@ class ProtestDataset(Dataset):
         image = imread(imgpath)
         fname = self.label_frame.iloc[idx]["fname"]
         violence = float(self.label_frame.iloc[idx]["violence"])
-        # print("fname: {}, violence: {}".format(fname, violence))
-
-        # protest = self.label_frame.iloc[idx, 1:2].as_matrix().astype('float')
-        # violence = self.label_frame.iloc[idx, 2:3].as_matrix().astype('float')
-        # visattr = self.label_frame.iloc[idx, 3:].as_matrix().astype('float')
-        # label = {'protest':protest, 'violence':violence, 'visattr':visattr}
+       
         label = 0 if violence<self.thr else 1
 
         # sample = {"image":image, "label":label}
         if self.transform:
             image = self.transform(image)
         return image, label
+
+class ProtestDatasetEval(Dataset):
+    """
+    dataset for just calculating the output (does not need an annotation file)
+    """
+    def __init__(self, img_dir, transform=None):
+        """
+        Args:
+            img_dir: Directory with images
+        """
+        self.img_dir = img_dir
+        self.transform = transform
+        self.img_list = sorted(os.listdir(img_dir))
+
+    def __len__(self):
+        return len(self.img_list)
+
+    def __getitem__(self, idx):
+        imgpath = os.path.join(self.img_dir,
+                                self.img_list[idx])
+        image = pil_loader(imgpath)
+        if self.transform:
+            image = self.transform(image)
+        # we need this variable to check if the image is protest or not)
+        # sample = {"imgpath":imgpath, "image":image}
+        # sample["image"] = self.transform(sample["image"])
+        return imgpath, image
     
 if __name__ == "__main__":
     data_dir = "/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS/UCLA-protest"
