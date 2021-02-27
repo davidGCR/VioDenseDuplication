@@ -22,7 +22,8 @@ class Config:
             input_mode='rgb',
             temporal_transform = 'standar',
             segment_size = 2,
-            additional_info = ""
+            additional_info = "",
+            temp_annotation_path=""
     ):
 
         # VioNet models
@@ -71,3 +72,4 @@ class Config:
         self.temporal_transform = temporal_transform
         self.segment_size = segment_size
         self.additional_info = additional_info
+        self.temp_annotation_path = temp_annotation_path

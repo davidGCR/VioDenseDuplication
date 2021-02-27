@@ -88,7 +88,7 @@ def main(config):
       train_data = VioDB(g_path + '/VioDB/{}_jpg/frames/'.format(dataset),
                        g_path + '/VioDB/{}_jpg{}.json'.format(dataset, cv), 'training',
                        spatial_transform, temporal_transform, target_transform, dataset,
-                       tmp_annotation_path=g_path + '/VioDB/rwf_predictions')
+                       tmp_annotation_path=os.path.join(g_path, config.temp_annotation_path))
     else:
       train_data = VioDB(g_path + '/VioDB/{}_jpg/'.format(dataset),
                         g_path + '/VioDB/{}_jpg{}.json'.format(dataset, cv), 'training',
@@ -132,7 +132,7 @@ def main(config):
       val_data = VioDB(g_path + '/VioDB/{}_jpg/frames/'.format(dataset),
                      g_path + '/VioDB/{}_jpg{}.json'.format(dataset, cv), 'validation',
                      spatial_transform, temporal_transform, target_transform, dataset,
-                     tmp_annotation_path=g_path + '/VioDB/rwf_predictions')
+                     tmp_annotation_path=os.path.join(g_path, config.temp_annotation_path))
     else:
       val_data = VioDB(g_path + '/VioDB/{}_jpg/'.format(dataset),
                       g_path + '/VioDB/{}_jpg{}.json'.format(dataset, cv), 'validation',
@@ -273,6 +273,7 @@ if __name__ == '__main__':
     config.learning_rate = configs[dataset]['lr']
     config.input_mode = 'dynamic-images' #rgb, dynamic-images
     config.temporal_transform = 'keyframe' #standar, segments, segments-keyframe, random-segments, keyframe, guided-segment
+    config.temp_annotation_path = "VioDB/rwf_predictions"
     # 5 fold cross validation
     # for cv in range(1, 6):
     #     config.num_cv = cv
@@ -286,6 +287,7 @@ if __name__ == '__main__':
     config.sample_duration = 30
     config.stride = 1 #for dynamic images it's frames to skip into a segment
     config.ft_begin_idx = -1 # 0: train all layers, -1: freeze conv layers
+    
     config.additional_info = "no-keyframe"
 
     config.num_cv = 1
