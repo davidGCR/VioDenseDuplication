@@ -296,7 +296,7 @@ class ProtestDatasetEval(Dataset):
     def __getitem__(self, idx):
         imgpath = os.path.join(self.img_dir,
                                 self.img_list[idx])
-        image = pil_loader(imgpath)
+        image = imread(imgpath)
         if self.transform:
             image = self.transform(image)
         # we need this variable to check if the image is protest or not)
