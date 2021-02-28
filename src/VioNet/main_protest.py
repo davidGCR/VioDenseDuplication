@@ -11,7 +11,7 @@ from config import Config
 
 from spatial_transforms import Compose, ToTensor, Normalize
 from spatial_transforms import GroupRandomHorizontalFlip, GroupRandomScaleCenterCrop, GroupScaleCenterCrop, Lighting
-from temporal_transforms import CenterCrop, RandomCrop, SegmentsCrop, RandomSegmentsCrop, KeyFrameCrop, TrainGuidedKeyFrameCrop, ValGuidedKeyFrameCrop
+from temporal_transforms import OneFrameCrop
 from target_transforms import Label, Video
 import torchvision.transforms as transforms
 
@@ -20,30 +20,10 @@ from torch.utils.tensorboard import SummaryWriter
 from global_var import getFolder
 
 g_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-print('main g_path:', g_path)
+# print('main g_path:', g_path)
 
+def load_protest_dataset(config):
 
-
-def main(config):
-    # load model
-    if config.model == 'resnet50':
-        model, params = VioNet_Resnet(config)
-    elif config.model == 'densenet2D':
-        model, params = VioNet_Densenet2D(config)
-    # dataset
-    dataset = config.dataset
-    sample_size = config.sample_size
-    stride = config.stride
-    sample_duration = config.sample_duration
-
-    # cross validation phase
-    cv = config.num_cv
-    input_mode = config.input_mode
-    temp_transform = config.temporal_transform
-    # train set
-  
-    train_batch = config.train_batch
-    
     # data_dir = "/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS/UCLA-protest"
     data_dir = g_path+"/VioDB/UCLA-protest"
     img_dir_train = os.path.join(data_dir, "img/train")
@@ -100,6 +80,73 @@ def main(config):
                     num_workers = 4,
                     batch_size = val_batch,
                     shuffle=False)
+    
+    return train_loader, val_loader
+
+def load_hockey_dataset(config):
+    dataset = config.dataset
+    # stride = config.stride
+    # sample_duration = config.sample_duration
+
+    cv = config.num_cv
+
+    train_batch = config.train_batch
+    sample_size = config.sample_size
+
+    spatial_transform = Compose(
+        [crop_method,
+         GroupRandomHorizontalFlip(),
+         ToTensor(), norm])
+    target_transform = Label()
+    temporal_transform = OneFrameCrop(position=0)
+    train_data = VioDB(g_path + '/VioDB/{}_jpg/'.format(dataset),
+                        g_path + '/VioDB/{}_jpg{}.json'.format(dataset, cv), 'training',
+                        spatial_transform, temporal_transform, target_transform)
+    train_loader = DataLoader(train_data,
+                              batch_size=train_batch,
+                              shuffle=True,
+                              num_workers=4,
+                              pin_memory=True)
+    
+    val_batch = config.val_batch
+    crop_method = GroupScaleCenterCrop(size=sample_size)
+    spatial_transform = Compose([crop_method, ToTensor(), norm])
+    target_transform = Label()
+    # temporal_transform = OneFrameCrop(position=1)
+
+    val_data = VioDB(g_path + '/VioDB/{}_jpg/'.format(dataset),
+                      g_path + '/VioDB/{}_jpg{}.json'.format(dataset, cv), 'validation',
+                      spatial_transform, temporal_transform, target_transform)
+    val_loader = DataLoader(val_data,
+                            batch_size=val_batch,
+                            shuffle=False,
+                            num_workers=4,
+                            pin_memory=True)
+
+    return train_loader, val_loader
+    
+
+def main(config):
+    # load model
+    if config.model == 'resnet50':
+        model, params = VioNet_Resnet(config)
+    elif config.model == 'densenet2D':
+        model, params = VioNet_Densenet2D(config)
+    # dataset
+    dataset = config.dataset
+    stride = config.stride
+    sample_duration = config.sample_duration
+
+    # cross validation phase
+    cv = config.num_cv
+    input_mode = config.input_mode
+    temp_transform = config.temporal_transform
+    
+    if dataset == "protest":
+        train_loader, val_loader = load_protest_dataset(config)
+    elif dataset == "hockey":
+        train_loader, val_loader = load_hockey_dataset(config)
+  
 
     log_path = getFolder('VioNet_log')
     chk_path = getFolder('VioNet_pth')
@@ -194,7 +241,7 @@ def main(config):
 
 if __name__ == '__main__':
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    dataset = 'protest'
+    dataset = 'hockey'
     config = Config(
         'resnet50',  # c3d, convlstm, densenet, densenet_lean, resnet50, densenet2D
         dataset,
@@ -234,15 +281,14 @@ if __name__ == '__main__':
     config.val_batch = configs[dataset]['batch_size']
     config.learning_rate = configs[dataset]['lr']
     config.input_mode = 'rgb' #rgb, dynamic-images
+    config.pretrained_model = "resnet50_fps1_protest1_38_0.9757_0.073047.pth"
    
     ##### For 2D CNN ####
-    # config.num_epoch = 50
     config.sample_size = (224,224)
     config.sample_duration =  1# Number of dynamic images
-    # config.segment_size = 30 # Number of frames for dynamic image
     config.stride = 1 #for dynamic images it's frames to skip into a segment
     config.ft_begin_idx = 0 # 0: train all layers, -1: freeze conv layers
-    config.additional_info = "protest-dataset"
+    config.additional_info = "finetuned-with-hockey"
 
     config.num_cv = 1
     main(config)

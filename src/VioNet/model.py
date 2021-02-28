@@ -21,6 +21,10 @@ def VioNet_Densenet2D(config):
 def VioNet_Resnet(config):
     device = config.device
     model = ResNet(num_classes=2).to(device)
+    if config.pretrained_model:
+        state_dict = torch.load(g_path +'/VioNet/weights/'+ config.pretrained_model)
+        model.load_state_dict(state_dict)
+
     params = rn.get_fine_tuning_params(model, config.ft_begin_idx)
     return model, params
 

@@ -72,6 +72,17 @@ class KeyFrameCrop_0(object):
             frames.sort()
             return frames
 
+class OneFrameCrop(object):
+    """
+        Get only one frame of a video
+    """
+    def __init__(self, position=0): # 0: central, 1: random
+        self.position = position
+
+    def __call__(self, frames):
+        frame = int(len(frames)/2) if self.position==0 else random.randint(1, len(frames))
+        return [frame]
+
 class TrainGuidedKeyFrameCrop(object):
     def __init__(self, size, segment_size=15, stride=1, overlap=0.5):
         self.size = size
@@ -242,16 +253,18 @@ class RandomSegmentsCrop(object):
 
 
 if __name__ == '__main__':
-    temp_transform = KeyFrameCrop(size=30, stride=1, input_type='dynamic-images')
+    # temp_transform = KeyFrameCrop(size=30, stride=1, input_type='dynamic-images')
     # frames = list(range(1, 150))
     # frames = temp_transform(frames)
     # print('Video video_segments:\n', len(video_segments), '\n',video_segments)
     # temp_transform = KeyFrameCrop(size=16, stride=1)
-    
-    frames = list(range(1, 150))
 
-    frames = temp_transform(frames, '/Users/davidchoqueluqueroman/Documents/CODIGOS/protest-detection-violence-estimation/rwf_predictions/train/Fight/uKFI67bUzfg_1.csv')
+    temp_transform = OneFrameCrop(position=1)
+    
+    frames = list(range(1, 41))
+
+    # frames = temp_transform(frames, '/Users/davidchoqueluqueroman/Documents/CODIGOS/protest-detection-violence-estimation/rwf_predictions/train/Fight/uKFI67bUzfg_1.csv')
     # temp_transform = CenterCrop(size=16, stride=1)
     # temp_transform = RandomCrop(size=16, stride=1)
-    # frames = temp_transform(frames)
+    frames = temp_transform(frames)
     print(frames)

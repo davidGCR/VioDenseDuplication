@@ -23,7 +23,8 @@ class Config:
             temporal_transform = 'standar',
             segment_size = 2,
             additional_info = "",
-            temp_annotation_path=""
+            temp_annotation_path="",
+            pretrained_model = None
     ):
 
         # VioNet models
@@ -73,3 +74,4 @@ class Config:
         self.segment_size = segment_size
         self.additional_info = additional_info
         self.temp_annotation_path = temp_annotation_path
+        self.pretrained_model = pretrained_model

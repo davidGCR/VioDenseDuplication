@@ -140,7 +140,7 @@ def make_dataset(root_path, annotation_path, subset, dataset_name, tmp_annotatio
         # print('subset: ',subset)
         n_frames = len(os.listdir(video_path))
         # tmp_annotation = None if video_label == "no" and subset == "training" else os.path.join(tmp_annotation_path, video_name) + '.csv'
-        tmp_annotation = os.path.join(tmp_annotation_path, video_name) + '.csv'
+        tmp_annotation = os.path.join(tmp_annotation_path, video_name) + '.csv' if tmp_annotation_path else None
 
         video = {
             'name': video_name,
@@ -213,21 +213,14 @@ class VioDB(Dataset):
         n_frames = self.videos[index]['n_frames']
         frames = list(range(1, 1 + n_frames))
 
-        # print('frames:', frames)
-
         if self.temporal_transform:
             if isinstance(self.temporal_transform, KeyFrameCrop) or isinstance(self.temporal_transform, TrainGuidedKeyFrameCrop) or isinstance(self.temporal_transform, ValGuidedKeyFrameCrop):
                 frames = self.temporal_transform(frames, self.videos[index]['tmp_annotation'])
             else:        
                 frames = self.temporal_transform(frames)
 
-        # print('frames temporal_transform:', frames)
-
         clip = self.loader(path, frames, self.dataset_name)
-        # print('path:',path)
-        # print('clip:',len(clip))
-        # print('clip:',len(clip))
-
+       
         # clip list of images (H, W, C)
         if self.spatial_transform:
             clip = self.spatial_transform(clip)
