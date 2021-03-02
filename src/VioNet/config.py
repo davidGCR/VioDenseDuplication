@@ -20,7 +20,8 @@ class Config:
             min_lr=1e-7,
             num_epoch=1000,
             input_mode='rgb',
-            temporal_transform = 'standar',
+            train_temporal_transform = 'standar',
+            val_temporal_transform = 'standar',
             segment_size = 2,
             additional_info = "",
             temp_annotation_path="",
@@ -70,7 +71,8 @@ class Config:
         self.num_epoch = num_epoch
 
         self.input_mode = input_mode 
-        self.temporal_transform = temporal_transform
+        self.train_temporal_transform = train_temporal_transform
+        self.val_temporal_transform = val_temporal_transform
         self.segment_size = segment_size
         self.additional_info = additional_info
         self.temp_annotation_path = temp_annotation_path

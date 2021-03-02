@@ -50,7 +50,7 @@ def video_loader(video_dir_path, frame_indices, dataset_name):
                     shot_frames.append(np.array(imread(image_path)))
             imgPIL, img = dynamic_image_v1(shot_frames)
             video.append(imgPIL)
-            
+        return video
     else:
         for i in frame_indices:
             image_path = os.path.join(video_dir_path, 'frame{}.jpg'.format(i)) if dataset_name == 'rwf-2000' else os.path.join(video_dir_path, 'image_{:05d}.jpg'.format(i))
@@ -59,15 +59,7 @@ def video_loader(video_dir_path, frame_indices, dataset_name):
                 video.append(imread(image_path))
             else:
                 return video
-    # else:
-    #   for i in frame_indices:
-    #       image_path = os.path.join(video_dir_path, 'image_{:05d}.jpg'.format(i))
-    #       if os.path.exists(image_path):
-    #           video.append(imread(image_path))
-    #       else:
-    #           return video
-
-    return video
+    
 
 
 def n_frames_loader(file_path):
@@ -220,6 +212,10 @@ class VioDB(Dataset):
                 frames = self.temporal_transform(frames)
 
         clip = self.loader(path, frames, self.dataset_name)
+
+        # clip = 
+
+        print('input type:', type(clip), len(clip))
        
         # clip list of images (H, W, C)
         if self.spatial_transform:
@@ -231,6 +227,8 @@ class VioDB(Dataset):
         target = self.videos[index]
         if self.target_transform:
             target = self.target_transform(target)
+        
+        
 
         return clip, target
 

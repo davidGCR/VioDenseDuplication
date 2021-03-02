@@ -50,7 +50,8 @@ def main(config):
     # cross validation phase
     cv = config.num_cv
     input_mode = config.input_mode
-    temp_transform = config.temporal_transform
+    train_temp_transform = config.train_temporal_transform
+    val_temp_transform = config.val_temporal_transform
     # train set
     crop_method = GroupRandomScaleCenterCrop(size=sample_size)
     
@@ -62,17 +63,18 @@ def main(config):
         norm = Normalize([0.49778724, 0.49780366, 0.49776983], [0.09050678, 0.09017131, 0.0898702 ])
         
 
-    if temp_transform == 'standar':
-        temporal_transform = RandomCrop(size=sample_duration, stride=stride)
-    elif temp_transform == 'segments':
+    if train_temp_transform == 'random-crop':
+        temporal_transform = RandomCrop(size=sample_duration, stride=stride, input_type=input_mode)
+    elif train_temp_transform == 'segments':
         temporal_transform = SegmentsCrop(size=sample_duration, segment_size=config.segment_size, stride=stride, overlap=0.5)
-    # elif temp_transform == 'segments-keyframe':
+    elif train_temp_transform == 'center-crop':
+        temporal_transform = CenterCrop(size=sample_duration, stride=stride, input_type=input_mode)
     #     temporal_transform = TrainKeyFrameCrop(size=config.segment_size, stride=stride)
     # elif temp_transform == 'random-segments':
     #     temporal_transform = RandomSegmentsCrop(size=sample_duration, segment_size=15, stride=stride, overlap=0.5)
-    elif temp_transform == 'keyframe':
+    elif train_temp_transform == 'keyframe':
         temporal_transform = KeyFrameCrop(size=sample_duration, stride=stride, input_type=input_mode)
-    elif temp_transform == 'guided-segment':
+    elif train_temp_transform == 'guided-segment':
         temporal_transform = TrainGuidedKeyFrameCrop(size=sample_duration, segment_size=config.segment_size, stride=stride, overlap=0.5)
 
 
@@ -110,17 +112,17 @@ def main(config):
         norm = Normalize([0.49778724, 0.49780366, 0.49776983], [0.09050678, 0.09017131, 0.0898702 ])
         
     
-    if temp_transform == 'standar':
+    if val_temp_transform == 'standar':
         temporal_transform = CenterCrop(size=sample_duration, stride=stride)
-    elif temp_transform == 'segments':
+    elif val_temp_transform == 'segments':
         temporal_transform = SegmentsCrop(size=sample_duration, segment_size=config.segment_size, stride=stride, overlap=0.5)
-    # elif temp_transform == 'segments-keyframe':
-    #     temporal_transform = KeyFrameCrop(size=sample_duration, stride=stride, input_type=input_mode)
+    elif val_temp_transform == 'center-crop':
+        temporal_transform = CenterCrop(size=sample_duration, stride=stride, input_type=input_mode)
     # elif temp_transform == 'random-segments':
     #     temporal_transform = SegmentsCrop(size=sample_duration, segment_size=15, stride=stride, overlap=0.5)
-    elif temp_transform == 'keyframe':
+    elif val_temp_transform == 'keyframe':
         temporal_transform = KeyFrameCrop(size=sample_duration, stride=stride, input_type=input_mode)
-    elif temp_transform == 'guided-segment':
+    elif val_temp_transform == 'guided-segment':
         temporal_transform = ValGuidedKeyFrameCrop(size=sample_duration, segment_size=config.segment_size, stride=stride, overlap=0.5)
 
     spatial_transform = Compose([crop_method, ToTensor(), norm])
@@ -147,8 +149,8 @@ def main(config):
     chk_path = getFolder('VioNet_pth')
     tsb_path = getFolder('VioNet_tensorboard_log')
 
-    log_tsb_dir = tsb_path + '/{}_fps{}_{}_split{}_input({})_tempTransform({})_Info({})'.format(config.model, sample_duration,
-                                                dataset, cv, input_mode, temp_transform, config.additional_info)
+    log_tsb_dir = tsb_path + '/{}_fps{}_{}_split{}_input({})_Info({})'.format(config.model, sample_duration,
+                                                dataset, cv, input_mode, config.additional_info)
     for pth in [log_path, chk_path, tsb_path, log_tsb_dir]:
         # make dir
         if not os.path.exists(pth):
@@ -159,24 +161,24 @@ def main(config):
 
     # log
     batch_log = Log(
-        log_path+'/{}_fps{}_{}_batch{}_input({})_tempTransform({})_Info({}).log.csv'.format(
+        log_path+'/{}_fps{}_{}_batch{}_input({})_Info({}).log.csv'.format(
             config.model,
             sample_duration,
             dataset,
             cv,
-            input_mode, temp_transform, config.additional_info
+            input_mode, config.additional_info
         ), ['epoch', 'batch', 'iter', 'loss', 'acc', 'lr'])
     epoch_log = Log(
-        log_path+'/{}_fps{}_{}_epoch{}_input({})_tempTransform({})_Info({}).log.csv'.format(config.model, sample_duration,
-                                               dataset, cv, input_mode, temp_transform, config.additional_info),
+        log_path+'/{}_fps{}_{}_epoch{}_input({})_Info({}).log.csv'.format(config.model, sample_duration,
+                                               dataset, cv, input_mode, config.additional_info),
         ['epoch', 'loss', 'acc', 'lr'])
     val_log = Log(
-        log_path+'/{}_fps{}_{}_val{}_input({})_tempTransform({})_Info({}).log.csv'.format(config.model, sample_duration,
-                                             dataset, cv, input_mode, temp_transform, config.additional_info),
+        log_path+'/{}_fps{}_{}_val{}_input({})_Info({}).log.csv'.format(config.model, sample_duration,
+                                             dataset, cv, input_mode, config.additional_info),
         ['epoch', 'loss', 'acc'])
     
-    train_val_log = Log(log_path+'/{}_fps{}_{}_split{}_input({})_tempTransform({})_Info({}).LOG.csv'.format(config.model, sample_duration,
-                                               dataset, cv, input_mode, temp_transform, config.additional_info),
+    train_val_log = Log(log_path+'/{}_fps{}_{}_split{}_input({})_Info({}).LOG.csv'.format(config.model, sample_duration,
+                                               dataset, cv, input_mode, config.additional_info),
         ['epoch', 'train_loss', 'train_acc', 'lr', 'val_loss', 'val_acc'])
 
     # prepare
@@ -236,7 +238,7 @@ def main(config):
 
 if __name__ == '__main__':
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    dataset = 'rwf-2000'
+    dataset = 'hockey'
     config = Config(
         'densenet2D',  # c3d, convlstm, densenet, densenet_lean, resnet50, densenet2D
         dataset,
@@ -272,8 +274,9 @@ if __name__ == '__main__':
     config.val_batch = configs[dataset]['batch_size']
     config.learning_rate = configs[dataset]['lr']
     config.input_mode = 'dynamic-images' #rgb, dynamic-images
-    config.temporal_transform = 'keyframe' #standar, segments, segments-keyframe, random-segments, keyframe, guided-segment
-    config.temp_annotation_path = "VioDB/rwf_predictions"
+    config.train_temporal_transform = 'random-crop' #standar, segments, segments-keyframe, random-segments, keyframe, guided-segment
+    config.val_temporal_transform = 'center-crop'
+    config.temp_annotation_path = ""
     # 5 fold cross validation
     # for cv in range(1, 6):
     #     config.num_cv = cv
@@ -282,13 +285,11 @@ if __name__ == '__main__':
     ##### For 2D CNN ####
     # config.num_epoch = 50
     config.sample_size = (224,224)
-    config.sample_duration = 1 # Number of dynamic images
-    # config.segment_size = 30 # Number of frames for dynamic image
-    config.sample_duration = 30
+    config.sample_duration = 5
     config.stride = 1 #for dynamic images it's frames to skip into a segment
-    config.ft_begin_idx = -1 # 0: train all layers, -1: freeze conv layers
-    
-    config.additional_info = "no-keyframe"
+    config.ft_begin_idx = 0 # 0: train all layers, -1: freeze conv layers
+    config.acc_baseline = 0.90
+    config.additional_info = "central-segment-changed_tmp-transf-5frames"
 
     config.num_cv = 1
     main(config)

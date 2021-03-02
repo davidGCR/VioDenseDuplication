@@ -96,7 +96,7 @@ class Densenet2D(nn.Module):
         # self.tmpPooling = nn.MaxPool2d((numDiPerVideos, 1))
 
     def forward(self, x):
-        # print('densenet input:', x.size())
+        print('densenet input:', x.size())
         # batch_size, timesteps, C, H, W = x.size()
         # c_in = x.view(batch_size * timesteps, C, H, W)
         x = torch.squeeze(x)
