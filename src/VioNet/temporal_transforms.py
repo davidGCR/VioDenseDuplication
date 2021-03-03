@@ -159,13 +159,6 @@ class KeyFrameCrop(object):
         self.group = group
 
     def __call__(self, frames, tmp_annotation, label):
-        # if self.dataset=="train" and label == 0:
-        #     start = random.randint(
-        #         0, max(0,
-        #             len(frames) - 1 - (self.size - 1) * self.stride)
-        #         )
-        #     return crop(frames, start, self.size, self.stride)
-        # else:
         df = pd.read_csv(tmp_annotation)
         if self.group == "larger":
             df.sort_values(by = 'violence', inplace=True, ascending=False)
@@ -185,6 +178,61 @@ class KeyFrameCrop(object):
         elif self.input_type == "dynamic-images":
             return [frames], dicts
 
+class KeySegmentCrop(object):
+    """
+    Key segment selection in positive and negative samples
+    """
+    def __init__(self, size, stride=1, input_type="rgb", dataset="train"):
+        self.size = size
+        self.stride = stride
+        self.input_type = input_type
+        self.dataset = dataset
+    
+    def __get_segments__(self, annotation):
+        df = pd.read_csv(annotation)
+        df = df.loc[df['pred'] == 1]
+        # print(df, type(df))
+        # i=0
+        segments = []
+        for index, row in df.iterrows():
+            # print("===>",index, row["imgpath"], row["pred"])
+            segments.append([int(n) for n in row["imgpath"].split('-')])
+        return segments
+
+    def __call__(self, frames, tmp_annotation, label):
+        segments = self.__get_segments__(tmp_annotation)
+        flat = list(np.unique(np.concatenate(segments).flat)) if len(segments)>0 else []
+        print(flat)
+        if len(flat) == 0:
+            start = random.randint(
+                0, max(0,
+                    len(frames) - 1 - (self.size - 1) * self.stride)
+            )
+            sample = crop(frames, start, self.size, self.stride)
+            return sample
+        elif len(flat) > self.size:
+            sample =  random.sample(flat, self.size)
+            sample.sort()
+            return sample
+        # print(segments)
+
+        # print()
+        # df = pd.read_csv(tmp_annotation)
+        # df.sort_values(by = 'violence', inplace=True, ascending=False)
+        # frames = []
+        # dicts = []
+        # for i in range(self.size):
+        #     _, v_name = os.path.split(df.iloc[i]["imgpath"])
+        #     frame = int(re.search(r'\d+', v_name).group())
+        #     frames.append(frame)
+        #     dicts.append({"frame":frame , "score": float(df.iloc[i]["violence"])})
+        # frames.sort()
+        # dicts = sorted(dicts, key = lambda i: i["frame"], reverse=False)
+        # if self.input_type == "rgb":
+        #     return frames, dicts
+        # elif self.input_type == "dynamic-images":
+        #     return [frames], dicts
+        return 0
 
 class SegmentsCrop(object):
     def __init__(self, size, segment_size=15, stride=1, overlap=0.5):
@@ -263,11 +311,12 @@ if __name__ == '__main__':
     # print('Video video_segments:\n', len(video_segments), '\n',video_segments)
     # temp_transform = KeyFrameCrop(size=16, stride=1)
 
-    temp_transform = SequentialCrop(size=5,stride=1,input_type="dynamic-images",overlap=0.5)
-    
+    # temp_transform = SequentialCrop(size=5,stride=1,input_type="dynamic-images",overlap=0.5)
+    temp_transform = KeySegmentCrop(size=16,stride=1,input_type="dynamic-images")
     frames = list(range(1, 150))
 
-    frames = temp_transform(frames)
+    # frames = temp_transform(frames, "/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/src/VioNet/1W8hsVvyKt4_2.csv", 0)
+    frames = temp_transform(frames, "/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/src/VioNet/9JxNZtUK_0.csv", 0)
     # temp_transform = CenterCrop(size=16, stride=1)
     # temp_transform = RandomCrop(size=16, stride=1)
     # frames = temp_transform(frames)

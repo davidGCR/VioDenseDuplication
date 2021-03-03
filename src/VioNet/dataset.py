@@ -294,6 +294,44 @@ class ProtestDatasetEval(Dataset):
         # sample = {"imgpath":imgpath, "image":image}
         # sample["image"] = self.transform(sample["image"])
         return imgpath, image
+
+class RwfDatasetEval(Dataset):
+    """
+    dataset for just calculating the output (does not need an annotation file)
+    """
+    def __init__(self, img_dir, spatial_transform=None, temporal_transform=None):
+        """
+        Args:
+            img_dir: Directory with images
+        """
+        self.img_dir = img_dir
+        self.spatial_transform = spatial_transform
+        n_frames = len(os.listdir(img_dir))
+        frames = list(range(1, 1 + n_frames))
+        self.segments = temporal_transform(frames)
+        # print(self.segments)
+
+    def __len__(self):
+        return len(self.segments)
+
+    def __getitem__(self, idx):
+        segment = self.segments[idx]
+        segment_name = '-'.join([str(elem) for elem in segment])
+        # print(idx,segment)
+        images = []
+        for frame_number in segment:
+            imgpath = os.path.join(self.img_dir, 'frame{}.jpg'.format(frame_number))
+            # print('imgpath:',imgpath)
+            image = imread(imgpath)
+            images.append(np.array(image))
+        
+        imgPIL, img = dynamic_image_v1(images)
+        video = [imgPIL]
+        if self.spatial_transform:
+            video = self.spatial_transform(video)
+        
+        video = torch.stack(video).permute(1, 0, 2, 3)
+        return video, segment_name
     
 if __name__ == "__main__":
     data_dir = "/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS/UCLA-protest"
