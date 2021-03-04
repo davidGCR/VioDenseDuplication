@@ -11,7 +11,7 @@ from config import Config
 
 from spatial_transforms import Compose, ToTensor, Normalize
 from spatial_transforms import GroupRandomHorizontalFlip, GroupRandomScaleCenterCrop, GroupScaleCenterCrop
-from temporal_transforms import CenterCrop, RandomCrop, SegmentsCrop, RandomSegmentsCrop, KeyFrameCrop, TrainGuidedKeyFrameCrop, ValGuidedKeyFrameCrop
+from temporal_transforms import CenterCrop, RandomCrop, SegmentsCrop, RandomSegmentsCrop, KeyFrameCrop, TrainGuidedKeyFrameCrop, ValGuidedKeyFrameCrop, KeySegmentCrop
 from target_transforms import Label, Video
 
 from utils import Log
@@ -76,6 +76,9 @@ def main(config):
         temporal_transform = KeyFrameCrop(size=sample_duration, stride=stride, input_type=input_mode)
     elif train_temp_transform == 'guided-segment':
         temporal_transform = TrainGuidedKeyFrameCrop(size=sample_duration, segment_size=config.segment_size, stride=stride, overlap=0.5)
+    elif train_temp_transform == 'keysegment':
+        temporal_transform = KeySegmentCrop(size=sample_duration, stride=stride, input_type=input_mode)
+
 
 
 
@@ -124,6 +127,8 @@ def main(config):
         temporal_transform = KeyFrameCrop(size=sample_duration, stride=stride, input_type=input_mode)
     elif val_temp_transform == 'guided-segment':
         temporal_transform = ValGuidedKeyFrameCrop(size=sample_duration, segment_size=config.segment_size, stride=stride, overlap=0.5)
+    elif val_temp_transform == 'keysegment':
+        temporal_transform = KeySegmentCrop(size=sample_duration, stride=stride, input_type=input_mode)
 
     spatial_transform = Compose([crop_method, ToTensor(), norm])
     target_transform = Label()
@@ -274,8 +279,8 @@ if __name__ == '__main__':
     config.val_batch = configs[dataset]['batch_size']
     config.learning_rate = configs[dataset]['lr']
     config.input_mode = 'dynamic-images' #rgb, dynamic-images
-    config.train_temporal_transform = 'random-crop' #standar, segments, segments-keyframe, random-segments, keyframe, guided-segment
-    config.val_temporal_transform = 'center-crop'
+    config.train_temporal_transform = 'keysegment' #standar, segments, segments-keyframe, random-segments, keyframe, guided-segment, keysegment
+    config.val_temporal_transform = 'keysegment'
     config.temp_annotation_path = ""
     # 5 fold cross validation
     # for cv in range(1, 6):

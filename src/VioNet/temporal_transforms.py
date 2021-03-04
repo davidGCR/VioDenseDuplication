@@ -182,57 +182,64 @@ class KeySegmentCrop(object):
     """
     Key segment selection in positive and negative samples
     """
-    def __init__(self, size, stride=1, input_type="rgb", dataset="train"):
+    def __init__(self, size, stride=1, input_type="rgb"):
         self.size = size
         self.stride = stride
         self.input_type = input_type
-        self.dataset = dataset
+        
     
     def __get_segments__(self, annotation):
         df = pd.read_csv(annotation)
-        df = df.loc[df['pred'] == 1]
-        # print(df, type(df))
-        # i=0
+        df_v = df.loc[df['pred'] == 1]
         segments = []
-        for index, row in df.iterrows():
+        for index, row in df_v.iterrows():
             # print("===>",index, row["imgpath"], row["pred"])
             segments.append([int(n) for n in row["imgpath"].split('-')])
+        
+        if len(segments) == 0:
+            df.sort_values(by = 'violence', inplace=True, ascending=False)
+            for i in range(5): ## Choose 5 more violent
+                str_frames = df.iloc[i]["imgpath"]
+                segments.append([int(n) for n in str_frames.split('-')])
         return segments
+    
+    def __expand_segment__(self, flat, frames):
+        start = flat[0]
+        end = flat[len(flat)-1]
+        if start+self.size < len(frames):
+            sample = list(range(start, start+self.size))
+        else:
+            sample = list(range(end-self.size+1, end+1))
+        return sample
+
+    
+    def __get_random_crop__(self, frames):
+        start = random.randint(
+                0, max(0,
+                    len(frames) - 1 - (self.size - 1) * self.stride)
+            )
+        sample = crop(frames, start, self.size, self.stride)
+        return sample
 
     def __call__(self, frames, tmp_annotation, label):
         segments = self.__get_segments__(tmp_annotation)
         flat = list(np.unique(np.concatenate(segments).flat)) if len(segments)>0 else []
-        print(flat)
-        if len(flat) == 0:
-            start = random.randint(
-                0, max(0,
-                    len(frames) - 1 - (self.size - 1) * self.stride)
-            )
-            sample = crop(frames, start, self.size, self.stride)
-            return sample
+        flat.sort()
+        # print(flat)
+        sample = None
+        if len(flat) < self.size:
+            sample = self.__expand_segment__(flat, frames)
         elif len(flat) > self.size:
             sample =  random.sample(flat, self.size)
             sample.sort()
+        elif len(flat) == self.size:
+            sample = flat
+        
+        if self.input_type == "rgb":
             return sample
-        # print(segments)
-
-        # print()
-        # df = pd.read_csv(tmp_annotation)
-        # df.sort_values(by = 'violence', inplace=True, ascending=False)
-        # frames = []
-        # dicts = []
-        # for i in range(self.size):
-        #     _, v_name = os.path.split(df.iloc[i]["imgpath"])
-        #     frame = int(re.search(r'\d+', v_name).group())
-        #     frames.append(frame)
-        #     dicts.append({"frame":frame , "score": float(df.iloc[i]["violence"])})
-        # frames.sort()
-        # dicts = sorted(dicts, key = lambda i: i["frame"], reverse=False)
-        # if self.input_type == "rgb":
-        #     return frames, dicts
-        # elif self.input_type == "dynamic-images":
-        #     return [frames], dicts
-        return 0
+        elif self.input_type == "dynamic-images":
+            return [sample]
+        
 
 class SegmentsCrop(object):
     def __init__(self, size, segment_size=15, stride=1, overlap=0.5):
@@ -313,11 +320,12 @@ if __name__ == '__main__':
 
     # temp_transform = SequentialCrop(size=5,stride=1,input_type="dynamic-images",overlap=0.5)
     temp_transform = KeySegmentCrop(size=16,stride=1,input_type="dynamic-images")
-    frames = list(range(1, 150))
+    frames = list(range(1, 151))
 
-    # frames = temp_transform(frames, "/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/src/VioNet/1W8hsVvyKt4_2.csv", 0)
-    frames = temp_transform(frames, "/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/src/VioNet/9JxNZtUK_0.csv", 0)
+    # frames = temp_transform(frames, "/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/src/VioNet/v4dhdnsxiX4_1.csv", 0)
+    frames = temp_transform(frames, "/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/src/VioNet/fbtEhNq5a6E_0.csv", 1)
     # temp_transform = CenterCrop(size=16, stride=1)
     # temp_transform = RandomCrop(size=16, stride=1)
     # frames = temp_transform(frames)
     print(frames)
+    print(len(frames))

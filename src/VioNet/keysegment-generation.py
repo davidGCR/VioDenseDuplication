@@ -47,7 +47,7 @@ def eval_one_dir(img_dir, model):
                             batch_size = batch_size,
                             shuffle=False)
 
-    outputs = []
+    predictions = []
     imgpaths = []
 
     # n_imgs = len(os.listdir(img_dir))
@@ -62,21 +62,20 @@ def eval_one_dir(img_dir, model):
         _, pred = output.topk(1, 1, True)
         probabilities = sm(output) 
 
-        # print("output.size(): ",output.size(), output, pred)
-        # print("preds:", pred)
-        outputs.append(pred.cpu().data.numpy())
+        # print("pred.size(): ",pred.size(), pred)
+        # print("probabilities:", probabilities.size(), probabilities)
+        result = np.concatenate((pred.cpu().data.numpy(), probabilities.cpu().data.numpy()), axis=1)
+        # print("result:", result.shape, result)
+        predictions.append(result)
         imgpaths += segment
 
     # print('len(imgpaths):', len(imgpaths))
 
-    df = pd.DataFrame(np.zeros((len(data_loader.dataset), 2)))
-    df.columns = ["imgpath", "pred"]
+    df = pd.DataFrame(np.zeros((len(data_loader.dataset), 4)))
+    df.columns = ["imgpath", "pred", "no_violence", "violence"]
     df['imgpath'] = imgpaths
-    # 
-    # print('len(outputs):', len(outputs))
    
-    # print(np.concatenate(outputs))
-    df.iloc[:,1:] = np.concatenate(outputs)
+    df.iloc[:,1:] = np.concatenate(predictions)
     # df.sort_values(by = 'imgpath', inplace=True)
     # print(df.head())
     return df
