@@ -191,10 +191,21 @@ class KeySegmentCrop(object):
     def __get_segments__(self, annotation):
         df = pd.read_csv(annotation)
         df_v = df.loc[df['pred'] == 1]
+        
         segments = []
-        for index, row in df_v.iterrows():
-            # print("===>",index, row["imgpath"], row["pred"])
-            segments.append([int(n) for n in row["imgpath"].split('-')])
+        # for index, row in df_v.iterrows():
+        #     print("===>",index, row["imgpath"], row["pred"])
+        #     segments.append([int(n) for n in row["imgpath"].split('-')])
+        if df_v.shape[0] >= 5:
+            df_v = df_v.copy(deep=True)
+            df_v.sort_values(by = 'violence', inplace=True, ascending=False)
+            for i in range(5):
+                str_frames = df_v.iloc[i]["imgpath"]
+                segments.append([int(n) for n in str_frames.split('-')])
+        else:
+            for index, row in df_v.iterrows():
+                # print("===>",index, row["imgpath"], row["pred"])
+                segments.append([int(n) for n in row["imgpath"].split('-')])
         
         if len(segments) == 0:
             df.sort_values(by = 'violence', inplace=True, ascending=False)
@@ -221,7 +232,7 @@ class KeySegmentCrop(object):
         sample = crop(frames, start, self.size, self.stride)
         return sample
 
-    def __call__(self, frames, tmp_annotation, label):
+    def __call__(self, frames, tmp_annotation):
         segments = self.__get_segments__(tmp_annotation)
         flat = list(np.unique(np.concatenate(segments).flat)) if len(segments)>0 else []
         flat.sort()
@@ -319,11 +330,12 @@ if __name__ == '__main__':
     # temp_transform = KeyFrameCrop(size=16, stride=1)
 
     # temp_transform = SequentialCrop(size=5,stride=1,input_type="dynamic-images",overlap=0.5)
-    temp_transform = KeySegmentCrop(size=16,stride=1,input_type="dynamic-images")
+    temp_transform = KeySegmentCrop(size=16,stride=1,input_type="rgb")
     frames = list(range(1, 151))
 
     # frames = temp_transform(frames, "/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/src/VioNet/v4dhdnsxiX4_1.csv", 0)
-    frames = temp_transform(frames, "/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/src/VioNet/fbtEhNq5a6E_0.csv", 1)
+    # frames = temp_transform(frames, "/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/src/VioNet/fbtEhNq5a6E_0.csv")
+    frames = temp_transform(frames, "/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/src/VioNet/_q5Nwh4Z6ao_5.csv")
     # temp_transform = CenterCrop(size=16, stride=1)
     # temp_transform = RandomCrop(size=16, stride=1)
     # frames = temp_transform(frames)

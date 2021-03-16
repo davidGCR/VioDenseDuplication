@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader
 
 from PIL import Image
 from dynamic_image import dynamic_image_v1
-from temporal_transforms import KeyFrameCrop, TrainGuidedKeyFrameCrop, ValGuidedKeyFrameCrop
+from temporal_transforms import KeyFrameCrop, TrainGuidedKeyFrameCrop, ValGuidedKeyFrameCrop, KeySegmentCrop
 from spatial_transforms import Lighting
 import torchvision.transforms as transforms
 import numpy as np
@@ -57,8 +57,7 @@ def video_loader(video_dir_path, frame_indices, dataset_name):
             # print('image_path:', image_path)
             if os.path.exists(image_path):
                 video.append(imread(image_path))
-            else:
-                return video
+        return video
     
 
 
@@ -208,14 +207,13 @@ class VioDB(Dataset):
         if self.temporal_transform:
             if isinstance(self.temporal_transform, KeyFrameCrop) or isinstance(self.temporal_transform, TrainGuidedKeyFrameCrop) or isinstance(self.temporal_transform, ValGuidedKeyFrameCrop):
                 frames = self.temporal_transform(frames, self.videos[index]['tmp_annotation'])
+            elif isinstance(self.temporal_transform, KeySegmentCrop):
+                frames = self.temporal_transform(frames, self.videos[index]['tmp_annotation'])
             else:        
                 frames = self.temporal_transform(frames)
 
         clip = self.loader(path, frames, self.dataset_name)
-
-        # clip = 
-
-        print('input type:', type(clip), len(clip))
+        # print('input type:', type(clip), len(clip))
        
         # clip list of images (H, W, C)
         if self.spatial_transform:

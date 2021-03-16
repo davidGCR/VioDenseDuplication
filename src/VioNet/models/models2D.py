@@ -82,6 +82,31 @@ class ResNet(nn.Module):
         x = self.classifier(x)
         return x
 
+class FeatureExtractorResNet(nn.Module):
+    def __init__(self, num_classes = 2,
+                        numDiPerVideos = 1):
+        super(FeatureExtractorResNet, self).__init__()
+        self.numDiPerVideos = numDiPerVideos
+        self.num_classes = num_classes
+        
+        model_ft = models.resnet50(pretrained=True)
+        
+        self.num_ftrs = model_ft.fc.in_features
+        model_ft.fc = Identity()
+        
+        # self.bn = nn.BatchNorm2d(2048)
+        
+        self.convLayers = nn.Sequential(*list(model_ft.children())[:-2])  # to tempooling
+        # model_ft = None
+        self.AdaptiveAvgPool2d = nn.AdaptiveAvgPool2d((1,1))
+        # self.fc = nn.Linear(2048, self.num_classes)
+    
+    def forward(self, X):
+        x = self.convLayers(X)  #torch.Size([8, 2048, 7, 7]
+        x = self.AdaptiveAvgPool2d(x) #torch.Size([8, 2048, 1, 1])
+        x = torch.squeeze(x)
+        return x
+
 class Densenet2D(nn.Module):  
     def __init__(self, num_classes = 2,
                         numDiPerVideos = 1):
