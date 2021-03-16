@@ -182,10 +182,11 @@ class KeySegmentCrop(object):
     """
     Key segment selection in positive and negative samples
     """
-    def __init__(self, size, stride=1, input_type="rgb"):
+    def __init__(self, size, stride=1, input_type="rgb", segment_type="fuse3segments"):
         self.size = size
         self.stride = stride
         self.input_type = input_type
+        self.segment_type = segment_type
         
     
     def __get_segments__(self, annotation):
@@ -214,6 +215,14 @@ class KeySegmentCrop(object):
                 segments.append([int(n) for n in str_frames.split('-')])
         return segments
     
+    def __get_best_segment__(self, annotation):
+        segments = []
+        df = pd.read_csv(annotation)
+        df.sort_values(by='score', inplace=True, ascending=False)
+        str_frames = df.iloc[0]["imgpath"]
+        segments.append([int(n) for n in str_frames.split('-')])
+        return segments
+    
     def __expand_segment__(self, flat, frames):
         start = flat[0]
         end = flat[len(flat)-1]
@@ -233,7 +242,10 @@ class KeySegmentCrop(object):
         return sample
 
     def __call__(self, frames, tmp_annotation):
-        segments = self.__get_segments__(tmp_annotation)
+        if self.segment_type == "fuse3segments":
+            segments = self.__get_segments__(tmp_annotation)
+        elif self.segment_type == "highestscore":
+            segments = self.__get_best_segment__(tmp_annotation)
         flat = list(np.unique(np.concatenate(segments).flat)) if len(segments)>0 else []
         flat.sort()
         # print(flat)
@@ -330,12 +342,12 @@ if __name__ == '__main__':
     # temp_transform = KeyFrameCrop(size=16, stride=1)
 
     # temp_transform = SequentialCrop(size=5,stride=1,input_type="dynamic-images",overlap=0.5)
-    temp_transform = KeySegmentCrop(size=16,stride=1,input_type="rgb")
+    temp_transform = KeySegmentCrop(size=16,stride=1,input_type="rgb", segment_type="highestscore")
     frames = list(range(1, 151))
 
     # frames = temp_transform(frames, "/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/src/VioNet/v4dhdnsxiX4_1.csv", 0)
     # frames = temp_transform(frames, "/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/src/VioNet/fbtEhNq5a6E_0.csv")
-    frames = temp_transform(frames, "/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/src/VioNet/_q5Nwh4Z6ao_5.csv")
+    frames = temp_transform(frames, "/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/KeySegmentsPredictions/rwf-2000_an_scores/val/Fight/1MVS2QPWbHc_0.csv")
     # temp_transform = CenterCrop(size=16, stride=1)
     # temp_transform = RandomCrop(size=16, stride=1)
     # frames = temp_transform(frames)

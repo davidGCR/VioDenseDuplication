@@ -77,7 +77,7 @@ def main(config):
     elif train_temp_transform == 'guided-segment':
         temporal_transform = TrainGuidedKeyFrameCrop(size=sample_duration, segment_size=config.segment_size, stride=stride, overlap=0.5)
     elif train_temp_transform == 'keysegment':
-        temporal_transform = KeySegmentCrop(size=sample_duration, stride=stride, input_type=input_mode)
+        temporal_transform = KeySegmentCrop(size=sample_duration, stride=stride, input_type=input_mode, segment_type="highestscore")
 
 
 
@@ -128,7 +128,7 @@ def main(config):
     elif val_temp_transform == 'guided-segment':
         temporal_transform = ValGuidedKeyFrameCrop(size=sample_duration, segment_size=config.segment_size, stride=stride, overlap=0.5)
     elif val_temp_transform == 'keysegment':
-        temporal_transform = KeySegmentCrop(size=sample_duration, stride=stride, input_type=input_mode)
+        temporal_transform = KeySegmentCrop(size=sample_duration, stride=stride, input_type=input_mode, segment_type="highestscore")
 
     spatial_transform = Compose([crop_method, ToTensor(), norm])
     target_transform = Label()
