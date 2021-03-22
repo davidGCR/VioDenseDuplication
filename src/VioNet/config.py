@@ -25,7 +25,8 @@ class Config:
             segment_size = 2,
             additional_info = "",
             temp_annotation_path="",
-            pretrained_model = None
+            pretrained_model = None,
+            num_classes=2,
     ):
 
         # VioNet models
@@ -77,3 +78,4 @@ class Config:
         self.additional_info = additional_info
         self.temp_annotation_path = temp_annotation_path
         self.pretrained_model = pretrained_model
+        self.num_classes = num_classes
