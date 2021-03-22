@@ -23,29 +23,29 @@ from global_var import getFolder
 g_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-def laod_HMDB51_dataset(config: Config):
+def laod_HMDB51_dataset(config: Config, root, annotation_path):
     DN = DynamicImage(output_type="pil")
     transformations = DIPredefinedTransforms(size=224, tmp_transform=DN, mean=[0.49778724, 0.49780366, 0.49776983], std=[0.09050678, 0.09017131, 0.0898702])
 
-    hmdb51_data_train = HMDB51DatasetV2(root='/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/hmdb51_org',
-                                        annotation_path='/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/testTrainMulti_7030_splits',
+    hmdb51_data_train = HMDB51DatasetV2(root=root,
+                                        annotation_path=annotation_path,
                                         frames_per_clip=config.sample_duration,
                                         step_between_clips=config.stride,
                                         fold=config.num_cv,
                                         train=True,
-                                        transform=transformations.train_transform())
+                                        transform=transformations.train_transform)
     train_data_loader = torch.utils.data.DataLoader(hmdb51_data_train,
                                             batch_size=config.train_batch,
                                             shuffle=True,
                                             num_workers=4)
 
-    hmdb51_data_val = HMDB51DatasetV2(root='/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/hmdb51_org',
-                                    annotation_path='/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/testTrainMulti_7030_splits',
+    hmdb51_data_val = HMDB51DatasetV2(root=root,
+                                    annotation_path=annotation_path,
                                     frames_per_clip=config.sample_duration,
                                     step_between_clips=config.stride,
                                     fold=config.num_cv,
                                     train=False,
-                                    transform=transformations.val_transform())                                              
+                                    transform=transformations.val_transform)                                              
     val_data_loader = torch.utils.data.DataLoader(hmdb51_data_val,
                                             batch_size=config.val_batch,
                                             shuffle=False,
@@ -54,7 +54,7 @@ def laod_HMDB51_dataset(config: Config):
     print("Val set:", len(hmdb51_data_val))                                        
     return train_data_loader, val_data_loader
 
-def main(config: Config):
+def main(config: Config, root, annotation_path):
     if config.model == 'resnet50':
         model, params = VioNet_Resnet(config)
     elif config.model == 'densenet2D':
@@ -131,7 +131,7 @@ def main(config: Config):
     acc_baseline = config.acc_baseline
     loss_baseline = 1
 
-    train_loader, val_loader = laod_HMDB51_dataset(config)
+    train_loader, val_loader = laod_HMDB51_dataset(config, root, annotation_path)
 
     for i in range(config.num_epoch):
         train_loss, train_acc, lr = train(i, train_loader, model, criterion, optimizer, device, batch_log,
@@ -172,7 +172,7 @@ if __name__ == "__main__":
         'resnet50',  # c3d, convlstm, densenet, densenet_lean, resnet50, densenet2D
         dataset,
         device=device,
-        num_epoch=150,
+        num_epoch=1000,
         acc_baseline=0.92,
         ft_begin_idx=0,
     )
@@ -205,6 +205,10 @@ if __name__ == "__main__":
     config.ft_begin_idx = 0 # 0: train all layers, -1: freeze conv layers
     config.additional_info = ""
     
-
+    # root='/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/hmdb51_org'
+    # annotation_path='/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/testTrainMulti_7030_splits'
+    root='/content/DATASETS/HMDB51'
+    annotation_path='/content/drive/MyDrive/VIOLENCE DATA/HMDB51/testTrainMulti_7030_splits'
+    print(os.listdir(annotation_path))
     config.num_cv = 1
-    main(config)
+    main(config, root, annotation_path)
