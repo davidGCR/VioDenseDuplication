@@ -184,13 +184,13 @@ class DIPredefinedTransforms(object):
         self.mean = mean
         self.std = std
         self.tmp_transform = tmp_transform
-        self.train_transform = self.buil_train_transform()
+        self.train_transform = self.build_train_transform()
         self.val_transform = self.build_val_transform()
         # if tmp_transform:
         #     self.train_transform.append(tmp_transform)
         #     self.val_transform.append(tmp_transform)
 
-    def buid_train_transform(self):
+    def build_train_transform(self):
         t = [
             self.tmp_transform, 
             AfineTransformation(),

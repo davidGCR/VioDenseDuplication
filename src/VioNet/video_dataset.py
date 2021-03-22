@@ -118,7 +118,7 @@ if __name__=='__main__':
 
     DN = DynamicImage(output_type="pil")
     di_t = DIPredefinedTransforms(size=224, tmp_transform=DN)
-    ST = di_t.val_transform()
+    ST = di_t.val_transform
     # ST = torchvision.transforms.Compose([
     #     DynamicImage(output_type="pil"),
     #     AfineTransformation(),
@@ -190,8 +190,8 @@ if __name__=='__main__':
     for idx, (v, l) in enumerate(data_loader):
         if idx > 5:
             break
-        print("video:", v.size())
-        print("label:", l.size(), l)
+        print("video:", v.size(), v.dtype)
+        print("label:", l.size())
         # print("video:", v.shape)
         # grid = torchvision.utils.make_grid(v, nrow=5, padding=20)
         # show(grid)

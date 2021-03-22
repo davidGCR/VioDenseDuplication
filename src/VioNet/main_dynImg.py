@@ -25,7 +25,11 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 def laod_HMDB51_dataset(config: Config, root, annotation_path):
     DN = DynamicImage(output_type="pil")
-    transformations = DIPredefinedTransforms(size=224, tmp_transform=DN, mean=[0.49778724, 0.49780366, 0.49776983], std=[0.09050678, 0.09017131, 0.0898702])
+    # mean = [0.49778724, 0.49780366, 0.49776983]
+    # std = [0.09050678, 0.09017131, 0.0898702]
+    mean=None
+    std=None
+    transformations = DIPredefinedTransforms(size=224, tmp_transform=DN, mean=mean, std=std)
 
     hmdb51_data_train = HMDB51DatasetV2(root=root,
                                         annotation_path=annotation_path,
@@ -172,8 +176,8 @@ if __name__ == "__main__":
         'resnet50',  # c3d, convlstm, densenet, densenet_lean, resnet50, densenet2D
         dataset,
         device=device,
-        num_epoch=1000,
-        acc_baseline=0.92,
+        num_epoch=50,
+        acc_baseline=0.70,
         ft_begin_idx=0,
     )
 
@@ -184,8 +188,8 @@ if __name__ == "__main__":
             'batch_size': 32
         },
         'hmdb51': {
-            'lr': 1e-3,
-            'batch_size': 16
+            'lr': 3e-3,
+            'batch_size': 32
         }
     }
 
