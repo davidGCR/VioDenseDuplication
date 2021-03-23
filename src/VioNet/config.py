@@ -22,7 +22,9 @@ class Config:
             input_mode='rgb',
             train_temporal_transform = 'standar',
             val_temporal_transform = 'standar',
-            segment_size = 2,
+            number_of_clips=1,
+            overlap =0,
+            position="",
             additional_info = "",
             temp_annotation_path="",
             pretrained_model = None,
@@ -74,8 +76,10 @@ class Config:
         self.input_mode = input_mode 
         self.train_temporal_transform = train_temporal_transform
         self.val_temporal_transform = val_temporal_transform
-        self.segment_size = segment_size
+        # self.segment_size = segment_size
         self.additional_info = additional_info
         self.temp_annotation_path = temp_annotation_path
         self.pretrained_model = pretrained_model
         self.num_classes = num_classes
+        self.number_of_clips = number_of_clips
+        self.overlap = overlap

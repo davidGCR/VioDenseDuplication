@@ -1,5 +1,7 @@
 import os
 import csv
+import matplotlib.pyplot as plt
+import numpy as np
 
 
 class AverageMeter(object):
@@ -36,3 +38,8 @@ class Log(object):
 
         self.writer.writerow(v)
         self.file.flush()
+
+def show_batch(img):
+    npimg = img.numpy()
+    plt.imshow(np.transpose(npimg, (1,2,0)), interpolation='nearest')
+    plt.show()

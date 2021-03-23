@@ -179,27 +179,27 @@ class DIPredefinedTransforms(object):
     """
     Spatio-temporal transformation for train Dynamic Image Networks
     """
-    def __init__(self, size, tmp_transform, mean=None, std=None):
+    def __init__(self, size, tmp_transform=None, mean=None, std=None):
         self.size = size
         self.mean = mean
         self.std = std
         self.tmp_transform = tmp_transform
+        
+        t = []
+        # if tmp_transform:
+        #     t.append(tmp_transform)
         self.train_transform = self.build_train_transform()
         self.val_transform = self.build_val_transform()
-        # if tmp_transform:
-        #     self.train_transform.append(tmp_transform)
-        #     self.val_transform.append(tmp_transform)
 
     def build_train_transform(self):
         t = [
-            self.tmp_transform, 
-            AfineTransformation(),
-            transforms.Lambda(array2PIL),
-            transforms.Resize(self.size),
-            transforms.CenterCrop(self.size),
-            transforms.ToTensor(),
-            
-        ]
+                AfineTransformation(),
+                transforms.Lambda(array2PIL),
+                transforms.Resize(self.size),
+                transforms.CenterCrop(self.size),
+                transforms.ToTensor()
+            ]
+
         if self.mean and self.std:
             t.append(transforms.Normalize(self.mean, self.std))
         t = transforms.Compose(t)
@@ -207,11 +207,10 @@ class DIPredefinedTransforms(object):
 
     def build_val_transform(self):
         t = [
-            self.tmp_transform,
-            transforms.Resize(self.size),
-            transforms.CenterCrop(self.size),
-            transforms.ToTensor()
-        ]
+                transforms.Resize(self.size),
+                transforms.CenterCrop(self.size),
+                transforms.ToTensor()
+            ]
         if self.mean and self.std:
             t.append(transforms.Normalize(self.mean, self.std))
         t = transforms.Compose(t)

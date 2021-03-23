@@ -268,29 +268,60 @@ class KeySegmentCrop(object):
         
 
 class SegmentsCrop(object):
-    def __init__(self, size, segment_size=15, stride=1, overlap=0.5):
+    def __init__(self, size, segment_size=15, stride=1, overlap=0.5, padding=True, position="start"):
+        """
+        Args:
+            size (int): number of segments
+            segment_size (int): length of each segment
+            stride (int): frames to skip into a segment
+            overlap (float): overlapping between each segment
+            padding (bool): cut or add segments to get 'size' segments for each sample
+        """
         self.size = size
         self.segment_size = segment_size
         self.stride = stride
         self.overlap = overlap
-        self.overlap_length = int(self.overlap*self.size)
+        self.overlap_length = int(self.overlap*self.segment_size)
+        self.padding = padding
+        self.position = position
     
-    def padding(self, segment_list):
+    def __padding__(self, segment_list):
         if  len(segment_list) < self.size:
             last_element = segment_list[len(segment_list) - 1]
             for i in range(self.size - len(segment_list)):
                 segment_list.append(last_element)
-        elif len(segment_list) > self.size:
-            segment_list = segment_list[0:self.size]
+        # elif len(segment_list) > self.size:
+        #     segment_list = segment_list[0:self.size]
         return segment_list
+    
+    def __choose_one_position__(self, segments):
+        if self.position == "start":
+            return segments[0]
+        elif self.position == "middle":
+            return segments[int(len(segments)/2)]
+        elif self.position == "random":
+            start = random.randint(0, len(segments)-1)
+            return segments[start]
+    
+    # def __choose_multiple_positions__(self, segments):
+    #     if self.position == "start":
+    #         return segments[0:self.size] if len(segments)>=self.size else self.__padding__(segments)
+    #     elif self.position == "middle":
+    #         return segments[int(len(segments)/2)]
+    #     elif self.position == "random":
+    #         start = random.randint(0, len(segments)-1)
+    #         return segments[start]
 
     def __call__(self, frames):
         
         indices = [x for x in range(0, len(frames), self.stride)]
         
         indices_segments = [indices[x:x + self.segment_size] for x in range(0, len(indices), self.segment_size-self.overlap_length)]
-        indices_segments = self.padding(indices_segments)
-        # print('indices_segments:', len(indices_segments), indices_segments)
+
+        if self.size == 1:
+            indices_segments = [self.__choose_one_position__(indices_segments)]
+        elif self.padding and self.size > 1:
+            indices_segments = self.__padding__(indices_segments)
 
         video_segments = []
         for i, indices_segment in enumerate(indices_segments): #Generate segments using indices
@@ -336,51 +367,61 @@ class RandomSegmentsCrop(object):
         return video_segments
         
 def tensor2PIL(t):
-	im = transforms.ToPILImage()(t).convert("RGB")
-	return im
+    im = transforms.ToPILImage()(t).convert("RGB")
+    return im
 
 def PIL2numpy(img):
-	return np.array(img)
+    return np.array(img)
+
+def imread(path):
+    with Image.open(path) as img:
+        return img.convert('RGB')
 
 class DynamicImage():
-	def __init__(self, output_type="pil", savePath=None):
-		self.savePath = savePath
-		self.output_type = output_type
-	
-	def __to_tensor__(self, img):
-		img = img.astype(np.float32)/255.0
-		t = torch.from_numpy(img)
-		t = t.permute(2,0,1)
-		return t
+    def __init__(self, output_type="pil", savePath=None):
+        self.savePath = savePath
+        self.output_type = output_type
+    
+    def __to_tensor__(self, img):
+        img = img.astype(np.float32)/255.0
+        t = torch.from_numpy(img)
+        t = t.permute(2,0,1)
+        return t
+    
+    def __read_imgs__(self, pths):
+        frames = [imread(p) for p in pths]
+        return frames
 
-	def __call__(self, frames):
-		if torch.is_tensor(frames):
-			frames = frames.numpy()
-			frames = [f for f in frames]
-		seqLen = len(frames)
-		if seqLen < 2:
-			print('No se puede crear DI con solo un frames ...', seqLen)
-		frames = np.stack(frames, axis=0)
-		fw = np.zeros(seqLen)  
-		for i in range(seqLen): #frame by frame
-			fw[i] = np.sum(np.divide((2 * np.arange(i + 1, seqLen + 1) - seqLen - 1), np.arange(i + 1, seqLen + 1)))
-		# print('Di coeff=',fw)
-		fwr = fw.reshape(seqLen, 1, 1, 1)  #coeficiebts
-		sm = frames*fwr
-		sm = sm.sum(0)
-		sm = sm - np.min(sm)
-		sm = 255 * sm / np.max(sm)
-		img = sm.astype(np.uint8)
-		##to PIL image
-		imgPIL = Image.fromarray(np.uint8(img))
-		if self.savePath is not None:
-			imgPIL.save(self.savePath)
-		if self.output_type == "ndarray":
-			return img
-		elif self.output_type == "pil":
-			return imgPIL
-		elif self.output_type == "tensor":
-			return self.__to_tensor__(img)
+    def __call__(self, frames):
+        if isinstance(frames[0], str):
+            frames = self.__read_imgs__(frames)
+        elif torch.is_tensor(frames):
+            frames = frames.numpy()
+            frames = [f for f in frames]
+        seqLen = len(frames)
+        if seqLen < 2:
+            print('No se puede crear DI con solo un frames ...', seqLen)
+        frames = np.stack(frames, axis=0)
+        fw = np.zeros(seqLen)  
+        for i in range(seqLen): #frame by frame
+            fw[i] = np.sum(np.divide((2 * np.arange(i + 1, seqLen + 1) - seqLen - 1), np.arange(i + 1, seqLen + 1)))
+        # print('Di coeff=',fw)
+        fwr = fw.reshape(seqLen, 1, 1, 1)  #coeficiebts
+        sm = frames*fwr
+        sm = sm.sum(0)
+        sm = sm - np.min(sm)
+        sm = 255 * sm / np.max(sm)
+        img = sm.astype(np.uint8)
+        ##to PIL image
+        imgPIL = Image.fromarray(np.uint8(img))
+        if self.savePath is not None:
+            imgPIL.save(self.savePath)
+        if self.output_type == "ndarray":
+            return img
+        elif self.output_type == "pil":
+            return imgPIL
+        elif self.output_type == "tensor":
+            return self.__to_tensor__(img)
 
 if __name__ == '__main__':
     # temp_transform = KeyFrameCrop(size=30, stride=1, input_type='rgb', group="larger")

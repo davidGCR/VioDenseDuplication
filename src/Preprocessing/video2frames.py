@@ -38,7 +38,7 @@ def main():
 
     # Iterate over each category (sub-folder).
     categories = list(data_path.glob('*/'))
-    print(categories, len(categories))
+    # print(categories, len(categories))
 
     for subfolder in categories:
         # Make output sub-folder for each category.

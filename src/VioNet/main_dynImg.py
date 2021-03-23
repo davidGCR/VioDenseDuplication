@@ -19,11 +19,13 @@ import torchvision
 from utils import Log
 from torch.utils.tensorboard import SummaryWriter
 from global_var import getFolder
+from video_image_dataset import VideoImageDataset
+from make_dataset import MakeImageHMDB51
 
 g_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-def laod_HMDB51_dataset(config: Config, root, annotation_path):
+def laod_HMDB51_video_dataset(config: Config, root, annotation_path):
     DN = DynamicImage(output_type="pil")
     # mean = [0.49778724, 0.49780366, 0.49776983]
     # std = [0.09050678, 0.09017131, 0.0898702]
@@ -56,6 +58,55 @@ def laod_HMDB51_dataset(config: Config, root, annotation_path):
                                             num_workers=4)
     print("Train set:", len(hmdb51_data_train))
     print("Val set:", len(hmdb51_data_val))                                        
+    return train_data_loader, val_data_loader
+
+def laod_HMDB51_frames_dataset(config: Config, root, annotation_path):
+    temporal_transform = DynamicImage(output_type="pil")
+    # mean = [0.49778724, 0.49780366, 0.49776983]
+    # std = [0.09050678, 0.09017131, 0.0898702]
+    mean=None
+    std=None
+    spatial_transform = DIPredefinedTransforms(size=224, tmp_transform=None, mean=mean, std=std)
+
+    make_function = MakeImageHMDB51(root=root,
+                                    annotation_path=annotation_path,
+                                    fold=config.num_cv,
+                                    train=True)
+
+    hmdb51_data_train = VideoImageDataset(root="",
+                                            frames_per_clip=config.sample_duration, 
+                                            number_of_clips=config.number_of_clips, 
+                                            make_function=make_function, 
+                                            stride=config.stride, 
+                                            overlap=config.overlap,
+                                            position=config.position,
+                                            temporal_transform=temporal_transform, 
+                                            spatial_transform=spatial_transform.train_transform)
+
+    train_data_loader = torch.utils.data.DataLoader(hmdb51_data_train,
+                                            batch_size=config.train_batch,
+                                            shuffle=True,
+                                            num_workers=4)
+
+    make_function = MakeImageHMDB51(root="/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/frames",
+                                    annotation_path="/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/testTrainMulti_7030_splits",
+                                    fold=config.num_cv,
+                                    train=False)
+    hmdb51_data_val = VideoImageDataset(root="",
+                                            frames_per_clip=config.sample_duration, 
+                                            number_of_clips=config.number_of_clips, 
+                                            make_function=make_function, 
+                                            stride=config.stride, 
+                                            overlap=config.overlap,
+                                            position=config.position,
+                                            temporal_transform=temporal_transform,
+                                            spatial_transform=spatial_transform.val_transform)                                            
+    val_data_loader = torch.utils.data.DataLoader(hmdb51_data_val,
+                                            batch_size=config.val_batch,
+                                            shuffle=False,
+                                            num_workers=4)
+    # print("Train set:", len(hmdb51_data_train))
+    # print("Val set:", len(hmdb51_data_val))                                        
     return train_data_loader, val_data_loader
 
 def main(config: Config, root, annotation_path):
@@ -137,7 +188,7 @@ def main(config: Config, root, annotation_path):
     acc_baseline = config.acc_baseline
     loss_baseline = 1
 
-    train_loader, val_loader = laod_HMDB51_dataset(config, root, annotation_path)
+    train_loader, val_loader = laod_HMDB51_frames_dataset(config, root, annotation_path)
 
     for i in range(config.num_epoch):
         train_loss, train_acc, lr = train(i, train_loader, model, criterion, optimizer, device, batch_log,
@@ -175,7 +226,7 @@ if __name__ == "__main__":
     
     dataset = 'hmdb51'
     config = Config(
-        'resnet50',  # c3d, convlstm, densenet, densenet_lean, resnet50, densenet2D
+        'resnetXT',  # c3d, convlstm, densenet, densenet_lean, resnet50, densenet2D, resnetXT
         dataset,
         device=device,
         num_epoch=50,
@@ -207,11 +258,14 @@ if __name__ == "__main__":
     config.num_classes = 51
     config.sample_size = (224,224)
     config.sample_duration =  10# Number of frames to compute Dynamic images
-    config.stride = 100 #It means number of frames to skip in a video between video clips
+    config.stride = 1 #It means number of frames to skip in a video between video clips
+    config.number_of_clips=1
+    config.overlap = 0
+    config.position = "middle"
     config.ft_begin_idx = 0 # 0: train all layers, -1: freeze conv layers
     config.additional_info = ""
     
-    root='/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/hmdb51_org'
+    root='/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/frames'
     annotation_path='/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/testTrainMulti_7030_splits'
     # root='/content/DATASETS/HMDB51'
     # annotation_path='/content/drive/MyDrive/VIOLENCE DATA/HMDB51/testTrainMulti_7030_splits'

@@ -157,16 +157,16 @@ class FusedResNextTempPool(nn.Module):
                                 nn.Linear(512, num_classes))
 
     def forward(self, x):
-        # batch_size, segment_size, c, h, w = x.shape
-        # num_fc_input_features = self.fc[0].in_features
+        batch_size, segment_size, c, h, w = x.shape
+        num_fc_input_features = self.fc[0].in_features
 
-        # # Time distribute the inputs.
-        # x = x.view(batch_size * segment_size, c, h, w)
+        # Time distribute the inputs.
+        x = x.view(batch_size * segment_size, c, h, w)
         x = self.features(x)
 
         # Re-structure the data and then temporal max-pool.
-        # x = x.view(batch_size, segment_size, num_fc_input_features)
-        # x = x.max(dim=1).values
+        x = x.view(batch_size, segment_size, num_fc_input_features)
+        x = x.max(dim=1).values
 
         # FC.
         x = self.fc(x)

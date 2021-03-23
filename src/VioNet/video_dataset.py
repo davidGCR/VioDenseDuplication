@@ -9,8 +9,13 @@ import torch
 import torchvision
 from temporal_transforms import DynamicImage, tensor2PIL, PIL2numpy
 from spatial_transforms import AfineTransformation, array2PIL, DIPredefinedTransforms
+import glob
+from operator import itemgetter
 
-class VideoIter(data.Dataset):
+class VideoDataset(data.Dataset):
+    """
+    Process raw videos to get videoclips
+    """
     def __init__(self,
                  clip_length,
                  frame_stride,
@@ -97,6 +102,9 @@ class VideoIter(data.Dataset):
         return vid_list
 
 class HMDB51DatasetV2(data.Dataset):
+    """
+    Encapsules the hmdb51 original pytorch dataset to return just video clip and label
+    """
     def __init__(self, root, annotation_path, frames_per_clip, step_between_clips, fold, train, transform):
         self.dataset = torchvision.datasets.HMDB51(root=root,
                                             annotation_path=annotation_path,
@@ -111,10 +119,16 @@ class HMDB51DatasetV2(data.Dataset):
     def __getitem__(self, idx):
         v, a, l = self.dataset[idx]
         return v, l
-
+    
+def show(img):
+    npimg = img.numpy()
+    plt.imshow(np.transpose(npimg, (1,2,0)), interpolation='nearest')
+    plt.show()
 
 if __name__=='__main__':
-    import torchvision
+    
+    paths, labels = m()
+    print(paths[23], labels[23])
 
     DN = DynamicImage(output_type="pil")
     di_t = DIPredefinedTransforms(size=224, tmp_transform=DN)
@@ -134,13 +148,7 @@ if __name__=='__main__':
     #                     temporal_transform=DN,
     #                     spatial_transform=ST)#"/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS/UCFCrime/Abuse")
     
-    import matplotlib.pyplot as plt
-    import matplotlib as mpl
-    
-    def show(img):
-        npimg = img.numpy()
-        plt.imshow(np.transpose(npimg, (1,2,0)), interpolation='nearest')
-        plt.show()
+   
 
     # batch=[]
     # for i in range(6):
