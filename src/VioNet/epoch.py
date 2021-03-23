@@ -31,7 +31,7 @@ def train(
         # forward
         outputs = model(inputs)
         loss = criterion(outputs, targets)
-        acc = calculate_accuracy(outputs, targets)
+        acc = calculate_accuracy_2(outputs, targets)
 
         # meter
         losses.update(loss.item(), inputs.size(0))
@@ -100,7 +100,7 @@ def val(epoch, data_loader, model, criterion, device, val_log):
         with torch.no_grad():
             outputs = model(inputs)
             loss = criterion(outputs, targets)
-            acc = calculate_accuracy(outputs, targets)
+            acc = calculate_accuracy_2(outputs, targets)
 
         losses.update(loss.item(), inputs.size(0))
         accuracies.update(acc, inputs.size(0))
@@ -129,3 +129,9 @@ def calculate_accuracy(outputs, targets):
     n_correct_elems = correct.float().sum().item()
 
     return n_correct_elems / batch_size
+
+def calculate_accuracy_2(y_pred, y_true):
+    # Inspired from https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html.
+    _, predicted = torch.max(y_pred, 1)
+    acc = (predicted == y_true).sum().item() / len(y_pred)
+    return acc

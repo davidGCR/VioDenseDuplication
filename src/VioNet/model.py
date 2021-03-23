@@ -5,7 +5,7 @@ import models.densenet as dn
 from models.c3d import C3D
 from models.densenet import densenet88, densenet121
 from models.convlstm import ConvLSTM
-from models.models2D import ResNet, Densenet2D
+from models.models2D import ResNet, Densenet2D, FusedResNextTempPool
 import os
 import models.models2D as rn
 
@@ -26,6 +26,17 @@ def VioNet_Resnet(config):
         model.load_state_dict(state_dict)
 
     params = rn.get_fine_tuning_params(model, config.ft_begin_idx)
+    return model, params
+
+def VioNet_ResnetXT(config):
+    device = config.device
+    model = FusedResNextTempPool(num_classes=config.num_classes).to(device)
+    # if config.pretrained_model:
+    #     state_dict = torch.load(g_path +'/VioNet/weights/'+ config.pretrained_model)
+    #     model.load_state_dict(state_dict)
+
+    # params = rn.get_fine_tuning_params(model, config.ft_begin_idx)
+    params = model.parameters()
     return model, params
 
 def VioNet_C3D(config):

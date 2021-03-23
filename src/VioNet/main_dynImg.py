@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader
 
 from epoch import train, val, test
 
-from model import VioNet_Resnet, VioNet_Densenet2D
+from model import VioNet_Resnet, VioNet_Densenet2D, VioNet_ResnetXT
 from config import Config
 
 from spatial_transforms import Compose, ToTensor, Normalize, DIPredefinedTransforms
@@ -63,6 +63,8 @@ def main(config: Config, root, annotation_path):
         model, params = VioNet_Resnet(config)
     elif config.model == 'densenet2D':
         model, params = VioNet_Densenet2D(config)
+    elif config.model == 'resnetXT':
+        model, params = VioNet_ResnetXT(config)
     log_path = getFolder('VioNet_log')
     chk_path = getFolder('VioNet_pth')
     tsb_path = getFolder('VioNet_tensorboard_log')
@@ -209,10 +211,10 @@ if __name__ == "__main__":
     config.ft_begin_idx = 0 # 0: train all layers, -1: freeze conv layers
     config.additional_info = ""
     
-    # root='/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/hmdb51_org'
-    # annotation_path='/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/testTrainMulti_7030_splits'
-    root='/content/DATASETS/HMDB51'
-    annotation_path='/content/drive/MyDrive/VIOLENCE DATA/HMDB51/testTrainMulti_7030_splits'
-    print(os.listdir(annotation_path))
+    root='/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/hmdb51_org'
+    annotation_path='/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/testTrainMulti_7030_splits'
+    # root='/content/DATASETS/HMDB51'
+    # annotation_path='/content/drive/MyDrive/VIOLENCE DATA/HMDB51/testTrainMulti_7030_splits'
+    # print(os.listdir(annotation_path))
     config.num_cv = 1
     main(config, root, annotation_path)
