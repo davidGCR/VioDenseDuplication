@@ -6,6 +6,7 @@ import re
 from PIL import Image
 from torchvision import transforms
 import torch
+from operator import itemgetter
 
 def crop(frames, start, size, stride):
     # todo more efficient
@@ -301,16 +302,26 @@ class SegmentsCrop(object):
             return segments[int(len(segments)/2)]
         elif self.position == "random":
             start = random.randint(0, len(segments)-1)
-            return segments[start]
+            while len(segments[(start)]) != self.segment_size:
+                start = random.randint(0, len(segments)-1)
+            
+            # print(segments[start], len(segments))
+            return segments[(start)]
     
-    # def __choose_multiple_positions__(self, segments):
-    #     if self.position == "start":
-    #         return segments[0:self.size] if len(segments)>=self.size else self.__padding__(segments)
-    #     elif self.position == "middle":
-    #         return segments[int(len(segments)/2)]
-    #     elif self.position == "random":
-    #         start = random.randint(0, len(segments)-1)
-    #         return segments[start]
+    def __choose_multiple_positions__(self, segments):
+        if self.position == "start":
+            return segments[0:self.size]
+        elif self.position == "middle":
+            c = int(len(segments)/2)
+            start = c-int(self.size/2)
+            end = c+int(self.size/2)
+            idxs = [i for i in range(s,e+1)] if end-start < self.size else [i for i in range(s,e)]
+            segments = list(itemgetter(*idxs)(segments))
+            return segments
+        elif self.position == "random":
+            segments = random.sample(segments, self.size)
+            segments.sort()
+            return segments
 
     def __call__(self, frames):
         
@@ -318,10 +329,13 @@ class SegmentsCrop(object):
         
         indices_segments = [indices[x:x + self.segment_size] for x in range(0, len(indices), self.segment_size-self.overlap_length)]
 
+        if len(indices_segments)<self.size:
+            indices_segments = self.__padding__(indices_segments)
         if self.size == 1:
             indices_segments = [self.__choose_one_position__(indices_segments)]
-        elif self.padding and self.size > 1:
-            indices_segments = self.__padding__(indices_segments)
+        elif self.size > 1:
+            indices_segments = [self.__choose_multiple_positions__(segments)]
+            # indices_segments = self.__padding__(indices_segments)
 
         video_segments = []
         for i, indices_segment in enumerate(indices_segments): #Generate segments using indices
@@ -389,6 +403,9 @@ class DynamicImage():
         return t
     
     def __read_imgs__(self, pths):
+        # for p in pths:
+        #     _, v = os.path.split(p)
+        #     print(v)
         frames = [imread(p) for p in pths]
         return frames
 
