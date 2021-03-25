@@ -62,10 +62,10 @@ def laod_HMDB51_video_dataset(config: Config, root, annotation_path):
 
 def laod_HMDB51_frames_dataset(config: Config, root, annotation_path):
     temporal_transform = DynamicImage(output_type="pil")
-    # mean = [0.49778724, 0.49780366, 0.49776983]
-    # std = [0.09050678, 0.09017131, 0.0898702]
-    mean=None
-    std=None
+    mean = [0.49778724, 0.49780366, 0.49776983]
+    std = [0.09050678, 0.09017131, 0.0898702]
+    # mean=None
+    # std=None
     spatial_transform = DIPredefinedTransforms(size=224, tmp_transform=None, mean=mean, std=std)
 
     make_function = MakeImageHMDB51(root=root,
@@ -79,7 +79,7 @@ def laod_HMDB51_frames_dataset(config: Config, root, annotation_path):
                                             make_function=make_function, 
                                             stride=config.stride, 
                                             overlap=config.overlap,
-                                            position="random",
+                                            position=config.position,
                                             temporal_transform=temporal_transform, 
                                             spatial_transform=spatial_transform.train_transform)
 
@@ -98,7 +98,7 @@ def laod_HMDB51_frames_dataset(config: Config, root, annotation_path):
                                             make_function=make_function, 
                                             stride=config.stride, 
                                             overlap=config.overlap,
-                                            position="middle",
+                                            position=config.position,
                                             temporal_transform=temporal_transform,
                                             spatial_transform=spatial_transform.val_transform)                                            
     val_data_loader = torch.utils.data.DataLoader(hmdb51_data_val,
@@ -242,7 +242,7 @@ if __name__ == "__main__":
         },
         'hmdb51': {
             'lr': 3e-2,
-            'batch_size': 16
+            'batch_size': 8
         }
     }
 
@@ -261,14 +261,14 @@ if __name__ == "__main__":
     config.stride = 1 #It means number of frames to skip in a video between video clips
     config.number_of_clips=5
     config.overlap = 0
-    config.position = "middle"
+    config.position = "start"
     config.ft_begin_idx = 0 # 0: train all layers, -1: freeze conv layers
-    config.additional_info = "multiple-dynamic-imgs3"
+    config.additional_info = "MDI-5-10-startpos"
     
-    # root='/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/frames'
-    # annotation_path='/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/testTrainMulti_7030_splits'
-    root='/content/DATASETS/HMDB51/frames'
-    annotation_path='/content/drive/MyDrive/VIOLENCE DATA/HMDB51/testTrainMulti_7030_splits'
+    root='/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/frames'
+    annotation_path='/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/testTrainMulti_7030_splits'
+    # root='/content/DATASETS/HMDB51/frames'
+    # annotation_path='/content/drive/MyDrive/VIOLENCE DATA/HMDB51/testTrainMulti_7030_splits'
     # print(os.listdir(annotation_path))
     config.num_cv = 1
     main(config, root, annotation_path)

@@ -341,6 +341,7 @@ class SegmentsCrop(object):
         indices_segments = [indices[x:x + self.segment_size] for x in range(0, len(indices), self.segment_size-self.overlap_length)]
 
         indices_segments = self.__remove_short_segments__(indices_segments)
+        
         if len(indices_segments)<self.size:
             indices_segments = self.__padding__(indices_segments)
         if self.size == 1:

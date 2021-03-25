@@ -60,22 +60,31 @@ if __name__=='__main__':
     m = MakeImageHMDB51(root="/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/frames",
                         annotation_path="/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/testTrainMulti_7030_splits",
                         fold=1,
-                        train=False)
+                        train=True)
     # paths, labels = m()
     # print(paths[23], labels[23])
     temporal_transform = DynamicImage(output_type="pil")
+
+    from spatial_transforms import DIPredefinedTransforms
+    # mean=None
+    # std=None
+    mean = [0.49778724, 0.49780366, 0.49776983]
+    std = [0.09050678, 0.09017131, 0.0898702]
+    spatial_transform = DIPredefinedTransforms(size=224, tmp_transform=None, mean=mean, std=std)
     d=VideoImageDataset(root="",
                         frames_per_clip=10, 
-                        number_of_clips=1, 
+                        number_of_clips=5, 
                         make_function=m, 
                         stride=1, 
-                        overlap=0.5,
-                        position="random",
+                        overlap=0,
+                        position="start",
                         temporal_transform=temporal_transform, 
-                        spatial_transform=torchvision.transforms.ToTensor())
-
-    v, l = d[1000]
-    print("video:", v.size(), "label: ", l)
-    grid = torchvision.utils.make_grid(v, nrow=6, padding=50)
-    show_batch(grid)
-    plt.show()
+                        spatial_transform=spatial_transform.val_transform)
+    import random
+    for i in random.sample(range(1,1000),10):
+        print(i)
+        v, l = d[i]
+        print("video:", v.size(), "label: ", l)
+        grid = torchvision.utils.make_grid(v, nrow=6, padding=50)
+        show_batch(grid)
+        plt.show()

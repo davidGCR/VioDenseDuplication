@@ -34,6 +34,9 @@ def train(
         loss = criterion(outputs, targets)
         acc = calculate_accuracy_2(outputs, targets)
 
+        # print("accuracy1:{:4f}".format(calculate_accuracy(outputs, targets)))
+        # print("accuracy2:{:4f}".format(calculate_accuracy_2(outputs, targets)))
+
         # meter
         losses.update(loss.item(), inputs.size(0))
         accuracies.update(acc, inputs.size(0))
