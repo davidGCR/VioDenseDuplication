@@ -79,7 +79,7 @@ def laod_HMDB51_frames_dataset(config: Config, root, annotation_path):
                                             make_function=make_function, 
                                             stride=config.stride, 
                                             overlap=config.overlap,
-                                            position=config.position,
+                                            position="random",
                                             temporal_transform=temporal_transform, 
                                             spatial_transform=spatial_transform.train_transform)
 
@@ -88,8 +88,8 @@ def laod_HMDB51_frames_dataset(config: Config, root, annotation_path):
                                             shuffle=True,
                                             num_workers=4)
 
-    make_function = MakeImageHMDB51(root="/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/frames",
-                                    annotation_path="/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/testTrainMulti_7030_splits",
+    make_function = MakeImageHMDB51(root=root,
+                                    annotation_path=annotation_path,
                                     fold=config.num_cv,
                                     train=False)
     hmdb51_data_val = VideoImageDataset(root="",
@@ -98,15 +98,15 @@ def laod_HMDB51_frames_dataset(config: Config, root, annotation_path):
                                             make_function=make_function, 
                                             stride=config.stride, 
                                             overlap=config.overlap,
-                                            position=config.position,
+                                            position="middle",
                                             temporal_transform=temporal_transform,
                                             spatial_transform=spatial_transform.val_transform)                                            
     val_data_loader = torch.utils.data.DataLoader(hmdb51_data_val,
                                             batch_size=config.val_batch,
                                             shuffle=False,
                                             num_workers=4)
-    # print("Train set:", len(hmdb51_data_train))
-    # print("Val set:", len(hmdb51_data_val))                                        
+    print("Train set:", len(hmdb51_data_train))
+    print("Val set:", len(hmdb51_data_val))                                        
     return train_data_loader, val_data_loader
 
 def main(config: Config, root, annotation_path):
@@ -241,8 +241,8 @@ if __name__ == "__main__":
             'batch_size': 32
         },
         'hmdb51': {
-            'lr': 3e-3,
-            'batch_size': 32
+            'lr': 3e-2,
+            'batch_size': 16
         }
     }
 
@@ -259,16 +259,16 @@ if __name__ == "__main__":
     config.sample_size = (224,224)
     config.sample_duration =  10# Number of frames to compute Dynamic images
     config.stride = 1 #It means number of frames to skip in a video between video clips
-    config.number_of_clips=1
+    config.number_of_clips=5
     config.overlap = 0
     config.position = "middle"
     config.ft_begin_idx = 0 # 0: train all layers, -1: freeze conv layers
-    config.additional_info = ""
+    config.additional_info = "multiple-dynamic-imgs3"
     
-    root='/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/frames'
-    annotation_path='/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/testTrainMulti_7030_splits'
-    # root='/content/DATASETS/HMDB51'
-    # annotation_path='/content/drive/MyDrive/VIOLENCE DATA/HMDB51/testTrainMulti_7030_splits'
+    # root='/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/frames'
+    # annotation_path='/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/testTrainMulti_7030_splits'
+    root='/content/DATASETS/HMDB51/frames'
+    annotation_path='/content/drive/MyDrive/VIOLENCE DATA/HMDB51/testTrainMulti_7030_splits'
     # print(os.listdir(annotation_path))
     config.num_cv = 1
     main(config, root, annotation_path)
