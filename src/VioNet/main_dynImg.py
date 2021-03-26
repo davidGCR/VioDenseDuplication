@@ -98,7 +98,7 @@ def laod_HMDB51_frames_dataset(config: Config, root, annotation_path):
                                             make_function=make_function, 
                                             stride=config.stride, 
                                             overlap=config.overlap,
-                                            position=config.position,
+                                            position="middle",
                                             temporal_transform=temporal_transform,
                                             spatial_transform=spatial_transform.val_transform)                                            
     val_data_loader = torch.utils.data.DataLoader(hmdb51_data_val,
@@ -230,7 +230,7 @@ if __name__ == "__main__":
         dataset,
         device=device,
         num_epoch=50,
-        acc_baseline=0.70,
+        acc_baseline=0.30,
         ft_begin_idx=0,
     )
 
@@ -242,7 +242,7 @@ if __name__ == "__main__":
         },
         'hmdb51': {
             'lr': 3e-2,
-            'batch_size': 8
+            'batch_size': 16
         }
     }
 
@@ -261,14 +261,14 @@ if __name__ == "__main__":
     config.stride = 1 #It means number of frames to skip in a video between video clips
     config.number_of_clips=5
     config.overlap = 0
-    config.position = "start"
+    config.position = "start" #Most of time just for training
     config.ft_begin_idx = 0 # 0: train all layers, -1: freeze conv layers
-    config.additional_info = "MDI-5-10-startpos"
+    config.additional_info = "SDI"
     
     root='/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/frames'
     annotation_path='/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/testTrainMulti_7030_splits'
     # root='/content/DATASETS/HMDB51/frames'
     # annotation_path='/content/drive/MyDrive/VIOLENCE DATA/HMDB51/testTrainMulti_7030_splits'
-    # print(os.listdir(annotation_path))
+    
     config.num_cv = 1
     main(config, root, annotation_path)

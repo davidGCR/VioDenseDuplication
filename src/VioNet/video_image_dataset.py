@@ -79,7 +79,7 @@ if __name__=='__main__':
                         overlap=0,
                         position="start",
                         temporal_transform=temporal_transform, 
-                        spatial_transform=spatial_transform.val_transform)
+                        spatial_transform=spatial_transform.train_transform)
     import random
     for i in random.sample(range(1,1000),10):
         print(i)
