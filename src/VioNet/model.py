@@ -27,7 +27,7 @@ import models.models2D as rn
 
 def AnomalyDetector_model(config):
     device = config.device
-    model = AnomalyDetector(config.input_dimension)
+    model = AnomalyDetector(config.input_dimension).to(device)
     if config.pretrained_model:
         if device == torch.device('cpu'):
             state_dict = torch.load(config.pretrained_model, map_location=device)    

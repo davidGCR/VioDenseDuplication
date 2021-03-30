@@ -15,9 +15,9 @@ from VioNet.models.anomaly_detector import custom_objective, RegularizedLoss
 from VioNet.epoch import train_regressor
 from utils import Log
 
-def main(config: Config):
-    data = FeaturesLoader(features_path="/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/features2D",
-                          annotation_path="/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/test_ann.txt",
+def main(config: Config, features_path, annotation_path):
+    data = FeaturesLoader(features_path=features_path,
+                          annotation_path=annotation_path,
                           bucket_size=config.bag_size,
                           features_dim=config.input_dimension)
 
@@ -26,10 +26,10 @@ def main(config: Config):
     # print("label:", label)
     loader = DataLoader(data,
                         batch_size=config.train_batch,
-                        shuffle=False,
+                        shuffle=True,
                         num_workers=4)
     
-    template_log = "/anomaly_detector_dataset{}_epochs{}".format(config.dataset,config.num_epoch)
+    template_log = "/anomaly_detector_dataset{}_epochs{}_{}".format(config.dataset,config.num_epoch, config.additional_info)
     log_path = getFolder('VioNet_log')
     chk_path = getFolder('VioNet_pth')
     tsb_path = getFolder('VioNet_tensorboard_log')
@@ -98,12 +98,17 @@ if __name__=="__main__":
         model='resnetXT',  # c3d, convlstm, densenet, densenet_lean, resnet50, densenet2D, resnetXT
         dataset='UCFCrime2Local',
         device=device,
-        num_epoch=100,
-        save_every=25,
+        num_epoch=10000,
+        save_every=500,
         learning_rate=0.01,
         input_dimension=512,
         train_batch=60,
         bag_size=30
     )
+    # features_path="/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/features2D",
+    # annotation_path="/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/test_ann.txt",
+    features_path="/content/DATASETS/UCFCrime2Local/features2D"
+    annotation_path="/content/DATASETS/UCFCrime2Local/test_ann.txt"
+    config.additional_info = ""
 
-    main(config)
+    main(config, features_path, annotation_path)

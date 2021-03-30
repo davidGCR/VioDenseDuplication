@@ -28,6 +28,7 @@ class Config:
             additional_info = "",
             temp_annotation_path="",
             pretrained_model = None,
+            pretrained_fe = None,
             num_classes=2,
             input_dimension=4096,
             save_every=100,
@@ -89,3 +90,4 @@ class Config:
         self.input_dimension = input_dimension
         self.save_every = save_every
         self.bag_size = bag_size
+        self.pretrained_fe = pretrained_fe

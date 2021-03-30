@@ -40,11 +40,10 @@ class CenterCrop(object):
           return [crop_r] 
 
 class SequentialCrop(object):
-    def __init__(self, size, stride=1, input_type="rgb", overlap=0.5):
+    def __init__(self, size, stride=1, overlap=0.5):
         self.size = size
         self.stride = stride
         self.overlap = overlap
-        self.input_type = input_type
         self.overlap_length = int(self.overlap*self.size)
 
     def __call__(self, frames):

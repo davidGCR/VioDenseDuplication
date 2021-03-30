@@ -1,5 +1,5 @@
 import os
-from models.models2D import ResNet, Densenet2D, FeatureExtractorResNet
+from models.models2D import ResNet, Densenet2D, FeatureExtractorResNet, FeatureExtractorResNextTempPool
 from models.anomaly_detector import AnomalyDetector
 from dataset import VioDB, ProtestDatasetEval, RwfDatasetEval
 from torch.utils.data import DataLoader
@@ -9,9 +9,10 @@ import numpy as np
 import torch
 import argparse
 import torchvision.transforms as transforms
-from spatial_transforms import Compose, ToTensor, Normalize, GroupScaleCenterCrop
-from temporal_transforms import CenterCrop, SequentialCrop
-from target_transforms import Label
+from transformations.spatial_transforms import Compose, ToTensor, Normalize, GroupScaleCenterCrop
+from transformations.temporal_transforms import CenterCrop, SequentialCrop
+from transformations.target_transforms import Label
+from config import Config
 
 g_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -81,7 +82,7 @@ def eval_one_dir_classifier(img_dir, model):
     # print(df.head())
     return df
 
-def eval_one_dir_an(img_dir, feature_extractor, anomaly_detector):
+def eval_one_dir_an(config: Config, img_dir, feature_extractor, anomaly_detector):
   
     """
     return model output of all the images in a directory
@@ -90,20 +91,20 @@ def eval_one_dir_an(img_dir, feature_extractor, anomaly_detector):
     feature_extractor.eval()
     anomaly_detector.eval()
     # make dataloader
-    sample_size = 224
+    sample_size = config.sample_size
     crop_method = GroupScaleCenterCrop(size=sample_size)
     norm = Normalize([0.49778724, 0.49780366, 0.49776983], [0.09050678, 0.09017131, 0.0898702 ])
-    dataset = "rwf-2000"
-    cv = 1
-    sample_duration = 5
-    stride = 1
-    input_mode = "dynamic-images"
-    overlap = 0.5
-    batch_size = args.batch_size
+    dataset = config.dataset
+    # cv = 1
+    sample_duration = config.sample_duration
+    stride = config.stride
+    # input_mode = "dynamic-images"
+    overlap = config.overlap
+    batch_size = config.val_batch
 
     spatial_transform = Compose([crop_method, ToTensor(), norm])
     target_transform = Label()
-    temporal_transform = SequentialCrop(size=sample_duration, stride=stride, input_type=input_mode, overlap=overlap)
+    temporal_transform = SequentialCrop(size=sample_duration, stride=stride, overlap=overlap)
 
     val_dataset = RwfDatasetEval(img_dir, spatial_transform, temporal_transform)
 
@@ -124,8 +125,8 @@ def eval_one_dir_an(img_dir, feature_extractor, anomaly_detector):
         feature = feature_extractor(input_var)
         score = anomaly_detector(feature)
 
-        # print("feature: ", feature.size())
-        # print("score: ", score.size())
+        print("feature: ", feature.size())
+        print("score: ", score.size())
         # _, pred = output.topk(1, 1, True)
         # probabilities = sm(output) 
         result = score.cpu().data.numpy()
@@ -151,88 +152,109 @@ def load_classifier():
     model.load_state_dict(state_dict)
     return model
 
-def load_feature_extractor(model_type="resnet"):
+def load_feature_extractor(model_type="resnet", pretrained=None):
     if model_type == "resnet":
         model = FeatureExtractorResNet()
+    elif model_type == "resnetXT":
+        model = FeatureExtractorResNextTempPool()
+    
+    if pretrained:
+        state_dict = torch.load(pretrained, map_location=torch.device('cpu'))
+        model.load_state_dict(state_dict, strict=False)
     return model
 
-def load_anomaly_detector(pretrained=None):
+def load_anomaly_detector(input_dim, pretrained):
     
-    model = AnomalyDetector(input_dim=2048)
+    model = AnomalyDetector(input_dim=input_dim)
     if pretrained:
         state_dict = torch.load(pretrained, map_location=torch.device('cpu'))
         model.load_state_dict(state_dict)
     return model
 
-def main():
-
+def main(config: Config, dataset_dir, output_csvpath):
     # load trained model
-    print("*** loading model from {model}".format(model = args.model))
-    feature_extractor = load_feature_extractor()
+    print("*** loading model from {model}".format(model = config.pretrained_model))
+    feature_extractor = load_feature_extractor(config.model, config.pretrained_fe)
     feature_extractor.to(device)
-    anomaly_detector = load_anomaly_detector(pretrained=args.model)
+    anomaly_detector = load_anomaly_detector(config.input_dimension, config.pretrained_model)
     anomaly_detector.to(device)
-    # print('device:', device, type(device))
-
     
     print("*** calculating the model output of the images in {img_dir}"
-            .format(img_dir = args.dataset_dir))
-
+            .format(img_dir = dataset_dir))
     
-    for i, video_name in enumerate(os.listdir(args.dataset_dir)):
-        pt = os.path.join(args.dataset_dir, video_name)
+    for i, video_name in enumerate(os.listdir(dataset_dir)):
+        pt = os.path.join(dataset_dir, video_name)
         if not os.path.isdir(pt):
             continue
         print(i, pt)
         
-        out_pth = os.path.join(args.output_csvpath,video_name+'.csv')
+        out_pth = os.path.join(output_csvpath,video_name+'.csv')
         # df = eval_one_dir(pt, model)
         if not os.path.exists(out_pth):
-            df = eval_one_dir_an(pt, feature_extractor, anomaly_detector) ##Change this to use the classifier or the anomaly_detector
+            df = eval_one_dir_an(config, pt, feature_extractor, anomaly_detector) ##Change this to use the classifier or the anomaly_detector
             df.to_csv(out_pth, index = False)
     
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    # parser.add_argument("--img_dir",
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    pretrained_feature_extractor = "/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/src/MyTrainedModels/resnetXT_fps10_hmdb511_52_0.3863_2.666646_SDI.pth"
+    pretrained_model = "/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/src/MyTrainedModels/anomaly_detector_datasetUCFCrime2Local_epochs100000-epoch-19000.pth"
+
+    config = Config(model="resnetXT",
+                    dataset="rwf-2000",
+                    device=device,
+                    sample_duration=10,
+                    stride=1,
+                    overlap=0,
+                    sample_size=(224,224),
+                    val_batch=16,
+                    input_dimension=512,
+                    pretrained_fe=pretrained_feature_extractor,
+                    pretrained_model=pretrained_model)
+    
+    dataset_dir = "/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames/val/Fight"
+    output_csvpath = "/Users/davidchoqueluqueroman/Documents/DATASETS_Local/rwf-vscores/val/Fight"
+    main(config, dataset_dir, output_csvpath)
+    # parser = argparse.ArgumentParser()
+    # # parser.add_argument("--img_dir",
+    # #                     type=str,
+    # #                     help = "image directory to calculate output"
+    # #                     "(the directory must contain only image files)",
+    # #                     default=''
+    # #                     )
+
+    # parser.add_argument("--dataset_dir",
     #                     type=str,
-    #                     help = "image directory to calculate output"
-    #                     "(the directory must contain only image files)",
-    #                     default=''
+    #                     required = True,
+    #                     help = "dataset directory to calculate output"
+    #                     "(the directory must contain only image files)"
     #                     )
 
-    parser.add_argument("--dataset_dir",
-                        type=str,
-                        required = True,
-                        help = "dataset directory to calculate output"
-                        "(the directory must contain only image files)"
-                        )
-
-    parser.add_argument("--output_csvpath",
-                        type=str,
-                        default = "result.csv",
-                        help = "path to output csv file"
-                        )
-    parser.add_argument("--model",
-                        type=str,
-                        required = True,
-                        help = "model path"
-                        )
-    # parser.add_argument("--cuda",
-    #                     action = "store_true",
-    #                     help = "use cuda?",
-    #                     default=None
+    # parser.add_argument("--output_csvpath",
+    #                     type=str,
+    #                     default = "result.csv",
+    #                     help = "path to output csv file"
     #                     )
-    parser.add_argument("--workers",
-                        type = int,
-                        default = 4,
-                        help = "number of workers",
-                        )
-    parser.add_argument("--batch_size",
-                        type = int,
-                        default = 16,
-                        help = "batch size",
-                        )
-    args = parser.parse_args()
+    # parser.add_argument("--model",
+    #                     type=str,
+    #                     required = True,
+    #                     help = "model path"
+    #                     )
+    # # parser.add_argument("--cuda",
+    # #                     action = "store_true",
+    # #                     help = "use cuda?",
+    # #                     default=None
+    # #                     )
+    # parser.add_argument("--workers",
+    #                     type = int,
+    #                     default = 4,
+    #                     help = "number of workers",
+    #                     )
+    # parser.add_argument("--batch_size",
+    #                     type = int,
+    #                     default = 16,
+    #                     help = "batch size",
+    #                     )
+    # args = parser.parse_args()
 
-    main()
+    # main()

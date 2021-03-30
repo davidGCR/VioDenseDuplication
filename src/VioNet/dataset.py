@@ -6,8 +6,8 @@ from torch.utils.data import DataLoader
 
 from PIL import Image
 from dynamic_image import dynamic_image_v1
-from temporal_transforms import KeyFrameCrop, TrainGuidedKeyFrameCrop, ValGuidedKeyFrameCrop, KeySegmentCrop
-from spatial_transforms import Lighting
+from transformations.temporal_transforms import KeyFrameCrop, TrainGuidedKeyFrameCrop, ValGuidedKeyFrameCrop, KeySegmentCrop
+from transformations.spatial_transforms import Lighting
 import torchvision.transforms as transforms
 import numpy as np
 import pandas as pd

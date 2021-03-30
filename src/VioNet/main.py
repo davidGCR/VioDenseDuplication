@@ -9,10 +9,10 @@ from model import VioNet_C3D, VioNet_ConvLSTM, VioNet_densenet, VioNet_densenet_
 from dataset import VioDB
 from config import Config
 
-from spatial_transforms import Compose, ToTensor, Normalize
-from spatial_transforms import GroupRandomHorizontalFlip, GroupRandomScaleCenterCrop, GroupScaleCenterCrop
-from temporal_transforms import CenterCrop, RandomCrop, SegmentsCrop, RandomSegmentsCrop, KeyFrameCrop, TrainGuidedKeyFrameCrop, ValGuidedKeyFrameCrop, KeySegmentCrop
-from target_transforms import Label, Video
+from transformations.spatial_transforms import Compose, ToTensor, Normalize
+from transformations.spatial_transforms import GroupRandomHorizontalFlip, GroupRandomScaleCenterCrop, GroupScaleCenterCrop
+from transformations.temporal_transforms import CenterCrop, RandomCrop, SegmentsCrop, RandomSegmentsCrop, KeyFrameCrop, TrainGuidedKeyFrameCrop, ValGuidedKeyFrameCrop, KeySegmentCrop
+from transformations.target_transforms import Label, Video
 
 from utils import Log
 from torch.utils.tensorboard import SummaryWriter
