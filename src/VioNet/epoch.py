@@ -3,8 +3,91 @@ import torch
 from utils import AverageMeter
 
 
+def train_regressor(
+    epoch, 
+    data_loader, 
+    model, 
+    criterion, 
+    optimizer, 
+    device,
+    epoch_log):
+    # meters
+    batch_time = AverageMeter()
+    data_time = AverageMeter()
+    losses = AverageMeter()
+    accuracies = AverageMeter()
+
+    # set model to training mode
+    model.train()
+
+    end_time = time.time()
+
+    for i, (inputs, targets) in enumerate(data_loader):
+        # print('VioDB inputs: ',inputs.size())
+        # print('VioDB target: ',targets.size())
+        inputs, targets = inputs.to(device), targets.to(device)
+        data_time.update(time.time() - end_time)
+
+        # zero the parameter gradients
+        optimizer.zero_grad()
+
+        # forward
+        outputs = model(inputs)
+        loss = criterion(outputs, targets)
+
+        # meter
+        losses.update(loss.item(), inputs.size(0))
+
+        # backward + optimize
+        loss.backward()
+        optimizer.step()
+
+        # meter
+        batch_time.update(time.time() - end_time)
+        end_time = time.time()
+
+        print(
+            'Epoch: [{0}][{1}/{2}]\t'
+            'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
+            'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
+            'Loss {loss.val:.4f} ({loss.avg:.4f})'.format(
+                epoch,
+                i + 1,
+                len(data_loader),
+                batch_time=batch_time,
+                data_time=data_time,
+                loss=losses
+            )
+        )
+
+        # batch_log.log(
+        #     {
+        #         'epoch': epoch,
+        #         'batch': i + 1,
+        #         'iter': (epoch - 1) * len(data_loader) + (i + 1),
+        #         'loss': losses.val,
+        #         'lr': optimizer.param_groups[0]['lr']
+        #     }
+        # )
+
+    epoch_log.log(
+        {
+            'epoch': epoch,
+            'loss': losses.avg,
+            'lr': optimizer.param_groups[0]['lr']
+        }
+    )
+    return losses.avg, optimizer.param_groups[0]['lr']
+
+
 def train(
-    epoch, data_loader, model, criterion, optimizer, device, batch_log,
+    epoch, 
+    data_loader, 
+    model, 
+    criterion, 
+    optimizer, 
+    device, 
+    batch_log,
     epoch_log
 ):
     print('training at epoch: {}'.format(epoch))

@@ -2,6 +2,7 @@ import os
 import csv
 import matplotlib.pyplot as plt
 import numpy as np
+import torch
 
 
 class AverageMeter(object):
@@ -43,3 +44,6 @@ def show_batch(img):
     npimg = img.numpy()
     plt.imshow(np.transpose(npimg, (1,2,0)), interpolation='nearest')
     plt.show()
+
+def get_torch_device():
+    return torch.device("cuda" if torch.cuda.is_available() else "cpu")

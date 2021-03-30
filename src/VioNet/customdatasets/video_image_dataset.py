@@ -1,18 +1,28 @@
+import sys
 import os
-from temporal_transforms import SegmentsCrop
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-from make_dataset import MakeImageHMDB51
-from temporal_transforms import SegmentsCrop, DynamicImage
-from utils import show_batch
 import torch.utils.data as data
 import torchvision
 from operator import itemgetter
 import torch
 
+
+g_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# print('main g_path:', g_path)
+sys.path.insert(1, g_path)
+from customdatasets.make_dataset import MakeImageHMDB51
+from transformations.temporal_transforms import SegmentsCrop, DynamicImage
+from transformations.temporal_transforms import SegmentsCrop
+from transformations.spatial_transforms import DIPredefinedTransforms
+from utils import show_batch
+
 class VideoImageDataset(data.Dataset):
     """
-    Load videos stored as images folders
+    Load videos stored as images folders.
+    Use this to load dinamic images. 
+    It has embeded the SEGMENTS CROP temporal transformation to split a 
+    video in video segments.
     """
 
     def __init__(self, root, 
@@ -24,7 +34,8 @@ class VideoImageDataset(data.Dataset):
                        position,
                        padding=True,
                        temporal_transform=None,
-                       spatial_transform=None):
+                       spatial_transform=None,
+                       return_metadata=False):
         self.root = root
         self.frames_per_clip = frames_per_clip
         self.number_of_clips = number_of_clips
@@ -32,6 +43,7 @@ class VideoImageDataset(data.Dataset):
         self.spatial_transform = spatial_transform
         self.paths, self.labels = make_function()
         self.sampler = SegmentsCrop(size=self.number_of_clips, segment_size=self.frames_per_clip, stride=stride, overlap=overlap, padding=padding, position=position)
+        self.return_metadata = return_metadata
     
     def __len__(self):
         return len(self.paths)
@@ -54,7 +66,11 @@ class VideoImageDataset(data.Dataset):
                 image = self.spatial_transform(image)
             dynamic_images.append(image)
         dynamic_images = torch.stack(dynamic_images, dim=0)
-        return dynamic_images, video_label
+
+        if self.return_metadata:
+            return dynamic_images, video_label, video_path
+        else:    
+            return dynamic_images, video_label
 
 if __name__=='__main__':
     m = MakeImageHMDB51(root="/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/frames",
@@ -65,7 +81,7 @@ if __name__=='__main__':
     # print(paths[23], labels[23])
     temporal_transform = DynamicImage(output_type="pil")
 
-    from spatial_transforms import DIPredefinedTransforms
+    
     # mean=None
     # std=None
     mean = [0.49778724, 0.49780366, 0.49776983]

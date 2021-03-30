@@ -1,26 +1,23 @@
 import os
-
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
+import torchvision.transforms as transforms
+import torchvision
+from torch.utils.tensorboard import SummaryWriter
 
 from epoch import train, val, test
-
 from model import VioNet_Resnet, VioNet_Densenet2D, VioNet_ResnetXT
 from config import Config
-
-from spatial_transforms import Compose, ToTensor, Normalize, DIPredefinedTransforms
-from temporal_transforms import DynamicImage
-from target_transforms import Label, Video
-import torchvision.transforms as transforms
-from video_dataset import HMDB51DatasetV2
-import torchvision
-
+from customdatasets.video_dataset import HMDB51DatasetV2
+from transformations.spatial_transforms import Compose, ToTensor, Normalize, DIPredefinedTransforms
+from transformations.temporal_transforms import DynamicImage
+from transformations.target_transforms import Label, Video
 from utils import Log
-from torch.utils.tensorboard import SummaryWriter
+
 from global_var import getFolder
-from video_image_dataset import VideoImageDataset
-from make_dataset import MakeImageHMDB51
+from customdatasets.video_image_dataset import VideoImageDataset
+from customdatasets.make_dataset import MakeImageHMDB51
 
 g_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -215,9 +212,9 @@ def main(config: Config, root, annotation_path):
                                       val_loss < loss_baseline):
             torch.save(
                 model.state_dict(),
-                chk_path+'/{}_fps{}_{}{}_{}_{:.4f}_{:.6f}.pth'.format(
+                chk_path+'/{}_fps{}_{}{}_{}_{:.4f}_{:.6f}_config({}).pth'.format(
                     config.model, config.sample_duration, config.dataset, config.num_cv, i, val_acc,
-                    val_loss))
+                    val_loss, config.additional_info))
             acc_baseline = val_acc
             loss_baseline = val_loss
 
@@ -259,7 +256,7 @@ if __name__ == "__main__":
     config.sample_size = (224,224)
     config.sample_duration =  10# Number of frames to compute Dynamic images
     config.stride = 1 #It means number of frames to skip in a video between video clips
-    config.number_of_clips=5
+    config.number_of_clips=1
     config.overlap = 0
     config.position = "start" #Most of time just for training
     config.ft_begin_idx = 0 # 0: train all layers, -1: freeze conv layers

@@ -1,16 +1,43 @@
+import os
+import sys
+# g_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# sys.path.insert(1, g_path)
+
 import torch
 import torch.nn as nn
 
-import models.densenet as dn
+# import models.densenet as dn
+# from VioNet.models.c3d import C3D
+# from VioNet.models.densenet import densenet88, densenet121
+# from VioNet.models.convlstm import ConvLSTM
+# from VioNet.models.models2D import ResNet, Densenet2D, FusedResNextTempPool, FeatureExtractorResNextTempPool
+# from VioNet.models.anomaly_detector import AnomalyDetector
+# import VioNet.models.models2D as rn
+
 from models.c3d import C3D
 from models.densenet import densenet88, densenet121
 from models.convlstm import ConvLSTM
-from models.models2D import ResNet, Densenet2D, FusedResNextTempPool
-import os
+from models.models2D import ResNet, Densenet2D, FusedResNextTempPool, FeatureExtractorResNextTempPool
+from models.anomaly_detector import AnomalyDetector
 import models.models2D as rn
 
-g_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-# print(g_path)
+# g_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+
+def AnomalyDetector_model(config):
+    device = config.device
+    model = AnomalyDetector(config.input_dimension)
+    if config.pretrained_model:
+        if device == torch.device('cpu'):
+            state_dict = torch.load(config.pretrained_model, map_location=device)    
+        else:
+            state_dict = torch.load(config.pretrained_model)
+        model.load_state_dict(state_dict)
+    
+    params = model.parameters()
+    return model, params
+
 
 def VioNet_Densenet2D(config):
     device = config.device
@@ -31,13 +58,26 @@ def VioNet_Resnet(config):
 def VioNet_ResnetXT(config):
     device = config.device
     model = FusedResNextTempPool(num_classes=config.num_classes).to(device)
-    # if config.pretrained_model:
-    #     state_dict = torch.load(g_path +'/VioNet/weights/'+ config.pretrained_model)
-    #     model.load_state_dict(state_dict)
+    if config.pretrained_model:
+        state_dict = torch.load(config.pretrained_model)
+        model.load_state_dict(state_dict)
 
     # params = rn.get_fine_tuning_params(model, config.ft_begin_idx)
     params = model.parameters()
     return model, params
+
+def FeatureExtractor_ResnetXT(config):
+    device = config.device
+    model = FeatureExtractorResNextTempPool().to(device)
+    if config.pretrained_model:
+        if device == torch.device('cpu'):
+            state_dict = torch.load(config.pretrained_model, map_location=device)    
+        else:
+            state_dict = torch.load(config.pretrained_model)
+        model.load_state_dict(state_dict, strict=False)
+
+    # params = rn.get_fine_tuning_params(model, config.ft_begin_idx)
+    return model
 
 def VioNet_C3D(config):
     device = config.device
@@ -113,3 +153,7 @@ def VioNet_densenet_lean(config):
     params = dn.get_fine_tuning_params(model, ft_begin_idx)
 
     return model, params
+
+
+if __name__=="__main__":
+    print("Hey there!!!: ", g_path)

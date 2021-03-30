@@ -29,6 +29,9 @@ class Config:
             temp_annotation_path="",
             pretrained_model = None,
             num_classes=2,
+            input_dimension=4096,
+            save_every=100,
+            bag_size=30
     ):
 
         # VioNet models
@@ -83,3 +86,6 @@ class Config:
         self.num_classes = num_classes
         self.number_of_clips = number_of_clips
         self.overlap = overlap
+        self.input_dimension = input_dimension
+        self.save_every = save_every
+        self.bag_size = bag_size

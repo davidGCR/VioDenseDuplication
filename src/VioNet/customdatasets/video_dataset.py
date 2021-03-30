@@ -7,8 +7,6 @@ import torch.utils.data as data
 from torchvision.datasets.video_utils import VideoClips
 import torch
 import torchvision
-from temporal_transforms import DynamicImage, tensor2PIL, PIL2numpy
-from spatial_transforms import AfineTransformation, array2PIL, DIPredefinedTransforms
 import glob
 from operator import itemgetter
 
@@ -25,7 +23,7 @@ class VideoDataset(data.Dataset):
                  temporal_transform=None,
                  return_label=False,
                  video_formats=["avi", "mp4"]):
-        super(VideoIter, self).__init__()
+        super(VideoDataset, self).__init__()
         # video clip properties
         self.frames_stride = frame_stride
         self.total_clip_length_in_frames = clip_length * frame_stride
@@ -35,7 +33,7 @@ class VideoDataset(data.Dataset):
         # IO
         self.dataset_path = dataset_path
         self.video_list = self._get_video_list(dataset_path=self.dataset_path)
-        # print("video_list:", len(self.video_list))
+        # print("video_list:", self.video_list, len(self.video_list))
         self.return_label = return_label
 
         # data loading
@@ -68,11 +66,12 @@ class VideoDataset(data.Dataset):
         dir, file = video_path.split(os.sep)[-2:]
         file = file.split('.')[0]
 
-        if self.return_label:
-            label = 0 if "Normal" in video_path else 1
-            return video, label, clip_idx, dir, file
+        # if self.return_label:
+        #     label = 0 if "Normal" in video_path else 1
+        #     return video, label, clip_idx, dir, file
+        label = 0 if "Normal" in video_path else 1
 
-        return video, clip_idx, dir, file
+        return video, label, (clip_idx, dir, file)
 
     def __len__(self):
         return len(self.video_clips)
@@ -96,7 +95,7 @@ class VideoDataset(data.Dataset):
         vid_list = []
         for path, subdirs, files in os.walk(dataset_path):
             for name in files:
-                if not any([format in name for format in self.video_formats]):
+                if not any([format in name and name[0]!= '.' for format in self.video_formats]):
                     continue
                 vid_list.append(os.path.join(path, name))
         return vid_list
@@ -119,16 +118,15 @@ class HMDB51DatasetV2(data.Dataset):
     def __getitem__(self, idx):
         v, a, l = self.dataset[idx]
         return v, l
-    
-def show(img):
-    npimg = img.numpy()
-    plt.imshow(np.transpose(npimg, (1,2,0)), interpolation='nearest')
-    plt.show()
+
+g_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(1, g_path)
+from transformations.temporal_transforms import DynamicImage, tensor2PIL, PIL2numpy
+from transformations.spatial_transforms import AfineTransformation, array2PIL, DIPredefinedTransforms
+from utils import show_batch
+import matplotlib.pyplot as plt
 
 if __name__=='__main__':
-    
-    paths, labels = m()
-    print(paths[23], labels[23])
 
     DN = DynamicImage(output_type="pil")
     di_t = DIPredefinedTransforms(size=224, tmp_transform=DN)
@@ -141,49 +139,43 @@ if __name__=='__main__':
     #     torchvision.transforms.CenterCrop(224),
     #     torchvision.transforms.ToTensor()
     # ])
-    # dataset = VideoIter(clip_length=10,
-    #                     frame_stride=1,
-    #                     frame_rate=25,
-    #                     dataset_path= "/Volumes/TOSHIBA EXT/DATASET/HockeyFight/videos",
-    #                     temporal_transform=DN,
-    #                     spatial_transform=ST)#"/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS/UCFCrime/Abuse")
+    dataset = VideoDataset(clip_length=10,
+                        frame_stride=1,
+                        frame_rate=25,
+                        dataset_path= "/Volumes/TOSHIBA EXT/DATASET/AnomalyCRIMEALL/Anomaly-Videos-All",#"/Users/davidchoqueluqueroman/Documents/DATASETS_Local/hmdb51/hmdb51_org",#"/Volumes/TOSHIBA EXT/DATASET/HockeyFight/videos",
+                        temporal_transform=DN,
+                        spatial_transform=ST)#"/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS/UCFCrime/Abuse")
     
    
 
-    # batch=[]
-    # for i in range(6):
-    #     video, clip_idx, dir, file = dataset[i]
-    #     print("video:", type(video), video.dtype)
-    #     print("dir:",dir)
-    #     print("file:", file)
-    #     print("clip_idx:", clip_idx)
-    #     batch.append(video)
-    # batch = torch.stack(batch, dim=0)
-    # print("batch: ", batch.size())
-    # grid = torchvision.utils.make_grid(batch, nrow=6, padding=50)
-    # show(grid)
-    # plt.show()
+    batch=[]
+    for i in range(6):
+        video, clip_idx, dir, file = dataset[i]
+        print("video:", type(video), video.dtype, video.size())
+        print("dir:",dir)
+        print("file:", file)
+        print("clip_idx:", clip_idx)
+        batch.append(video)
+    batch = torch.stack(batch, dim=0)
+    print("batch: ", batch.size())
+    grid = torchvision.utils.make_grid(batch, nrow=6, padding=50)
+    show_batch(grid)
+    plt.show()
 
-    # hmdb51_data_train = torchvision.datasets.HMDB51(root='/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/hmdb51_org',
+    # hmdb51_data_val = HMDB51DatasetV2(root='/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/hmdb51_org',
     #                                           annotation_path='/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/testTrainMulti_7030_splits',
     #                                           frames_per_clip=10,
-    #                                           step_between_clips=10,
+    #                                           step_between_clips=100,
     #                                           fold=1,
-    #                                           train=True)
-    hmdb51_data_val = HMDB51DatasetV2(root='/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/hmdb51_org',
-                                              annotation_path='/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/testTrainMulti_7030_splits',
-                                              frames_per_clip=10,
-                                              step_between_clips=100,
-                                              fold=1,
-                                              train=False,
-                                              transform=ST)                                              
-    data_loader = torch.utils.data.DataLoader(hmdb51_data_val,
-                                            batch_size=8,
-                                            shuffle=True,
-                                            num_workers=4)
+    #                                           train=False,
+    #                                           transform=ST)                                              
+    # data_loader = torch.utils.data.DataLoader(hmdb51_data_val,
+    #                                         batch_size=8,
+    #                                         shuffle=True,
+    #                                         num_workers=4)
 
     # print('Train dataset:', len(hmdb51_data_train))
-    print('Val dataset:', len(hmdb51_data_val))
+    # print('Val dataset:', len(hmdb51_data_val))
 
     # v, a, l = hmdb51_data_val[5000]
     # print("video:", v.size())
@@ -195,11 +187,11 @@ if __name__=='__main__':
     # di = DN(v)
     # di.show()
 
-    for idx, (v, l) in enumerate(data_loader):
-        if idx > 5:
-            break
-        print("video:", v.size(), v.dtype)
-        print("label:", l.size())
+    # for idx, (v, l) in enumerate(data_loader):
+    #     if idx > 5:
+    #         break
+    #     print("video:", v.size(), v.dtype)
+    #     print("label:", l.size())
         # print("video:", v.shape)
         # grid = torchvision.utils.make_grid(v, nrow=5, padding=20)
         # show(grid)
