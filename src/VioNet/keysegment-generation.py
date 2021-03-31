@@ -125,8 +125,8 @@ def eval_one_dir_an(config: Config, img_dir, feature_extractor, anomaly_detector
         feature = feature_extractor(input_var)
         score = anomaly_detector(feature)
 
-        print("feature: ", feature.size())
-        print("score: ", score.size())
+        # print("feature: ", feature.size())
+        # print("score: ", score.size())
         # _, pred = output.topk(1, 1, True)
         # probabilities = sm(output) 
         result = score.cpu().data.numpy()
@@ -159,7 +159,10 @@ def load_feature_extractor(model_type="resnet", pretrained=None):
         model = FeatureExtractorResNextTempPool()
     
     if pretrained:
-        state_dict = torch.load(pretrained, map_location=torch.device('cpu'))
+        if device == torch.device('cpu'):
+            state_dict = torch.load(pretrained, map_location=device)    
+        else:
+            state_dict = torch.load(pretrained)
         model.load_state_dict(state_dict, strict=False)
     return model
 
@@ -167,7 +170,10 @@ def load_anomaly_detector(input_dim, pretrained):
     
     model = AnomalyDetector(input_dim=input_dim)
     if pretrained:
-        state_dict = torch.load(pretrained, map_location=torch.device('cpu'))
+        if device == torch.device('cpu'):
+            state_dict = torch.load(pretrained, map_location=device)    
+        else:
+            state_dict = torch.load(pretrained)
         model.load_state_dict(state_dict)
     return model
 
@@ -197,8 +203,11 @@ def main(config: Config, dataset_dir, output_csvpath):
 
 if __name__ == "__main__":
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    pretrained_feature_extractor = "/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/src/MyTrainedModels/resnetXT_fps10_hmdb511_52_0.3863_2.666646_SDI.pth"
-    pretrained_model = "/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/src/MyTrainedModels/anomaly_detector_datasetUCFCrime2Local_epochs100000-epoch-19000.pth"
+    # pretrained_feature_extractor = "/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/src/MyTrainedModels/resnetXT_fps10_hmdb511_52_0.3863_2.666646_SDI.pth"
+    # pretrained_model = "/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/src/MyTrainedModels/anomaly_detector_datasetUCFCrime2Local_epochs100000-epoch-19000.pth"
+
+    pretrained_feature_extractor = "/content/drive/My Drive/VIOLENCE DATA/VioNet_pth/resnetXT_fps10_hmdb511_52_0.3863_2.666646_SDI.pth"
+    pretrained_model = "/content/drive/My Drive/VIOLENCE DATA/VioNet_pth/anomaly_detector_datasetUCFCrime2Local_epochs100000-epoch-19000.pth"
 
     config = Config(model="resnetXT",
                     dataset="rwf-2000",
@@ -212,8 +221,12 @@ if __name__ == "__main__":
                     pretrained_fe=pretrained_feature_extractor,
                     pretrained_model=pretrained_model)
     
-    dataset_dir = "/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames/val/Fight"
-    output_csvpath = "/Users/davidchoqueluqueroman/Documents/DATASETS_Local/rwf-vscores/val/Fight"
+    # dataset_dir = "/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames/val/Fight"
+    # output_csvpath = "/Users/davidchoqueluqueroman/Documents/DATASETS_Local/rwf-vscores/val/Fight"
+    
+    dataset_dir = "/content/DATASETS/rwf-2000_jpg/frames/train/Fight"
+    output_csvpath="/content/drive/My Drive/VIOLENCE DATA/rwf-vscores/train/Fight"
+    
     main(config, dataset_dir, output_csvpath)
     # parser = argparse.ArgumentParser()
     # # parser.add_argument("--img_dir",

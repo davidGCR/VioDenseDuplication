@@ -243,9 +243,9 @@ def main(config):
 
 if __name__ == '__main__':
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    dataset = 'hockey'
+    dataset = 'rwf-2000'
     config = Config(
-        'densenet2D',  # c3d, convlstm, densenet, densenet_lean, resnet50, densenet2D
+        'densenet_lean',  # c3d, convlstm, densenet, densenet_lean, resnet50, densenet2D
         dataset,
         device=device,
         num_epoch=50,
@@ -278,10 +278,10 @@ if __name__ == '__main__':
     config.train_batch = configs[dataset]['batch_size']
     config.val_batch = configs[dataset]['batch_size']
     config.learning_rate = configs[dataset]['lr']
-    config.input_mode = 'dynamic-images' #rgb, dynamic-images
+    config.input_mode = 'rgb' #rgb, dynamic-images
     config.train_temporal_transform = 'keysegment' #standar, segments, segments-keyframe, random-segments, keyframe, guided-segment, keysegment
     config.val_temporal_transform = 'keysegment'
-    config.temp_annotation_path = ""
+    config.temp_annotation_path = "/content/drive/My Drive/VIOLENCE DATA/rwf-vscores"
     # 5 fold cross validation
     # for cv in range(1, 6):
     #     config.num_cv = cv
@@ -289,12 +289,12 @@ if __name__ == '__main__':
 
     ##### For 2D CNN ####
     # config.num_epoch = 50
-    config.sample_size = (224,224)
-    config.sample_duration = 5
-    config.stride = 1 #for dynamic images it's frames to skip into a segment
-    config.ft_begin_idx = 0 # 0: train all layers, -1: freeze conv layers
-    config.acc_baseline = 0.90
-    config.additional_info = "central-segment-changed_tmp-transf-5frames"
+    # config.sample_size = (224,224)
+    # config.sample_duration = 16
+    # config.stride = 1 #for dynamic images it's frames to skip into a segment
+    # config.ft_begin_idx = 0 # 0: train all layers, -1: freeze conv layers
+    # config.acc_baseline = 0.90
+    # config.additional_info = ""
 
     config.num_cv = 1
     main(config)

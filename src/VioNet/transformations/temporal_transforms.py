@@ -465,7 +465,7 @@ if __name__ == '__main__':
 
     # frames = temp_transform(frames, "/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/src/VioNet/v4dhdnsxiX4_1.csv", 0)
     # frames = temp_transform(frames, "/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/src/VioNet/fbtEhNq5a6E_0.csv")
-    frames = temp_transform(frames, "/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/KeySegmentsPredictions/rwf-2000_an_scores/val/Fight/1MVS2QPWbHc_0.csv")
+    frames = temp_transform(frames, "/Users/davidchoqueluqueroman/Documents/DATASETS_Local/rwf-vscores/val/NonFight/NeyOxUHJ_0.csv")
     # temp_transform = CenterCrop(size=16, stride=1)
     # temp_transform = RandomCrop(size=16, stride=1)
     # frames = temp_transform(frames)
