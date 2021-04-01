@@ -6,7 +6,7 @@ import sys
 import torch
 import torch.nn as nn
 
-# import models.densenet as dn
+import models.densenet as dn
 # from VioNet.models.c3d import C3D
 # from VioNet.models.densenet import densenet88, densenet121
 # from VioNet.models.convlstm import ConvLSTM
@@ -21,7 +21,7 @@ from models.models2D import ResNet, Densenet2D, FusedResNextTempPool, FeatureExt
 from models.anomaly_detector import AnomalyDetector
 import models.models2D as rn
 
-# g_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+g_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 
@@ -33,7 +33,7 @@ def AnomalyDetector_model(config):
             state_dict = torch.load(config.pretrained_model, map_location=device)    
         else:
             state_dict = torch.load(config.pretrained_model)
-        model.load_state_dict(state_dict)
+        model.load_state_dict(state_dict, strict=False)
     
     params = model.parameters()
     return model, params

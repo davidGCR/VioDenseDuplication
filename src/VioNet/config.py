@@ -32,7 +32,9 @@ class Config:
             num_classes=2,
             input_dimension=4096,
             save_every=100,
-            bag_size=30
+            bag_size=30,
+            restore_training=False,
+            checkpoint_path=None
     ):
 
         # VioNet models
@@ -91,3 +93,5 @@ class Config:
         self.save_every = save_every
         self.bag_size = bag_size
         self.pretrained_fe = pretrained_fe
+        self.restore_training = restore_training
+        self.checkpoint_path = checkpoint_path

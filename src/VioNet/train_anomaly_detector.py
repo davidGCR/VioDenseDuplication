@@ -13,7 +13,7 @@ from VioNet.config import Config
 from VioNet.model import AnomalyDetector_model as AN
 from VioNet.models.anomaly_detector import custom_objective, RegularizedLoss
 from VioNet.epoch import train_regressor
-from utils import Log
+from utils import Log, save_checkpoint, load_checkpoint
 
 def main(config: Config, features_path, annotation_path):
     data = FeaturesLoader(features_path=features_path,
@@ -43,23 +43,8 @@ def main(config: Config, features_path, annotation_path):
     writer = SummaryWriter(log_tsb_dir)
 
     # log
-    # batch_log = Log(log_path+template_log +".csv".format(config.dataset,config.num_epoch),['epoch', 'batch', 'iter', 'loss', 'lr'])
     epoch_log = Log(log_path+template_log +".csv",['epoch', 'loss', 'lr'])
     
-    ## train parameters and others
-    # criterion = nn.CrossEntropyLoss().to(device)
-    # learning_rate = config.learning_rate
-    # momentum = config.momentum
-    # weight_decay = config.weight_decay
-    # optimizer = torch.optim.SGD(params=params,
-    #                             lr=learning_rate,
-    #                             momentum=momentum,
-    #                             weight_decay=weight_decay)
-    # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,
-    #                                                        verbose=True,
-    #                                                        factor=config.factor,
-    #                                                        min_lr=config.min_lr)
-
     #model
     model, params = AN(config)
 
@@ -74,8 +59,14 @@ def main(config: Config, features_path, annotation_path):
     criterion = RegularizedLoss(model, custom_objective)
     loss_baseline = 1
 
-    for i in range(config.num_epoch):
-        epoch=i+1
+    last_epoch = 0
+    ##Restore training
+    if config.restore_training:
+        model, optimizer, last_epoch, last_loss = load_checkpoint(model, config.device, optimizer, config.checkpoint_path)
+    
+
+    for i in range(config.num_epoch-last_epoch):
+        epoch=last_epoch+i+1
         train_loss, lr = train_regressor(epoch=i, 
                                         data_loader=loader, 
                                         model=model, 
@@ -87,7 +78,8 @@ def main(config: Config, features_path, annotation_path):
                             train_loss,
                             epoch)
         if epoch%config.save_every == 0:
-            torch.save(model.state_dict(), chk_path+template_log+"-epoch-"+str(epoch)+".pth")
+            save_checkpoint(model, epoch, optimizer, train_loss, chk_path+template_log+"-epoch-"+str(epoch)+".chk")
+            # torch.save(model.state_dict(), chk_path+template_log+"-epoch-"+str(epoch)+".pth")
 
     
 
@@ -110,5 +102,13 @@ if __name__=="__main__":
     features_path="/content/DATASETS/UCFCrime2Local/features2D"
     annotation_path="/content/DATASETS/UCFCrime2Local/test_ann.txt"
     config.additional_info = ""
+
+    ##pretrined model INICIALIZATION
+    config.pretrained_model = "model_final_100000.weights"
+
+    #restore training
+    config.restore_training = False
+    config.checkpoint_path = ""
+
 
     main(config, features_path, annotation_path)

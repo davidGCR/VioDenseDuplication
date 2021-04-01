@@ -47,3 +47,25 @@ def show_batch(img):
 
 def get_torch_device():
     return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+def save_checkpoint(model, epoch, optimizer, loss, path):
+    torch.save({
+            'epoch': epoch,
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'loss': loss,
+            }, path)
+
+def load_checkpoint(model, device, optimizer, path):
+    checkpoint = torch.load(path)
+
+    # if device == torch.device('cpu'):
+    #         state_dict = torch.load(config.pretrained_model, map_location=device)    
+    #     else:
+    #         state_dict = torch.load(config.pretrained_model)
+    model.load_state_dict(checkpoint['model_state_dict'])
+    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    epoch = checkpoint['epoch']
+    loss = checkpoint['loss']
+
+    return model, optimizer, epoch, loss
