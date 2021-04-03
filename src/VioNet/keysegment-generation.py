@@ -171,11 +171,12 @@ def load_anomaly_detector(input_dim, pretrained):
     model = AnomalyDetector(input_dim=input_dim)
     if pretrained:
         if device == torch.device('cpu'):
-            state_dict = torch.load(pretrained, map_location=device)    
+            checkpoint = torch.load(pretrained, map_location=device)    
         else:
-            state_dict = torch.load(pretrained)
-        model.load_state_dict(state_dict)
+            checkpoint = torch.load(pretrained)
+        model.load_state_dict(checkpoint['model_state_dict'])
     return model
+
 
 def main(config: Config, dataset_dir, output_csvpath):
     # load trained model

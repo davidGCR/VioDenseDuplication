@@ -57,12 +57,11 @@ def save_checkpoint(model, epoch, optimizer, loss, path):
             }, path)
 
 def load_checkpoint(model, device, optimizer, path):
-    checkpoint = torch.load(path)
-
-    # if device == torch.device('cpu'):
-    #         state_dict = torch.load(config.pretrained_model, map_location=device)    
-    #     else:
-    #         state_dict = torch.load(config.pretrained_model)
+    # checkpoint = torch.load(path)
+    if device == torch.device('cpu'):
+        checkpoint = torch.load(path, map_location=device)    
+    else:
+        checkpoint = torch.load(path)
     model.load_state_dict(checkpoint['model_state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     epoch = checkpoint['epoch']
