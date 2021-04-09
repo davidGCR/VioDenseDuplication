@@ -142,15 +142,15 @@ if __name__=='__main__':
     dataset = VideoDataset(clip_length=10,
                         frame_stride=1,
                         frame_rate=25,
-                        dataset_path= "/Volumes/TOSHIBA EXT/DATASET/AnomalyCRIMEALL/Anomaly-Videos-All",#"/Users/davidchoqueluqueroman/Documents/DATASETS_Local/hmdb51/hmdb51_org",#"/Volumes/TOSHIBA EXT/DATASET/HockeyFight/videos",
+                        dataset_path= "/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/videos/train", #"/Volumes/TOSHIBA EXT/DATASET/AnomalyCRIMEALL/Anomaly-Videos-All",#"/Users/davidchoqueluqueroman/Documents/DATASETS_Local/hmdb51/hmdb51_org",#"/Volumes/TOSHIBA EXT/DATASET/HockeyFight/videos",
                         temporal_transform=DN,
                         spatial_transform=ST)#"/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS/UCFCrime/Abuse")
     
    
 
     batch=[]
-    for i in range(6):
-        video, clip_idx, dir, file = dataset[i]
+    for i in range(15):
+        video, label, (clip_idx, dir, file) = dataset[i]
         print("video:", type(video), video.dtype, video.size())
         print("dir:",dir)
         print("file:", file)

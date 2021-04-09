@@ -88,10 +88,10 @@ if __name__=="__main__":
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     config = Config(
         model='resnetXT',  # c3d, convlstm, densenet, densenet_lean, resnet50, densenet2D, resnetXT
-        dataset='UCFCrime2Local',
+        dataset='rwf-2000',
         device=device,
         num_epoch=10000,
-        save_every=500,
+        save_every=1000,
         learning_rate=0.01,
         input_dimension=512,
         train_batch=60,
@@ -99,12 +99,12 @@ if __name__=="__main__":
     )
     # features_path="/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/features2D",
     # annotation_path="/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/test_ann.txt",
-    features_path="/content/DATASETS/UCFCrime2Local/features2D"
-    annotation_path="/content/DATASETS/UCFCrime2Local/test_ann.txt"
-    config.additional_info = ""
+    features_path="/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/features2D-train"#"/content/DATASETS/UCFCrime2Local/features2D"
+    annotation_path="rwf-200-train_ann.txt"#"/content/DATASETS/UCFCrime2Local/test_ann.txt"
+    config.additional_info = "no-pretrained-model"
 
     ##pretrined model INICIALIZATION
-    config.pretrained_model = "model_final_100000.weights"
+    # config.pretrained_model = "model_final_100000.weights"
 
     #restore training
     config.restore_training = False

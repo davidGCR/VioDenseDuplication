@@ -11,7 +11,7 @@ import torch
 g_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # print('main g_path:', g_path)
 sys.path.insert(1, g_path)
-from customdatasets.make_dataset import MakeImageHMDB51
+from customdatasets.make_dataset import MakeImageHMDB51, MakeRWF2000
 from transformations.temporal_transforms import SegmentsCrop, DynamicImage
 from transformations.temporal_transforms import SegmentsCrop
 from transformations.spatial_transforms import DIPredefinedTransforms
@@ -41,7 +41,8 @@ class VideoImageDataset(data.Dataset):
         self.number_of_clips = number_of_clips
         self.temporal_transform = temporal_transform
         self.spatial_transform = spatial_transform
-        self.paths, self.labels = make_function()
+        self.make_function = make_function
+        self.paths, self.labels = self.make_function()
         self.sampler = SegmentsCrop(size=self.number_of_clips, segment_size=self.frames_per_clip, stride=stride, overlap=overlap, padding=padding, position=position)
         self.return_metadata = return_metadata
     
@@ -68,15 +69,19 @@ class VideoImageDataset(data.Dataset):
         dynamic_images = torch.stack(dynamic_images, dim=0)
 
         if self.return_metadata:
-            return dynamic_images, video_label, video_path
+            # clip_idx = 
+            # _,file = os.path.split(video_path)
+            # dir = self.make_function.classes[video_label]
+            return dynamic_images, video_label, video_path ##TO DO
         else:    
             return dynamic_images, video_label
 
 if __name__=='__main__':
-    m = MakeImageHMDB51(root="/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/frames",
-                        annotation_path="/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/testTrainMulti_7030_splits",
-                        fold=1,
-                        train=True)
+    # m = MakeImageHMDB51(root="/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/frames",
+    #                     annotation_path="/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/testTrainMulti_7030_splits",
+    #                     fold=1,
+    #                     train=True)
+    m = MakeRWF2000(root="/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames", train=True)
     # paths, labels = m()
     # print(paths[23], labels[23])
     temporal_transform = DynamicImage(output_type="pil")
@@ -86,18 +91,18 @@ if __name__=='__main__':
     # std=None
     mean = [0.49778724, 0.49780366, 0.49776983]
     std = [0.09050678, 0.09017131, 0.0898702]
-    spatial_transform = DIPredefinedTransforms(size=224, tmp_transform=None, mean=mean, std=std)
+    spatial_transform = DIPredefinedTransforms(size=224, tmp_transform=None, mean=None, std=None)
     d=VideoImageDataset(root="",
                         frames_per_clip=10, 
-                        number_of_clips=5, 
+                        number_of_clips=12, 
                         make_function=m, 
                         stride=1, 
                         overlap=0,
                         position="start",
                         temporal_transform=temporal_transform, 
-                        spatial_transform=spatial_transform.train_transform)
+                        spatial_transform=spatial_transform.val_transform) #spatial_transform.train_transform
     import random
-    for i in random.sample(range(1,1000),10):
+    for i in random.sample(range(1,100),10):
         print(i)
         v, l = d[i]
         print("video:", v.size(), "label: ", l)

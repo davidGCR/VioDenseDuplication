@@ -9,7 +9,7 @@ print('main g_path:', g_path)
 sys.path.insert(1, g_path)
 # from data_loader import SegmentsCrop, DynamicImageIter
 from VioNet.customdatasets.video_image_dataset import VideoImageDataset
-from VioNet.customdatasets.make_dataset import MakeImageHMDB51
+from VioNet.customdatasets.make_dataset import MakeImageHMDB51, MakeRWF2000
 from VioNet.utils import get_torch_device
 from VioNet.config import Config
 from VioNet.model import FeatureExtractor_ResnetXT
@@ -61,6 +61,23 @@ def extract_from_2d(config: Config, root, annotation_path, save_dir):
     #                                         return_metadata=True)
 
     ############################################################
+    #################### RWF-2000 ################################
+    ############################################################
+    
+    # make_function = MakeRWF2000(root=root, train=True)
+
+    # data = VideoImageDataset(root="",
+    #                         frames_per_clip=config.sample_duration, 
+    #                         number_of_clips=config.number_of_clips, 
+    #                         make_function=make_function, 
+    #                         stride=config.stride, 
+    #                         overlap=config.overlap,
+    #                         position=config.position,
+    #                         temporal_transform=tmp_transform, 
+    #                         spatial_transform=data_transforms["val"],
+    #                         return_metadata=True)
+
+    ############################################################
     ################ Video Clip Dataset ########################
     ############################################################
     data = VideoDataset(clip_length=config.sample_duration,
@@ -75,6 +92,7 @@ def extract_from_2d(config: Config, root, annotation_path, save_dir):
                                             shuffle=False,
                                             num_workers=4,
                                             pin_memory=True)
+
     features_writer = FeaturesWriter(num_videos=data.video_count,avg_segments=False)
 
     with torch.no_grad():
@@ -152,20 +170,18 @@ if __name__ == "__main__":
     # config.pretrained_model = "resnet50_fps1_protest1_38_0.9757_0.073047.pth"
    
     ##### For 2D CNN ####
-    config.num_classes = 51
     config.sample_size = (224,224)
     config.sample_duration =  10# Number of frames to compute Dynamic images
     config.stride = 1 #It means number of frames to skip in a video between video clips
-    config.number_of_clips=5
-    config.overlap = 0
-    config.position = "start" #Most of time just for training
-    config.ft_begin_idx = 0 # 0: train all layers, -1: freeze conv layers
-    config.additional_info = "SDI"
+    # config.number_of_clips=12
+    # config.overlap = 0
+    # config.position = "start" #Most of time just for training
     
     config.pretrained_model = '/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/src/MyTrainedModels/resnetXT_fps10_hmdb511_52_0.3863_2.666646_SDI.pth'
     # root='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime'#'/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/frames'
-    root='/Volumes/TOSHIBA EXT/DATASET/AnomalyCRIMEALL/UCFCrime2Local/videos'
-    save_dir = '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/features2D'
+    # root='/Volumes/TOSHIBA EXT/DATASET/AnomalyCRIMEALL/UCFCrime2Local/videos'
+    root='/Volumes/TOSHIBA EXT/DATASET/RWF-2000/train'
+    save_dir = '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/features2D-train'
     annotation_path = None
     # annotation_path='/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/testTrainMulti_7030_splits'
     # root='/content/DATASETS/HMDB51/frames'

@@ -62,3 +62,36 @@ class MakeImageHMDB51():
         # print(paths, len(paths))
         # print(labels, len(labels))
         return paths, labels
+
+class MakeRWF2000():
+    def __init__(self, root, train):
+        self.root = root
+        self.train = train
+        # self.F_TAG = "Fight"
+        # self.NF_TAG = "NonFight"
+        self.classes = ["NonFight", "Fight"]
+    
+    def classes(self):
+        return self.classes
+    
+    def split(self):
+        split = "train" if self.train else "val"
+        return split
+
+    def __call__(self):
+        split = self.split()
+        paths = []
+        labels = []
+        for idx, cl in enumerate(self.classes):
+            for video_sample in os.scandir(os.path.join(self.root, split, cl)):
+                if video_sample.is_dir():
+                    paths.append(os.path.join(self.root, split, cl, video_sample))
+                    labels.append(idx)
+        
+        return paths, labels
+
+if __name__=="__main__":
+    m = MakeRWF2000(root="/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames", train=True)
+    paths, labels = m()
+    print("paths: ", paths, len(paths))
+    print("labels: ", labels, len(labels))
