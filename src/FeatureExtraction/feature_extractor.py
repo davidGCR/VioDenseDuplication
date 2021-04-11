@@ -12,11 +12,12 @@ from VioNet.customdatasets.video_image_dataset import VideoImageDataset
 from VioNet.customdatasets.make_dataset import MakeImageHMDB51, MakeRWF2000
 from VioNet.utils import get_torch_device
 from VioNet.config import Config
-from VioNet.model import FeatureExtractor_ResnetXT
+from VioNet.model import FeatureExtractor_ResnetXT, Feature_Extractor_S3D
 from VioNet.transformations.temporal_transforms import DynamicImage
 from VioNet.customdatasets.video_dataset import VideoDataset
 from VioNet.utils import show_batch
 from feature_writer import FeaturesWriter
+import numpy as np
 
 def extract_from_2d(config: Config, root, annotation_path, save_dir):
     network = FeatureExtractor_ResnetXT(config)
@@ -144,6 +145,61 @@ def extract_from_2d(config: Config, root, annotation_path, save_dir):
             # 		d = [str(x) for x in d]
             # 		fp.write(' '.join(d) + '\n')
 
+def s3d_transform(snippet):
+    ''' stack & noralization '''
+    # snippet = np.concatenate(snippet, axis=-1)
+    # snippet = torch.from_numpy(snippet).permute(2, 0, 1).contiguous().float()
+    snippet = snippet.float()
+    snippet = snippet.mul_(2.).sub_(255).div(255)
+
+    # out = snippet.view(1,-1,3,snippet.size(1),snippet.size(2)).permute(0,2,1,3,4)
+    snippet = snippet.permute(3,0,1,2)
+
+    return snippet
+
+def extract_from_s3d(config: Config):
+    network = Feature_Extractor_S3D(config)
+    data = VideoDataset(clip_length=config.sample_duration,
+                            frame_stride=config.stride,
+                            frame_rate=25,
+                            dataset_path= root,
+                            temporal_transform=None,
+                            spatial_transform=s3d_transform)
+
+    data_iter = torch.utils.data.DataLoader(data,
+                                            batch_size=config.val_batch,
+                                            shuffle=False,
+                                            num_workers=4,
+                                            pin_memory=True)
+
+    features_writer = FeaturesWriter(num_videos=data.video_count,avg_segments=False)
+
+    with torch.no_grad():
+        for inputs, labels, metadata in data_iter:
+            # print('inputs:', inputs.size(), inputs.dtype)
+            # print('metadata:', metadata)
+            # print('labels:', labels)
+            
+            outputs = network(inputs.to(device)).detach().cpu().numpy() #(13, 2048)
+            # print('outputs:', outputs.shape)
+            for idx  in range(inputs.size()[0]):
+                clip_idx = metadata[0][idx].item()
+                dir = metadata[1][idx]
+                file = metadata[2][idx]
+
+                if os.path.isdir(os.path.join(save_dir,dir,file+'.txt')):
+                    print("Already done!!! {}/{}".format(dir,file+'.txt'))
+                    break
+
+                # print(clip_idx, dir, file)
+                dir = os.path.join(save_dir, dir)
+                # print("---dir:", dir)
+                features_writer.write(feature=outputs[idx],
+                                        video_name=file,
+                                        idx=clip_idx,
+                                        dir=dir)
+
+    features_writer.dump()
 
 
 if __name__ == "__main__":
@@ -161,31 +217,28 @@ if __name__ == "__main__":
         ft_begin_idx=0,
     )
 
-    # for dataset in ['rwf-2000','hockey', 'movie', 'vif']:
-    # config.dataset = dataset
     config.train_batch = 16
-    config.val_batch = 16
+    config.val_batch = 8
     config.learning_rate = 3e-2
-    config.input_mode = 'dynamic-images' #rgb, dynamic-images
-    # config.pretrained_model = "resnet50_fps1_protest1_38_0.9757_0.073047.pth"
+    # config.input_mode = 'dynamic-images' #rgb, dynamic-images
    
     ##### For 2D CNN ####
     config.sample_size = (224,224)
-    config.sample_duration =  10# Number of frames to compute Dynamic images
+    config.sample_duration =  16# Number of frames to compute Dynamic images
     config.stride = 1 #It means number of frames to skip in a video between video clips
-    # config.number_of_clips=12
-    # config.overlap = 0
-    # config.position = "start" #Most of time just for training
     
-    config.pretrained_model = '/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/src/MyTrainedModels/resnetXT_fps10_hmdb511_52_0.3863_2.666646_SDI.pth'
+    
+    config.pretrained_model = '/Users/davidchoqueluqueroman/Documents/CODIGOS/S3D/S3D_kinetics400.pt'
+    # config.pretrained_model = '/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/src/MyTrainedModels/resnetXT_fps10_hmdb511_52_0.3863_2.666646_SDI.pth'
     # root='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime'#'/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/frames'
     # root='/Volumes/TOSHIBA EXT/DATASET/AnomalyCRIMEALL/UCFCrime2Local/videos'
-    root='/Volumes/TOSHIBA EXT/DATASET/RWF-2000/train'
-    save_dir = '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/features2D-train'
+    root='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/videos'#'/Volumes/TOSHIBA EXT/DATASET/RWF-2000/train'
+    save_dir = '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/featuresS3D-train'
     annotation_path = None
     # annotation_path='/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/testTrainMulti_7030_splits'
     # root='/content/DATASETS/HMDB51/frames'
     # annotation_path='/content/drive/MyDrive/VIOLENCE DATA/HMDB51/testTrainMulti_7030_splits'
     
     config.num_cv = 1
-    extract_from_2d(config, root, annotation_path, save_dir)
+    # extract_from_2d(config, root, annotation_path, save_dir)
+    extract_from_s3d(config)

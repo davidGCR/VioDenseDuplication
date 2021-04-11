@@ -90,7 +90,7 @@ if __name__=="__main__":
         model='resnetXT',  # c3d, convlstm, densenet, densenet_lean, resnet50, densenet2D, resnetXT
         dataset='rwf-2000',
         device=device,
-        num_epoch=10000,
+        num_epoch=200000,
         save_every=1000,
         learning_rate=0.01,
         input_dimension=512,
@@ -100,15 +100,15 @@ if __name__=="__main__":
     # features_path="/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/features2D",
     # annotation_path="/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/test_ann.txt",
     features_path="/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/features2D-train"#"/content/DATASETS/UCFCrime2Local/features2D"
-    annotation_path="rwf-200-train_ann.txt"#"/content/DATASETS/UCFCrime2Local/test_ann.txt"
-    config.additional_info = "no-pretrained-model"
+    annotation_path="rwf-2000-train_ann.txt"#"/content/DATASETS/UCFCrime2Local/test_ann.txt"
+    config.additional_info = "no-pretrained-model-restore5"
 
     ##pretrined model INICIALIZATION
     # config.pretrained_model = "model_final_100000.weights"
 
     #restore training
-    config.restore_training = False
-    config.checkpoint_path = ""
+    config.restore_training = True
+    config.checkpoint_path = "/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/VioNet_pth/anomaly_detector_datasetrwf-2000_epochs200000_no-pretrained-model-restore4-epoch-151000.chk"
 
 
     main(config, features_path, annotation_path)

@@ -15,6 +15,7 @@ import models.densenet as dn
 # import VioNet.models.models2D as rn
 
 from models.c3d import C3D
+from models.s3d import S3D, S3D_feature_extractor
 from models.densenet import densenet88, densenet121
 from models.convlstm import ConvLSTM
 from models.models2D import ResNet, Densenet2D, FusedResNextTempPool, FeatureExtractorResNextTempPool
@@ -24,6 +25,29 @@ import models.models2D as rn
 g_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
+def Feature_Extractor_S3D(config):
+    device = config.device
+    model = S3D_feature_extractor().to(device)
+    if config.pretrained_model:
+        if device == torch.device('cpu'):
+            weight_dict = torch.load(config.pretrained_model, map_location=device)
+        else:
+            weight_dict = torch.load(config.pretrained_model)
+        
+        model.load_state_dict(weight_dict, strict=False)
+
+        # model_dict = model.state_dict()
+        # for name, param in weight_dict.items():
+        #     if 'module' in name:
+        #         name = '.'.join(name.split('.')[1:])
+        #     if name in model_dict:
+        #         if param.size() == model_dict[name].size():
+        #             model_dict[name].copy_(param)
+        #         else:
+        #             print (' size? ' + name, param.size(), model_dict[name].size())
+        #     else:
+        #         print (' name? ' + name)
+    return model
 
 def AnomalyDetector_model(config):
     device = config.device

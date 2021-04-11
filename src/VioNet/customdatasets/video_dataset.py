@@ -57,6 +57,7 @@ class VideoDataset(data.Dataset):
         # print("idx: {}, video_path: {}, video_idx: {}, clip_idx: {}, in_clip_frames: {}".format(idx, video_path, video_idx, clip_idx, in_clip_frames))
 
         video = video[in_clip_frames]
+        # print('video: ', video.size(), video.dtype)
         if self.temporal_transform:
             video = self.temporal_transform(video)
         

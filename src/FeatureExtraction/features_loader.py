@@ -122,10 +122,12 @@ class FeaturesLoader(Dataset):
             lines = f.read().splitlines(keepends=False)
             
             for line in lines:
-                items = line.split()
-                file = items[0].split('.')[0]
+                # items = line.split()
+                # file = items[0].split('.')[0]
+                # file = file.replace('/', os.sep)
+            
+                file = line.split('.')[0]
                 file = file.replace('/', os.sep)
-                # print()
                 
                 feature_path = os.path.join(features_path, file)
 
@@ -133,7 +135,7 @@ class FeaturesLoader(Dataset):
                 #     continue
 
                 # print('feature_path: ', feature_path)
-                if 'Normal' in feature_path or 'nonviolence' in feature_path:
+                if 'Normal' in feature_path or 'nonviolence' in feature_path or 'NonFight' in feature_path:
                     features_list_normal.append(feature_path)
                 else:
                     features_list_anomaly.append(feature_path)
