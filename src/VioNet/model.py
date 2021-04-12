@@ -49,9 +49,14 @@ def Feature_Extractor_S3D(config):
         #         print (' name? ' + name)
     return model
 
-def AnomalyDetector_model(config):
+def AnomalyDetector_model(config, source):
+
     device = config.device
-    model = AnomalyDetector(config.input_dimension).to(device)
+    if source=="resnetxt":
+        model = AnomalyDetector(config.input_dimension).to(device)
+    elif source=="resnetxt+s3d":
+        model = AnomalyDetector(config.input_dimension[0]+config.input_dimension[1]).to(device)
+
     if config.pretrained_model:
         if device == torch.device('cpu'):
             state_dict = torch.load(config.pretrained_model, map_location=device)    

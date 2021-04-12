@@ -210,10 +210,13 @@ if __name__ == "__main__":
     pretrained_feature_extractor = "/content/drive/My Drive/VIOLENCE DATA/VioNet_pth/resnetXT_fps10_hmdb511_52_0.3863_2.666646_SDI.pth"
     pretrained_model = "/content/drive/My Drive/VIOLENCE DATA/VioNet_pth/anomaly_detector_datasetUCFCrime2Local_epochs100000-epoch-19000.pth"
 
+    _, anomaly_detec_name = os.path.split(pretrained_model)
+    
     config = Config(model="resnetXT",
                     dataset="rwf-2000",
                     device=device,
-                    sample_duration=10,
+                    input_mode='rgb',
+                    sample_duration=16,
                     stride=1,
                     overlap=0,
                     sample_size=(224,224),
@@ -225,10 +228,16 @@ if __name__ == "__main__":
     # dataset_dir = "/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames/val/Fight"
     # output_csvpath = "/Users/davidchoqueluqueroman/Documents/DATASETS_Local/rwf-vscores/val/Fight"
     
-    dataset_dir = "/content/DATASETS/rwf-2000_jpg/frames/train/Fight"
-    output_csvpath="/content/drive/My Drive/VIOLENCE DATA/rwf-vscores/train/Fight"
-    
-    main(config, dataset_dir, output_csvpath)
+    splits = ["train/Fight", "train/NonFight", "val/Fight","val/NonFight"]
+    folder_out = "/content/drive/My Drive/VIOLENCE DATA/scores-dataset({})-ANmodel({})-input({})".format(config.dataset, anomaly_detec_name[:-4], config.input_mode)
+    if not os.path.isdir(folder_out):
+        os.mkdir(folder_out)
+        for s in splits:
+            os.makedirs(os.path.join(folder_out,s))
+    for s in splits:
+        dataset_dir = "/content/DATASETS/{}".format(s)
+        output_csvpath="{}/{}".format(folder_out, s)
+        main(config, dataset_dir, output_csvpath)
     # parser = argparse.ArgumentParser()
     # # parser.add_argument("--img_dir",
     # #                     type=str,

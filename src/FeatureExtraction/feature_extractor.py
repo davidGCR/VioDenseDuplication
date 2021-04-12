@@ -157,7 +157,7 @@ def s3d_transform(snippet):
 
     return snippet
 
-def extract_from_s3d(config: Config):
+def extract_from_s3d(config: Config, root, save_dir):
     network = Feature_Extractor_S3D(config)
     data = VideoDataset(clip_length=config.sample_duration,
                             frame_stride=config.stride,
@@ -203,42 +203,33 @@ def extract_from_s3d(config: Config):
 
 
 if __name__ == "__main__":
-    # extract_from_c3d()
-
     device = get_torch_device()
-
-    dataset = 'hmdb51'
     config = Config(
-        'resnetXT',  # c3d, convlstm, densenet, densenet_lean, resnet50, densenet2D, resnetXT
-        dataset,
+        model='resnetXT',  # c3d, convlstm, densenet, densenet_lean, resnet50, densenet2D, resnetXT
+        dataset='ucfcrime2local',
         device=device,
-        num_epoch=50,
-        acc_baseline=0.30,
-        ft_begin_idx=0,
+        val_batch=8,
+        input_mode='dynamic-images',
+        sample_size=(224,224),
+        sample_duration=16,
+        stride=1,
+        pretrained_model='/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/src/MyTrainedModels/resnetXT_fps10_hmdb511_52_0.3863_2.666646_SDI.pth',#'/Users/davidchoqueluqueroman/Documents/CODIGOS/S3D/S3D_kinetics400.pt',
+        num_cv = 1
     )
-
-    config.train_batch = 16
-    config.val_batch = 8
-    config.learning_rate = 3e-2
-    # config.input_mode = 'dynamic-images' #rgb, dynamic-images
-   
-    ##### For 2D CNN ####
-    config.sample_size = (224,224)
-    config.sample_duration =  16# Number of frames to compute Dynamic images
-    config.stride = 1 #It means number of frames to skip in a video between video clips
-    
-    
-    config.pretrained_model = '/Users/davidchoqueluqueroman/Documents/CODIGOS/S3D/S3D_kinetics400.pt'
     # config.pretrained_model = '/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/src/MyTrainedModels/resnetXT_fps10_hmdb511_52_0.3863_2.666646_SDI.pth'
     # root='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime'#'/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/frames'
     # root='/Volumes/TOSHIBA EXT/DATASET/AnomalyCRIMEALL/UCFCrime2Local/videos'
-    root='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/videos'#'/Volumes/TOSHIBA EXT/DATASET/RWF-2000/train'
-    save_dir = '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/featuresS3D-train'
+    root='/Volumes/TOSHIBA EXT/DATASET/AnomalyCRIMEALL/UCFCrime2Local/videos'#'/Volumes/TOSHIBA EXT/DATASET/RWF-2000/train'
+    save_dir = '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/features_input({})_frames({})'.format(config.input_mode, config.sample_duration)
+    if not os.path.isdir(save_dir):
+        os.mkdir(save_dir)
     annotation_path = None
     # annotation_path='/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/testTrainMulti_7030_splits'
     # root='/content/DATASETS/HMDB51/frames'
     # annotation_path='/content/drive/MyDrive/VIOLENCE DATA/HMDB51/testTrainMulti_7030_splits'
     
-    config.num_cv = 1
-    # extract_from_2d(config, root, annotation_path, save_dir)
-    extract_from_s3d(config)
+    if config.input_mode == 'rgb':
+        extract_from_s3d(config, root, save_dir)
+    elif config.input_mode == 'dynamic-images':
+        extract_from_2d(config, root, annotation_path, save_dir)
+    

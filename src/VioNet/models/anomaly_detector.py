@@ -48,12 +48,17 @@ class RegularizedLoss(torch.nn.Module):
         return self.objective(y_pred, y_true) + l1_regularization + l2_regularization + l3_regularization
 
 def custom_objective(y_pred, y_true):
+    # print("y_true:", y_true, y_true.size())
+    # print("y_pred:", y_pred.size())
     # y_pred (batch_size, 32, 1)
     # y_true (batch_size)
     lambdas = 8e-5
 
     normal_vids_indices = (y_true == 0).nonzero().flatten()
     anomal_vids_indices = (y_true == 1).nonzero().flatten()
+
+    # print("normal_vids_indices:", normal_vids_indices)
+    # print("anomal_vids_indices:", anomal_vids_indices)
 
     normal_segments_scores = y_pred[normal_vids_indices]  # (batch/2, 32, 1)
     anomal_segments_scores = y_pred[anomal_vids_indices]  # (batch/2, 32, 1)

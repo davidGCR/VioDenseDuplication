@@ -22,7 +22,9 @@ class FeaturesLoader(Dataset):
                  features_path,
                  annotation_path,
                  bucket_size=30,
-                 features_dim=4096):
+                 features_dim=4096,
+                 metadata=False,
+                 shuffle=True):
 
         super(FeaturesLoader, self).__init__()
         self.features_path = features_path
@@ -37,9 +39,14 @@ class FeaturesLoader(Dataset):
         # print("features_list_anomaly:",self.features_list_anomaly)
         # print("features_list_normal:",self.features_list_normal)
         self.normal_i, self.anomalous_i = 0, 0
+        self.metadata = metadata
         
-
-        self.shuffle()
+        if shuffle:
+            self.shuffle()
+        # else:
+        #     print("hereeeeeeee")
+        #     self.features_list_normal.sort()
+        #     self.features_list_anomaly.sort()
 
     def shuffle(self):
         self.features_list_anomaly = np.random.permutation(self.features_list_anomaly)
@@ -66,9 +73,11 @@ class FeaturesLoader(Dataset):
         #     except Exception as e:
         #         index = self.rng.choice(range(0, self.__len__()))
         #         logging.warning("VideoIter:: ERROR!! (Force using another index:\n{})\n{}".format(index, e))
-        feature, label = self.get_feature(index)
+        feature, label, feature_subpath, idx = self.get_feature()
         succ = True
         # print("feature: ", feature.size(), "label: ", label)
+        if self.metadata:
+            return feature, label, feature_subpath, idx
         return feature, label
 
     def get_existing_features(self):
@@ -81,7 +90,7 @@ class FeaturesLoader(Dataset):
                     res.append(os.path.join(dir, file_no_ext))
         return res
 
-    def get_feature(self, index):
+    def get_feature(self):
         if self.state == 'Normal':  # Load a normal video
             idx = random.randint(0, len(self.features_list_normal) - 1)
             feature_subpath = self.features_list_normal[idx]
@@ -100,7 +109,7 @@ class FeaturesLoader(Dataset):
         
         self.state = 'Anomalous' if self.state == 'Normal' else 'Normal'
 
-        return features, label
+        return features, label, feature_subpath, idx
 
     @staticmethod
     def _get_features_list(features_path, annotation_path):
@@ -122,19 +131,19 @@ class FeaturesLoader(Dataset):
             lines = f.read().splitlines(keepends=False)
             
             for line in lines:
-                # items = line.split()
-                # file = items[0].split('.')[0]
-                # file = file.replace('/', os.sep)
-            
-                file = line.split('.')[0]
+                items = line.split()
+                file = items[0].split('.')[0]
                 file = file.replace('/', os.sep)
+            
+                # file = line.split('.')[0]
+                # file = file.replace('/', os.sep)
                 
                 feature_path = os.path.join(features_path, file)
 
                 # if not feature_path in available_features:
                 #     continue
 
-                # print('feature_path: ', feature_path)
+                # print('feature_pathhhhh: ', feature_path)
                 if 'Normal' in feature_path or 'nonviolence' in feature_path or 'NonFight' in feature_path:
                     features_list_normal.append(feature_path)
                 else:
@@ -142,21 +151,86 @@ class FeaturesLoader(Dataset):
 
         return features_list_normal, features_list_anomaly
 
+class ConcatFeaturesLoader(Dataset):
+    def __init__(self,
+                 features_path_1,
+                 features_path_2,
+                 annotation_path,
+                 bucket_size,
+                 features_dim_1,
+                 features_dim_2,
+                 metadata=True):
+        self.FeaturesLoader_1 = FeaturesLoader(features_path=features_path_1,
+                                               annotation_path=annotation_path,
+                                               bucket_size=bucket_size,
+                                               features_dim=features_dim_1,
+                                               metadata=metadata,
+                                               shuffle=False)
+        # self.FeaturesLoader_2 = FeaturesLoader(features_path=features_path_2, annotation_path=annotation_path, bucket_size=bucket_size, features_dim=features_dim_2, metadata=metadata, shuffle=False)
+        # self.metadata = metadata
+        self.features_dim_2 = features_dim_2
+        self.bucket_size = bucket_size
+        self.features_list_normal, self.features_list_anomaly = self.FeaturesLoader_1._get_features_list(features_path=features_path_2,
+                                                                                                    annotation_path=annotation_path)
+    
+    def __len__(self):
+        return self.bucket_size*2
+    
+    def get_feature(self, label, idx):
+        if label == 0:
+            feature_subpath = self.features_list_normal[idx]
+        else:
+            feature_subpath = self.features_list_anomaly[idx]
+        features = read_features(f"{feature_subpath}.txt", self.features_dim_2, self.bucket_size)
+        if features.shape[0] < self.bucket_size:
+            features = self.FeaturesLoader_1.__padding__(features)
+        return features, feature_subpath
+
+    
+    def __getitem__(self, index):
+        feature_1, label_1, feature_subpath_1, idx = self.FeaturesLoader_1[index]
+        feature_2, feature_subpath_2 = self.get_feature(label_1, idx)
+        # print("idx:", idx)
+        # print(' feature_subpath_1:',  feature_subpath_1)
+        # print(' feature_subpath_2:',  feature_subpath_2)
+        
+
+        feature_concat = torch.cat([feature_1, feature_2], dim=1)
+        return feature_concat, label_1
+
 if __name__ == "__main__":
-    data = FeaturesLoader(features_path="/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/features2D",
-                          annotation_path="/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/test_ann.txt",
-                          bucket_size=30,
-                          features_dim=512)
-    feature, label = data[0]
-    print("feature:", feature.size())
-    print("label:", label)
+    data_combined = ConcatFeaturesLoader(features_path_1="/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/features_input(dynamic-images)_frames(16)",
+                                         features_path_2="/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/features_S3D_input(rgb)_frames(16)",
+                                         annotation_path="/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/ucfcrime2local_train_ann.txt",
+                                         bucket_size=30,
+                                         features_dim_1=512,
+                                         features_dim_2=1024,
+                                         metadata=True)
+    # feature, label = data_combined[44]
+    # print("label_1:", label)
+    # print("feature:", feature.size())
 
     from torch.utils.data import DataLoader
-    loader = DataLoader(data,
-                        batch_size=60,
-                        shuffle=True,
-                        num_workers=1)
-
+    loader = DataLoader(data_combined,batch_size=60,shuffle=True,num_workers=1)
+    
     for feature, label in loader:
         print("feature:",feature.size())
         print("label:", label, label.size())
+
+    # data = FeaturesLoader(features_path="/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/features2D",
+    #                       annotation_path="/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/ucfcrime2local_train_ann.txt",
+    #                       bucket_size=30,
+    #                       features_dim=512)
+    # feature, label = data[0]
+    # print("feature:", feature.size())
+    # print("label:", label)
+
+    # from torch.utils.data import DataLoader
+    # loader = DataLoader(data,
+    #                     batch_size=60,
+    #                     shuffle=True,
+    #                     num_workers=1)
+
+    # for feature, label in loader:
+    #     print("feature:",feature.size())
+    #     print("label:", label, label.size())
