@@ -325,11 +325,18 @@ class RwfDatasetEval(Dataset):
         
         imgPIL, img = dynamic_image_v1(images)
         video = [imgPIL]
+        images = torch.from_numpy(np.stack(images,axis=0))
+        # images = images.permute(3,0,1,2)
         if self.spatial_transform:
-            video = self.spatial_transform(video)
+            if isinstance(self.spatial_transform, tuple):
+                video = self.spatial_transform[0](video)
+                images = self.spatial_transform[1](images)
+            else:
+                video = self.spatial_transform(video)
         
         video = torch.stack(video).permute(1, 0, 2, 3)
-        return video, segment_name
+        
+        return video, segment_name, images#(batch, c, T, w, h)
     
 if __name__ == "__main__":
     data_dir = "/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS/UCLA-protest"

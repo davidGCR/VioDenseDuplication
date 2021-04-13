@@ -14,6 +14,7 @@ from VioNet.utils import get_torch_device
 from VioNet.config import Config
 from VioNet.model import FeatureExtractor_ResnetXT, Feature_Extractor_S3D
 from VioNet.transformations.temporal_transforms import DynamicImage
+from VioNet.transformations.s3d_transform import s3d_transform
 from VioNet.customdatasets.video_dataset import VideoDataset
 from VioNet.utils import show_batch
 from feature_writer import FeaturesWriter
@@ -144,18 +145,6 @@ def extract_from_2d(config: Config, root, annotation_path, save_dir):
             # 		d = outputs[idx]
             # 		d = [str(x) for x in d]
             # 		fp.write(' '.join(d) + '\n')
-
-def s3d_transform(snippet):
-    ''' stack & noralization '''
-    # snippet = np.concatenate(snippet, axis=-1)
-    # snippet = torch.from_numpy(snippet).permute(2, 0, 1).contiguous().float()
-    snippet = snippet.float()
-    snippet = snippet.mul_(2.).sub_(255).div(255)
-
-    # out = snippet.view(1,-1,3,snippet.size(1),snippet.size(2)).permute(0,2,1,3,4)
-    snippet = snippet.permute(3,0,1,2)
-
-    return snippet
 
 def extract_from_s3d(config: Config, root, save_dir):
     network = Feature_Extractor_S3D(config)

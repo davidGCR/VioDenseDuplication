@@ -21,18 +21,18 @@ from models.convlstm import ConvLSTM
 from models.models2D import ResNet, Densenet2D, FusedResNextTempPool, FeatureExtractorResNextTempPool
 from models.anomaly_detector import AnomalyDetector
 import models.models2D as rn
+from global_var import FEAT_EXT_RESNEXT, FEAT_EXT_RESNEXT_S3D
 
 g_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-def Feature_Extractor_S3D(config):
-    device = config.device
+def Feature_Extractor_S3D(device, pretrained_model):
     model = S3D_feature_extractor().to(device)
-    if config.pretrained_model:
+    if pretrained_model:
         if device == torch.device('cpu'):
-            weight_dict = torch.load(config.pretrained_model, map_location=device)
+            weight_dict = torch.load(pretrained_model, map_location=device)
         else:
-            weight_dict = torch.load(config.pretrained_model)
+            weight_dict = torch.load(pretrained_model)
         
         model.load_state_dict(weight_dict, strict=False)
 
@@ -52,17 +52,24 @@ def Feature_Extractor_S3D(config):
 def AnomalyDetector_model(config, source):
 
     device = config.device
-    if source=="resnetxt":
+    if source==FEAT_EXT_RESNEXT:
         model = AnomalyDetector(config.input_dimension).to(device)
-    elif source=="resnetxt+s3d":
+    elif source==FEAT_EXT_RESNEXT_S3D:
         model = AnomalyDetector(config.input_dimension[0]+config.input_dimension[1]).to(device)
+
+    # if config.pretrained_model:
+    #     if device == torch.device('cpu'):
+    #         state_dict = torch.load(config.pretrained_model, map_location=device)    
+    #     else:
+    #         state_dict = torch.load(config.pretrained_model)
+    #     model.load_state_dict(state_dict, strict=False)
 
     if config.pretrained_model:
         if device == torch.device('cpu'):
-            state_dict = torch.load(config.pretrained_model, map_location=device)    
+            checkpoint = torch.load(config.pretrained_model, map_location=device)    
         else:
-            state_dict = torch.load(config.pretrained_model)
-        model.load_state_dict(state_dict, strict=False)
+            checkpoint = torch.load(config.pretrained_model)
+        model.load_state_dict(checkpoint['model_state_dict'], strict=False)
     
     params = model.parameters()
     return model, params
@@ -95,14 +102,14 @@ def VioNet_ResnetXT(config):
     params = model.parameters()
     return model, params
 
-def FeatureExtractor_ResnetXT(config):
-    device = config.device
+def FeatureExtractor_ResnetXT(device, pretrained_model):
+    
     model = FeatureExtractorResNextTempPool().to(device)
-    if config.pretrained_model:
+    if pretrained_model:
         if device == torch.device('cpu'):
-            state_dict = torch.load(config.pretrained_model, map_location=device)    
+            state_dict = torch.load(pretrained_model, map_location=device)    
         else:
-            state_dict = torch.load(config.pretrained_model)
+            state_dict = torch.load(pretrained_model)
         model.load_state_dict(state_dict, strict=False)
 
     # params = rn.get_fine_tuning_params(model, config.ft_begin_idx)

@@ -119,19 +119,22 @@ if __name__=="__main__":
         #"/content/DATASETS/UCFCrime2Local/ucfcrime2local_train_ann.txt"#"rwf-2000-train_ann.txt"#
         config.input_dimension=512
     elif source == "resnetxt+s3d":
-        features_path = ("/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/features_input(dynamic-images)_frames(16)",
-                         "/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/features_S3D_input(rgb)_frames(16)")
+        # features_path = ("/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/features_input(dynamic-images)_frames(16)",
+        #                  "/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/features_S3D_input(rgb)_frames(16)")
+        features_path = ("/content/DATASETS/UCFCrime2Local/features_input(dynamic-images)_frames(16)",
+                         "/content/DATASETS/UCFCrime2Local/features_S3D_input(rgb)_frames(16)")
         config.input_dimension=(512,1024)
     config.additional_info = source
-    annotation_path="/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/ucfcrime2local_train_ann.txt"
+    annotation_path = "/content/DATASETS/UCFCrime2Local/ucfcrime2local_train_ann.txt"
+    # annotation_path="/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/ucfcrime2local_train_ann.txt"
 
     
     ##pretrined model INICIALIZATION
     # config.pretrained_model = "model_final_100000.weights"
 
     #restore training
-    config.restore_training = False
-    # config.checkpoint_path = "/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/VioNet_pth/anomaly_detector_datasetrwf-2000_epochs200000_no-pretrained-model-restore4-epoch-151000.chk"
+    config.restore_training = True
+    config.checkpoint_path = "/content/drive/MyDrive/VIOLENCE DATA/VioNet_pth/anomaly-det_dataset(ucfcrime2local)_epochs(100000)/anomaly-det_dataset(ucfcrime2local)_epochs(100000)_resnetxt+s3d-epoch-12000.chk"#"/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/VioNet_pth/anomaly_detector_datasetrwf-2000_epochs200000_no-pretrained-model-restore4-epoch-151000.chk"
 
 
     main(config, source, features_path, annotation_path)

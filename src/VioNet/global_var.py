@@ -12,3 +12,8 @@ def getFolder(specific_folder):
       folder2save = os.path.join("/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019", specific_folder)
   return folder2save
 
+
+FEAT_EXT_RESNEXT = "resnetxt"
+FEAT_EXT_S3D = "s3d"
+FEAT_EXT_RESNEXT_S3D = "resnetxt+s3d"
+FEAT_EXT_RESNET = "resnet"

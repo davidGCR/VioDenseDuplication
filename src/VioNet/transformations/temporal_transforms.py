@@ -40,11 +40,12 @@ class CenterCrop(object):
           return [crop_r] 
 
 class SequentialCrop(object):
-    def __init__(self, size, stride=1, overlap=0.5):
+    def __init__(self, size, stride=1, overlap=0.5, max_segments=0):
         self.size = size
         self.stride = stride
         self.overlap = overlap
         self.overlap_length = int(self.overlap*self.size)
+        self.max_segments = max_segments
 
     def __call__(self, frames):
         indices = [x for x in range(0, len(frames), self.stride)]
@@ -57,6 +58,7 @@ class SequentialCrop(object):
         for i, indices_segment in enumerate(indices_segments): #Generate segments using indices
             segment = np.asarray(frames)[indices_segment].tolist()
             video_segments.append(segment)
+        video_segments = video_segments[0:self.max_segments] if self.max_segments > 0 else video_segments
         return video_segments
 
 class RandomCrop(object):
