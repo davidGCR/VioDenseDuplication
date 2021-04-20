@@ -28,14 +28,14 @@ def to_segments(data, num=32):
     return Segments_Features
 
 class FeaturesWriter:
-    def __init__(self, num_videos, avg_segments=False):
+    def __init__(self, num_videos, num_segments):
         self.path = None
         self.dir = None
         self.data = None
         # self.chunk_size = chunk_size
         self.num_videos = num_videos
         self.dump_count = 0
-        self.avg_segments = avg_segments
+        self.num_segments = num_segments
 
     def _init_video(self, video_name, dir):
         self.path = path.join(dir, f"{video_name}.txt")
@@ -52,7 +52,7 @@ class FeaturesWriter:
         if not path.exists(self.dir):
             os.mkdir(self.dir)
 
-        if self.avg_segments:
+        if self.num_segments>0:
             features = to_segments([self.data[key] for key in sorted(self.data)])
         else:
             features = [self.data[key] for key in sorted(self.data)]

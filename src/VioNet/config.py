@@ -34,7 +34,8 @@ class Config:
             save_every=100,
             bag_size=30,
             restore_training=False,
-            checkpoint_path=None
+            checkpoint_path=None,
+            num_segments=0, #0: no fix
     ):
 
         # VioNet models
@@ -95,3 +96,4 @@ class Config:
         self.pretrained_fe = pretrained_fe
         self.restore_training = restore_training
         self.checkpoint_path = checkpoint_path
+        self.num_segments = num_segments

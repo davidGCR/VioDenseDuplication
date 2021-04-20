@@ -40,9 +40,11 @@ class Log(object):
         self.writer.writerow(v)
         self.file.flush()
 
-def show_batch(img):
+def show_batch(img, title=None):
     npimg = img.numpy()
     plt.imshow(np.transpose(npimg, (1,2,0)), interpolation='nearest')
+    if title:
+        plt.title(title)
     plt.show()
 
 def get_torch_device():

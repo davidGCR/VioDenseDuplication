@@ -1,6 +1,7 @@
 import os
 import glob
 from operator import itemgetter
+import numpy as np
 
 class MakeImageHMDB51():
     def __init__(self, root, annotation_path, fold, train):
@@ -90,8 +91,164 @@ class MakeRWF2000():
         
         return paths, labels
 
+class MakeUCFCrime2Local():
+    def __init__(self, root, annotation_path, bbox_path, train):
+        self.root = root
+        self.annotation_path = annotation_path
+        self.bbox_path = bbox_path
+        self.train = train
+ 
+    def split(self):
+        split = "Train_split_AD.txt" if self.train else "Test_split_AD.txt"
+        return split
+    
+    def sp_annotation(self, path):
+        """
+        1   Track ID. All rows with the same ID belong to the same path.
+        2   xmin. The top left x-coordinate of the bounding box.
+        3   ymin. The top left y-coordinate of the bounding box.
+        4   xmax. The bottom right x-coordinate of the bounding box.
+        5   ymax. The bottom right y-coordinate of the bounding box.
+        6   frame. The frame that this annotation represents.
+        7   lost. If 1, the annotation is outside of the view screen.
+        8   occluded. If 1, the annotation is occluded.
+        9   generated. If 1, the annotation was automatically interpolated.
+        10  label. The label for this annotation, enclosed in quotation marks.
+        11+ attributes. Each column after this is an attribute.
+        """
+        assert os.path.isfile(path), "Txt Annotation {} Not Found!!!".format(path)
+
+        annotations = []
+        with open(path) as fid:
+            lines = fid.readlines()
+            ss = 1 if lines[0].split()[5] == '0' else 0
+            for line in lines:
+                # v_name = line.split()[0]
+                # print(line.split())
+                ann = line.split()
+                frame_number = int(ann[5]) + ss
+                valid = ann[6]
+                if valid == '0':
+                    annotations.append(
+                        {
+                            "frame": frame_number,
+                            "xmin": ann[1],
+                            "ymin": ann[2],
+                            "xmax": ann[3],
+                            "ymax": ann[4]
+                        }
+                    )
+        positive_intervals = self.positive_segments(annotations)
+        return annotations, positive_intervals
+                    
+    def positive_segments(self, annotations):
+        frames = []
+        positive_intervals = []
+        for an in annotations:
+            frames.append(int(an["frame"]))
+        frames.sort()
+        start_end = np.diff((np.diff(frames) == 1) + 0, prepend=0, append=0)
+        # Look for where it flips from 1 to 0, or 0 to 1.
+        start_idx = np.where(start_end == 1)[0]
+        end_idx = np.where(start_end == -1)[0]
+
+        # print("---- start_idx", start_idx)
+        # print("---- end_idx", end_idx, end_idx.shape)
+        for s, e in zip(start_idx,end_idx):
+            # print("---- ", s,e)
+            # print("[{},{}]".format(frames[s], frames[e]))
+            positive_intervals.append((frames[s], frames[e]))
+        
+        return positive_intervals
+
+    def __call__(self):
+        split_file = os.path.join(self.annotation_path, self.split())
+        paths = []
+        labels = []
+        annotations = []
+        positive_intervals = []
+        with open(split_file) as fid:
+            lines = fid.readlines()
+            for line in lines:
+                v_name = line.split()[0]
+                # print(v_name[0])
+                if os.path.isdir(os.path.join(self.root, v_name)):
+                    paths.append(os.path.join(self.root, v_name))
+                    label = 0 if "Normal" in v_name else 1
+                    labels.append(label)
+                    if label==1:
+                        annotation, intervals = self.sp_annotation(os.path.join(self.bbox_path, v_name+".txt"))
+                        annotations.append(annotation)
+                        positive_intervals.append(intervals)
+                    else:
+                        annotations.append(None)
+                        positive_intervals.append(None)
+                else:
+                    print("Folder ({}) not found!!!".format(v_name))
+        
+        return paths, labels, annotations, positive_intervals
+
+class MakeUCFCrime2LocalClips():
+    def __init__(self, root):
+        self.root = root
+        # self.annotation_path = annotation_path
+        # self.bbox_path = bbox_path
+    
+    def __get_list__(self, path):
+        paths = os.listdir(path)
+        # labels = []
+        paths = [os.path.join(path,pt) for pt in paths if os.path.isdir(os.path.join(path,pt))]
+
+        # for path in paths:
+        #     label = 0 if "Normal" in path else 1
+        #     labels.append(label)
+        
+        return paths
+
+    def __call__(self):
+        if isinstance(self.root,tuple):
+            abnormal_paths = self.__get_list__(self.root[0])
+            normal_paths = self.__get_list__(self.root[1])
+            normal_paths = [path for path in normal_paths if "Normal" in path]
+            paths = abnormal_paths + normal_paths
+            # paths = list(set(paths))
+            
+            labels = [1]*len(abnormal_paths) + [0]*len(normal_paths)
+        else:
+            print("No tuple!!!")
+            # paths = self.__get_list__(self.root)
+        
+        # labels = []
+        # for path in paths:
+        #     label = 0 if "Normal" in path else 1
+        #     labels.append(label)
+        return paths, labels
+        
+
+from collections import Counter
+import random
+
 if __name__=="__main__":
-    m = MakeRWF2000(root="/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames", train=True)
+    # m = MakeRWF2000(root="/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames", train=True)
+    # paths, labels = m()
+    # print("paths: ", paths, len(paths))
+    # print("labels: ", labels, len(labels))
+
+    # m = MakeUCFCrime2Local(root='/Volumes/TOSHIBA EXT/DATASET/AnomalyCRIMEALL/UCFCrime2Local/frames',
+    #                         annotation_path='/Volumes/TOSHIBA EXT/DATASET/AnomalyCRIMEALL/UCFCrime2Local/readme',
+    #                         bbox_path='/Volumes/TOSHIBA EXT/DATASET/AnomalyCRIMEALL/UCFCrime2Local/readme/Txt annotations',
+    #                         train=False)
+    # paths, labels, annotations, intervals = m()
+    # idx=22
+    # print(paths[idx])
+    # print(labels[idx])
+    # print(annotations[idx][0:10])
+    # print(intervals[idx])
+
+    m = MakeUCFCrime2LocalClips(root=('/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/UCFCrime2LocalClips',
+                                 '/Volumes/TOSHIBA EXT/DATASET/AnomalyCRIMEALL/UCFCrime2Local/frames'))
     paths, labels = m()
-    print("paths: ", paths, len(paths))
-    print("labels: ", labels, len(labels))
+    idx= random.randint(0, len(paths)-1)
+    print(Counter(labels))
+    print(paths[idx])
+    print(labels[idx])

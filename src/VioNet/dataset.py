@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader
 
 from PIL import Image
 from dynamic_image import dynamic_image_v1
-from transformations.temporal_transforms import KeyFrameCrop, TrainGuidedKeyFrameCrop, ValGuidedKeyFrameCrop, KeySegmentCrop
+from transformations.temporal_transforms import KeyFrameCrop, TrainGuidedKeyFrameCrop, ValGuidedKeyFrameCrop, KeySegmentCrop, SequentialCrop
 from transformations.spatial_transforms import Lighting
 import torchvision.transforms as transforms
 import numpy as np
@@ -293,11 +293,11 @@ class ProtestDatasetEval(Dataset):
         # sample["image"] = self.transform(sample["image"])
         return imgpath, image
 
-class RwfDatasetEval(Dataset):
+class OneVideoFolderDataset(Dataset):
     """
     dataset for just calculating the output (does not need an annotation file)
     """
-    def __init__(self, img_dir, spatial_transform=None, temporal_transform=None):
+    def __init__(self, img_dir, dataset, spatial_transform=None, temporal_transform=None):
         """
         Args:
             img_dir: Directory with images
@@ -307,7 +307,9 @@ class RwfDatasetEval(Dataset):
         n_frames = len(os.listdir(img_dir))
         frames = list(range(1, 1 + n_frames))
         self.segments = temporal_transform(frames)
-        # print(self.segments)
+        self.dataset=dataset
+        # self.template = 'frame{}.jpg' if dataset=="rwf-2000" else 'image_{}.jpg'
+        # print("self.segments:",self.segments)
 
     def __len__(self):
         return len(self.segments)
@@ -318,7 +320,10 @@ class RwfDatasetEval(Dataset):
         # print(idx,segment)
         images = []
         for frame_number in segment:
-            imgpath = os.path.join(self.img_dir, 'frame{}.jpg'.format(frame_number))
+            if self.dataset == "rwf-2000":
+                imgpath = os.path.join(self.img_dir, 'frame{}.jpg'.format(str(frame_number)))
+            elif self.dataset == "hockey":
+                imgpath = os.path.join(self.img_dir, 'image_{}.jpg'.format(str(frame_number).zfill(5)))
             # print('imgpath:',imgpath)
             image = imread(imgpath)
             images.append(np.array(image))
@@ -332,50 +337,76 @@ class RwfDatasetEval(Dataset):
                 video = self.spatial_transform[0](video)
                 images = self.spatial_transform[1](images)
             else:
-                video = self.spatial_transform(video)
+                video = self.spatial_transform(video[0])
+                video = [video]
         
         video = torch.stack(video).permute(1, 0, 2, 3)
         
         return video, segment_name, images#(batch, c, T, w, h)
     
 if __name__ == "__main__":
-    data_dir = "/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS/UCLA-protest"
-    img_dir_train = os.path.join(data_dir, "img/train")
-    img_dir_val = os.path.join(data_dir, "img/test")
-    txt_file_train = os.path.join(data_dir, "annot_train.txt")
-    txt_file_val = os.path.join(data_dir, "annot_test.txt")
+    # crop_method = GroupScaleCenterCrop(size=config.sample_size)
+    # norm = Normalize([0.49778724, 0.49780366, 0.49776983], [0.09050678, 0.09017131, 0.0898702 ])
+    # spatial_transform = Compose([crop_method, ToTensor(), norm])
 
-    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                     std=[0.229, 0.224, 0.225])
-    eigval = torch.Tensor([0.2175, 0.0188, 0.0045])
-    eigvec = torch.Tensor([[-0.5675,  0.7192,  0.4009],
-                            [-0.5808, -0.0045, -0.8140],
-                            [-0.5836, -0.6948,  0.4203]])
+    mean = [0.49778724, 0.49780366, 0.49776983]
+    std = [0.09050678, 0.09017131, 0.0898702]
+    size = 224
+
+    spatial_transform = transforms.Compose([
+            transforms.Resize(size),
+            transforms.CenterCrop(size),
+            transforms.ToTensor(),
+            transforms.Normalize(mean, std)])
+
+    temporal_transform = SequentialCrop(size=10, stride=1, overlap=0, max_segments=4)
+    val_dataset = OneVideoFolderDataset(img_dir="/Users/davidchoqueluqueroman/Documents/DATASETS_Local/VioDenseDatasets/hockey_jpg/fi/fi118_xvid",
+                                dataset="hockey",
+                                spatial_transform=spatial_transform, 
+                                temporal_transform=temporal_transform)
+
+    video, segment_name, images = val_dataset[3]
+    print("video: ", video.size())
+    print("segment_name: ", segment_name)
+    print("images: ", images.size())
+
+    # data_dir = "/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS/UCLA-protest"
+    # img_dir_train = os.path.join(data_dir, "img/train")
+    # img_dir_val = os.path.join(data_dir, "img/test")
+    # txt_file_train = os.path.join(data_dir, "annot_train.txt")
+    # txt_file_val = os.path.join(data_dir, "annot_test.txt")
+
+    # normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+    #                                  std=[0.229, 0.224, 0.225])
+    # eigval = torch.Tensor([0.2175, 0.0188, 0.0045])
+    # eigvec = torch.Tensor([[-0.5675,  0.7192,  0.4009],
+    #                         [-0.5808, -0.0045, -0.8140],
+    #                         [-0.5836, -0.6948,  0.4203]])
 
 
-    transform = transforms.Compose([
-                        transforms.RandomResizedCrop(224),
-                        transforms.RandomRotation(30),
-                        transforms.RandomHorizontalFlip(),
-                        transforms.ColorJitter(
-                            brightness = 0.4,
-                            contrast = 0.4,
-                            saturation = 0.4,
-                            ),
-                        transforms.ToTensor(),
-                        Lighting(0.1, eigval, eigvec),
-                        normalize,
-                    ])
+    # transform = transforms.Compose([
+    #                     transforms.RandomResizedCrop(224),
+    #                     transforms.RandomRotation(30),
+    #                     transforms.RandomHorizontalFlip(),
+    #                     transforms.ColorJitter(
+    #                         brightness = 0.4,
+    #                         contrast = 0.4,
+    #                         saturation = 0.4,
+    #                         ),
+    #                     transforms.ToTensor(),
+    #                     Lighting(0.1, eigval, eigvec),
+    #                     normalize,
+    #                 ])
                     
-    train_dataset = ProtestDataset(txt_file_train, img_dir_train, transform)
-    train_loader = DataLoader(
-                    train_dataset,
-                    num_workers = 1,
-                    batch_size = 8,
-                    shuffle = False
-                    )
-    for i, sample in enumerate(train_loader):
-        # measure data loading batch_time
-        input, target = sample['image'], sample['label']
-        print('target: ', target)
-        print('input: ', input.size())
+    # train_dataset = ProtestDataset(txt_file_train, img_dir_train, transform)
+    # train_loader = DataLoader(
+    #                 train_dataset,
+    #                 num_workers = 1,
+    #                 batch_size = 8,
+    #                 shuffle = False
+    #                 )
+    # for i, sample in enumerate(train_loader):
+    #     # measure data loading batch_time
+    #     input, target = sample['image'], sample['label']
+    #     print('target: ', target)
+    #     print('input: ', input.size())

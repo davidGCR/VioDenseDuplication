@@ -343,14 +343,15 @@ class SegmentsCrop(object):
 
         indices_segments = self.__remove_short_segments__(indices_segments)
         
-        if len(indices_segments)<self.size:
+        if len(indices_segments)<self.size and self.padding:
             indices_segments = self.__padding__(indices_segments)
         if self.size == 1:
             indices_segments = [self.__choose_one_position__(indices_segments)]
         elif self.size > 1:
             indices_segments = self.__choose_multiple_positions__(indices_segments)
-            # indices_segments = self.__padding__(indices_segments)
-        # print(indices_segments)
+        elif self.size == 0: #all
+            indices_segments = indices_segments
+           
         video_segments = []
         for i, indices_segment in enumerate(indices_segments): #Generate segments using indices
             segment = np.asarray(frames)[indices_segment].tolist()

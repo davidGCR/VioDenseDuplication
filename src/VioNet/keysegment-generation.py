@@ -2,7 +2,7 @@ import os
 from models.models2D import ResNet, Densenet2D, FeatureExtractorResNet, FeatureExtractorResNextTempPool
 # from models.anomaly_detector import AnomalyDetector
 
-from dataset import VioDB, ProtestDatasetEval, RwfDatasetEval
+from dataset import VioDB, ProtestDatasetEval, OneVideoFolderDataset
 from torch.utils.data import DataLoader
 import tqdm
 import pandas as pd
@@ -100,7 +100,7 @@ def eval_one_dir_an(config: Config, img_dir, feature_extractor, spatial_transfor
     anomaly_detector.eval()
     # make dataloader
 
-    val_dataset = RwfDatasetEval(img_dir, spatial_transform, temporal_transform)
+    val_dataset = OneVideoFolderDataset(img_dir, spatial_transform, temporal_transform)
 
     data_loader = DataLoader(val_dataset,
                             num_workers = 4,
@@ -172,6 +172,14 @@ def load_feature_extractor(config: Config, source):
         spatial_transform_1 = Compose([crop_method, ToTensor(), norm])
         temporal_transform = SequentialCrop(size=config.sample_duration, stride=config.stride, overlap=config.overlap, max_segments=7)
         spatial_transform = (spatial_transform_1, s3d_transform)
+    elif source == FEAT_EXT_RESNEXT:
+        model = FeatureExtractor_ResnetXT(config.device, config.pretrained_fe)
+        crop_method = GroupScaleCenterCrop(size=config.sample_size)
+        norm = Normalize([0.49778724, 0.49780366, 0.49776983], [0.09050678, 0.09017131, 0.0898702 ])
+
+        spatial_transform = Compose([crop_method, ToTensor(), norm])
+        temporal_transform = SequentialCrop(size=config.sample_duration, stride=config.stride, overlap=config.overlap, max_segments=7)
+      
     
     # if pretrained:
     #     if device == torch.device('cpu'):
@@ -222,15 +230,20 @@ if __name__ == "__main__":
     # pretrained_feature_extractor = "/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/src/MyTrainedModels/resnetXT_fps10_hmdb511_52_0.3863_2.666646_SDI.pth"
     # pretrained_model = "/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/src/MyTrainedModels/anomaly_detector_datasetUCFCrime2Local_epochs100000-epoch-19000.pth"
 
-    pretrained_feature_extractor = ("/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/AVSS2019/src/MyTrainedModels/resnetXT_fps10_hmdb511_52_0.3863_2.666646_SDI.pth",
-                                    "/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/AVSS2019/src/VioNet/weights/S3D_kinetics400.pt")
-    # pretrained_model = "/content/drive/My Drive/VIOLENCE DATA/VioNet_pth/anomaly_detector_datasetUCFCrime2Local_epochs100000-epoch-19000.pth"
-    pretrained_model = "/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/AVSS2019/VioNet_pth/anomaly-det_dataset(ucfcrime2local)_epochs(100000)_resnetxt+s3d-restore-1-epoch-30000.chk"
+    # pretrained_feature_extractor = ("/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/AVSS2019/src/MyTrainedModels/resnetXT_fps10_hmdb511_52_0.3863_2.666646_SDI.pth",
+    #                                 "/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/AVSS2019/src/VioNet/weights/S3D_kinetics400.pt")
+
+    # pretrained_feature_extractor = ("/content/drive/My Drive/VIOLENCE DATA/MyTrainedModels/resnetXT_fps10_hmdb511_52_0.3863_2.666646_SDI.pth",
+    #                                 "/content/VioDenseDuplication/src/VioNet/weights/S3D_kinetics400.pt")
+    pretrained_feature_extractor = "/content/drive/My Drive/VIOLENCE DATA/MyTrainedModels/resnetXT_fps10_hmdb511_52_0.3863_2.666646_SDI.pth"
+
+    pretrained_model = "/content/drive/My Drive/VIOLENCE DATA/VioNet_pth/anomaly-det_dataset(ucfcrime2local)_epochs(100000)/anomaly-det_dataset(ucfcrime2local)_epochs(100000)_resnetxt-epoch-100000.chk"
+    # pretrained_model = "/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/AVSS2019/VioNet_pth/anomaly-det_dataset(ucfcrime2local)_epochs(100000)_resnetxt+s3d-restore-1-epoch-30000.chk"
 
     _, anomaly_detec_name = os.path.split(pretrained_model)
     
     config = Config(model="anomaly-det",
-                    dataset="rwf-2000",
+                    dataset="hockey",
                     device=device,
                     input_mode='rgb',
                     sample_duration=16,
@@ -238,67 +251,35 @@ if __name__ == "__main__":
                     overlap=0,
                     sample_size=(224,224),
                     val_batch=4,
-                    input_dimension=(512,1024),
+                    input_dimension=512,#(512,1024),
                     pretrained_fe=pretrained_feature_extractor,
                     pretrained_model=pretrained_model)
     
     # dataset_dir = "/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames/val/Fight"
     # output_csvpath = "/Users/davidchoqueluqueroman/Documents/DATASETS_Local/rwf-vscores/val/Fight"
-    source = FEAT_EXT_RESNEXT_S3D
-    
-    splits = ["train/Fight", "train/NonFight", "val/Fight","val/NonFight"]
-    # folder_out = "/content/drive/My Drive/VIOLENCE DATA/scores-dataset({})-ANmodel({})-input({})".format(config.dataset, anomaly_detec_name[:-4], config.input_mode)
-    folder_out = "/Users/davidchoqueluqueroman/Documents/DATASETS_Local/scores-dataset({})-ANmodel({})-input({})".format(config.dataset, anomaly_detec_name[:-4], config.input_mode)
-    if not os.path.isdir(folder_out):
-        os.mkdir(folder_out)
+    source = FEAT_EXT_RESNEXT
+
+    if config.dataset == "rwf-2000":
+        splits = ["train/Fight", "train/NonFight", "val/Fight","val/NonFight"]
+        folder_out = "/content/drive/My Drive/VIOLENCE DATA/scores-dataset({})-ANmodel({})-input({})".format(config.dataset, anomaly_detec_name[:-4], config.input_mode)
+        # folder_out = "/Users/davidchoqueluqueroman/Documents/DATASETS_Local/scores-dataset({})-ANmodel({})-input({})".format(config.dataset, anomaly_detec_name[:-4], config.input_mode)
+        if not os.path.isdir(folder_out):
+            os.mkdir(folder_out)
+            for s in splits:
+                os.makedirs(os.path.join(folder_out,s))
         for s in splits:
-            os.makedirs(os.path.join(folder_out,s))
-    for s in splits:
-        # dataset_dir = "/content/DATASETS/{}".format(s)
-        dataset_dir = "/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames/{}".format(s)
-        output_csvpath="{}/{}".format(folder_out, s)
-        main(config, source, dataset_dir, output_csvpath)
-
-    # parser = argparse.ArgumentParser()
-    # # parser.add_argument("--img_dir",
-    # #                     type=str,
-    # #                     help = "image directory to calculate output"
-    # #                     "(the directory must contain only image files)",
-    # #                     default=''
-    # #                     )
-
-    # parser.add_argument("--dataset_dir",
-    #                     type=str,
-    #                     required = True,
-    #                     help = "dataset directory to calculate output"
-    #                     "(the directory must contain only image files)"
-    #                     )
-
-    # parser.add_argument("--output_csvpath",
-    #                     type=str,
-    #                     default = "result.csv",
-    #                     help = "path to output csv file"
-    #                     )
-    # parser.add_argument("--model",
-    #                     type=str,
-    #                     required = True,
-    #                     help = "model path"
-    #                     )
-    # # parser.add_argument("--cuda",
-    # #                     action = "store_true",
-    # #                     help = "use cuda?",
-    # #                     default=None
-    # #                     )
-    # parser.add_argument("--workers",
-    #                     type = int,
-    #                     default = 4,
-    #                     help = "number of workers",
-    #                     )
-    # parser.add_argument("--batch_size",
-    #                     type = int,
-    #                     default = 16,
-    #                     help = "batch size",
-    #                     )
-    # args = parser.parse_args()
-
-    # main()
+            dataset_dir = "/content/DATASETS/rwf-2000_jpg/frames/{}".format(s)
+            # dataset_dir = "/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames/{}".format(s)
+            output_csvpath="{}/{}".format(folder_out, s)
+            main(config, source, dataset_dir, output_csvpath)
+    elif config.dataset == "hockey":
+        splits = ["fi", "no"]
+        folder_out = "/content/drive/My Drive/VIOLENCE DATA/scores-dataset({})-ANmodel({})-input({})".format(config.dataset, anomaly_detec_name[:-4], config.input_mode)
+        if not os.path.isdir(folder_out):
+            os.mkdir(folder_out)
+            for s in splits:
+                os.makedirs(os.path.join(folder_out,s))
+        for s in splits:
+            dataset_dir = "/content/DATASETS/hockey_jpg/{}".format(s)
+            output_csvpath="{}/{}".format(folder_out, s)
+            main(config, source, dataset_dir, output_csvpath)

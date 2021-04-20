@@ -109,14 +109,14 @@ if __name__=="__main__":
         num_epoch=100000,
         save_every=1000,
         learning_rate=0.01,
-        train_batch=60,
-        bag_size=30
+        train_batch=64,
+        bag_size=32
     )
     source = "resnetxt+s3d"#resnetxt , resnetxt+s3d
 
     if source == "resnetxt":
         features_path="/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/features_input(dynamic-images)_frames(16)"#"/content/DATASETS/UCFCrime2Local/features_input(dynamic-images)_frames(16)"#"/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/features2D-train"#
-        #"/content/DATASETS/UCFCrime2Local/ucfcrime2local_train_ann.txt"#"rwf-2000-train_ann.txt"#
+        # features_path="/content/DATASETS/UCFCrime2Local/features_input(dynamic-images)_frames(16)_num_segments(32)"
         config.input_dimension=512
     elif source == "resnetxt+s3d":
         # features_path = ("/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/features_input(dynamic-images)_frames(16)",
