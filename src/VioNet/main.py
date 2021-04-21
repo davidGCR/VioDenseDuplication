@@ -16,10 +16,10 @@ from transformations.target_transforms import Label, Video
 
 from utils import Log
 from torch.utils.tensorboard import SummaryWriter
-from global_var import getFolder
+from global_var import getFolder, RWF_DATASET, HOCKEY_DATASET, VIF_DATASET
 
 g_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-print('main g_path:', g_path)
+# print('main g_path:', g_path)
 
 
 
@@ -89,7 +89,7 @@ def main(config):
     target_transform = Label()
 
     train_batch = config.train_batch
-    if dataset == 'rwf-2000':
+    if dataset == RWF_DATASET:
       train_data = VioDB(g_path + '/VioDB/{}_jpg/frames/'.format(dataset),
                        g_path + '/VioDB/{}_jpg{}.json'.format(dataset, cv), 'training',
                        spatial_transform, temporal_transform, target_transform, dataset,
@@ -97,7 +97,8 @@ def main(config):
     else:
       train_data = VioDB(g_path + '/VioDB/{}_jpg/'.format(dataset),
                         g_path + '/VioDB/{}_jpg{}.json'.format(dataset, cv), 'training',
-                        spatial_transform, temporal_transform, target_transform)
+                        spatial_transform, temporal_transform, target_transform, dataset,
+                        tmp_annotation_path=os.path.join(g_path, config.temp_annotation_path))
     train_loader = DataLoader(train_data,
                               batch_size=train_batch,
                               shuffle=True,
@@ -121,8 +122,6 @@ def main(config):
         temporal_transform = SegmentsCrop(size=sample_duration, segment_size=config.segment_size, stride=stride, overlap=0.5)
     elif val_temp_transform == 'center-crop':
         temporal_transform = CenterCrop(size=sample_duration, stride=stride, input_type=input_mode)
-    # elif temp_transform == 'random-segments':
-    #     temporal_transform = SegmentsCrop(size=sample_duration, segment_size=15, stride=stride, overlap=0.5)
     elif val_temp_transform == 'keyframe':
         temporal_transform = KeyFrameCrop(size=sample_duration, stride=stride, input_type=input_mode)
     elif val_temp_transform == 'guided-segment':
@@ -135,7 +134,7 @@ def main(config):
 
     val_batch = config.val_batch
 
-    if dataset == 'rwf-2000':
+    if dataset == RWF_DATASET:
       val_data = VioDB(g_path + '/VioDB/{}_jpg/frames/'.format(dataset),
                      g_path + '/VioDB/{}_jpg{}.json'.format(dataset, cv), 'validation',
                      spatial_transform, temporal_transform, target_transform, dataset,
@@ -143,7 +142,8 @@ def main(config):
     else:
       val_data = VioDB(g_path + '/VioDB/{}_jpg/'.format(dataset),
                       g_path + '/VioDB/{}_jpg{}.json'.format(dataset, cv), 'validation',
-                      spatial_transform, temporal_transform, target_transform)
+                      spatial_transform, temporal_transform, target_transform, dataset,
+                      tmp_annotation_path=os.path.join(g_path, config.temp_annotation_path))
     val_loader = DataLoader(val_data,
                             batch_size=val_batch,
                             shuffle=False,
@@ -154,8 +154,16 @@ def main(config):
     chk_path = getFolder('VioNet_pth')
     tsb_path = getFolder('VioNet_tensorboard_log')
 
-    log_tsb_dir = tsb_path + '/{}_fps{}_{}_split{}_input({})_Info({})'.format(config.model, sample_duration,
-                                                dataset, cv, input_mode, config.additional_info)
+    template =  '/{}_fps{}_{}_split({})_input({})_TmpTransform({})_Info({}).log.csv'.format(config.model,
+                                                                         sample_duration,
+                                                                         dataset,
+                                                                         cv,
+                                                                         input_mode,
+                                                                         config.train_temporal_transform,
+                                                                         config.additional_info
+                                                                         )
+
+    log_tsb_dir = tsb_path + template
     for pth in [log_path, chk_path, tsb_path, log_tsb_dir]:
         # make dir
         if not os.path.exists(pth):
@@ -165,26 +173,10 @@ def main(config):
     writer = SummaryWriter(log_tsb_dir)
 
     # log
-    batch_log = Log(
-        log_path+'/{}_fps{}_{}_batch{}_input({})_Info({}).log.csv'.format(
-            config.model,
-            sample_duration,
-            dataset,
-            cv,
-            input_mode, config.additional_info
-        ), ['epoch', 'batch', 'iter', 'loss', 'acc', 'lr'])
-    epoch_log = Log(
-        log_path+'/{}_fps{}_{}_epoch{}_input({})_Info({}).log.csv'.format(config.model, sample_duration,
-                                               dataset, cv, input_mode, config.additional_info),
-        ['epoch', 'loss', 'acc', 'lr'])
-    val_log = Log(
-        log_path+'/{}_fps{}_{}_val{}_input({})_Info({}).log.csv'.format(config.model, sample_duration,
-                                             dataset, cv, input_mode, config.additional_info),
-        ['epoch', 'loss', 'acc'])
-    
-    train_val_log = Log(log_path+'/{}_fps{}_{}_split{}_input({})_Info({}).LOG.csv'.format(config.model, sample_duration,
-                                               dataset, cv, input_mode, config.additional_info),
-        ['epoch', 'train_loss', 'train_acc', 'lr', 'val_loss', 'val_acc'])
+    batch_log = Log(log_path+template, ['epoch', 'batch', 'iter', 'loss', 'acc', 'lr'])
+    epoch_log = Log(log_path+template, ['epoch', 'loss', 'acc', 'lr'])
+    val_log = Log(log_path+template, ['epoch', 'loss', 'acc'])
+    train_val_log = Log(log_path+template[:-7]+'LOG.csv', ['epoch', 'train_loss', 'train_acc', 'lr', 'val_loss', 'val_acc'])
 
     # prepare
     criterion = nn.CrossEntropyLoss().to(device)
@@ -206,28 +198,15 @@ def main(config):
     acc_baseline = config.acc_baseline
     loss_baseline = 1
 
-    # for i, (inputs, targets) in enumerate(val_loader):
-    #     print('inputs:', inputs.size())
-
     for i in range(config.num_epoch):
-        train_loss, train_acc, lr = train(i, train_loader, model, criterion, optimizer, device, batch_log,
-              epoch_log)
-        val_loss, val_acc = val(i, val_loader, model, criterion, device,
-                                val_log)
+        train_loss, train_acc, lr = train(i, train_loader, model, criterion, optimizer, device, batch_log, epoch_log)
+        val_loss, val_acc = val(i, val_loader, model, criterion, device, val_log)
         epoch = i+1
         train_val_log.log({'epoch': epoch, 'train_loss': train_loss, 'train_acc': train_acc, 'lr': lr, 'val_loss': val_loss, 'val_acc': val_acc})
-        writer.add_scalar('training loss',
-                            train_loss,
-                            epoch)
-        writer.add_scalar('training accuracy',
-                            train_acc,
-                            epoch)
-        writer.add_scalar('validation loss',
-                            val_loss,
-                            epoch)
-        writer.add_scalar('validation accuracy',
-                            val_acc,
-                            epoch)
+        writer.add_scalar('training loss', train_loss, epoch)
+        writer.add_scalar('training accuracy', train_acc, epoch)
+        writer.add_scalar('validation loss', val_loss, epoch)
+        writer.add_scalar('validation accuracy', val_acc, epoch)
 
         scheduler.step(val_loss)
         if val_acc > acc_baseline or (val_acc >= acc_baseline and
@@ -243,7 +222,7 @@ def main(config):
 
 if __name__ == '__main__':
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    dataset = 'rwf-2000'
+    dataset = RWF_DATASET
     config = Config(
         'densenet_lean',  # c3d, convlstm, densenet, densenet_lean, resnet50, densenet2D
         dataset,
@@ -282,10 +261,6 @@ if __name__ == '__main__':
     config.train_temporal_transform = 'keysegment' #standar, segments, segments-keyframe, random-segments, keyframe, guided-segment, keysegment
     config.val_temporal_transform = 'keysegment'
     config.temp_annotation_path = "/content/drive/My Drive/VIOLENCE DATA/rwf-vscores"
-    # 5 fold cross validation
-    # for cv in range(1, 6):
-    #     config.num_cv = cv
-    #     main(config)
 
     ##### For 2D CNN ####
     # config.num_epoch = 50
@@ -296,5 +271,10 @@ if __name__ == '__main__':
     # config.acc_baseline = 0.90
     # config.additional_info = ""
 
-    config.num_cv = 1
-    main(config)
+    if config.dataset == RWF_DATASET:
+        config.num_cv = 1
+        main(config)
+    elif config.dataset == HOCKEY_DATASET:
+        for i in range(1,6):
+            config.num_cv = i
+            main(config)

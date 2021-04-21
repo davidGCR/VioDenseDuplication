@@ -152,13 +152,14 @@ def make_dataset(root_path, annotation_path, subset, dataset_name, tmp_annotatio
               continue
 
           n_frames = int(n_frames_loader(os.path.join(video_path, 'n_frames')))
-          
-
+          tmp_annotation = os.path.join(tmp_annotation_path, video_label, video_name) + '.csv' if tmp_annotation_path else None
+          # print("tmp_annotation: {}, video_label:{}".format(tmp_annotation, video_label))
           video = {
               'name': video_name,
               'path': video_path,
               'label': class_to_index[video_label],
-              'n_frames': n_frames
+              'n_frames': n_frames,
+              'tmp_annotation': tmp_annotation
           }
 
           dataset.append(video)
@@ -305,6 +306,9 @@ class OneVideoFolderDataset(Dataset):
         self.img_dir = img_dir
         self.spatial_transform = spatial_transform
         n_frames = len(os.listdir(img_dir))
+
+        # print("vides list ({}/{}):".format(img_dir,n_frames), os.listdir(img_dir))
+        
         frames = list(range(1, 1 + n_frames))
         self.segments = temporal_transform(frames)
         self.dataset=dataset
@@ -319,14 +323,18 @@ class OneVideoFolderDataset(Dataset):
         segment_name = '-'.join([str(elem) for elem in segment])
         # print(idx,segment)
         images = []
+
+        # real_images = []
         for frame_number in segment:
             if self.dataset == "rwf-2000":
                 imgpath = os.path.join(self.img_dir, 'frame{}.jpg'.format(str(frame_number)))
             elif self.dataset == "hockey":
                 imgpath = os.path.join(self.img_dir, 'image_{}.jpg'.format(str(frame_number).zfill(5)))
-            # print('imgpath:',imgpath)
+            # real_images.append(os.path.split(imgpath)[1])
             image = imread(imgpath)
             images.append(np.array(image))
+          
+        # print("real segment:",real_images)
         
         imgPIL, img = dynamic_image_v1(images)
         video = [imgPIL]

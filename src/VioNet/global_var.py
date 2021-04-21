@@ -17,3 +17,8 @@ FEAT_EXT_RESNEXT = "resnetxt"
 FEAT_EXT_S3D = "s3d"
 FEAT_EXT_RESNEXT_S3D = "resnetxt+s3d"
 FEAT_EXT_RESNET = "resnet"
+
+RWF_DATASET = "rwf-2000"
+HOCKEY_DATASET = "hockey"
+VIF_DATASET = "vif"
+# RWF_DATASET = "RWF-2000"

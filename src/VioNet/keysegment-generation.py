@@ -100,7 +100,7 @@ def eval_one_dir_an(config: Config, img_dir, feature_extractor, spatial_transfor
     anomaly_detector.eval()
     # make dataloader
 
-    val_dataset = OneVideoFolderDataset(img_dir, spatial_transform, temporal_transform)
+    val_dataset = OneVideoFolderDataset(img_dir, config.dataset, spatial_transform, temporal_transform)
 
     data_loader = DataLoader(val_dataset,
                             num_workers = 4,
@@ -161,6 +161,8 @@ def load_feature_extractor(config: Config, source):
     #     model = FeatureExtractorResNet()
     # elif source == FEAT_EXT_RESNEXT:
     #     model = FeatureExtractorResNextTempPool()
+
+    max_segments = 7 if config.dataset=="rwf-2000" else 4
     if source == FEAT_EXT_RESNEXT_S3D:
         model_1, model_2 = FeatureExtractor_ResnetXT(config.device, config.pretrained_fe[0]), Feature_Extractor_S3D(config.device, config.pretrained_fe[1])
         model = (model_1, model_2)
@@ -170,15 +172,24 @@ def load_feature_extractor(config: Config, source):
         dataset = config.dataset
 
         spatial_transform_1 = Compose([crop_method, ToTensor(), norm])
-        temporal_transform = SequentialCrop(size=config.sample_duration, stride=config.stride, overlap=config.overlap, max_segments=7)
+        temporal_transform = SequentialCrop(size=config.sample_duration, stride=config.stride, overlap=config.overlap, max_segments=max_segments)
         spatial_transform = (spatial_transform_1, s3d_transform)
     elif source == FEAT_EXT_RESNEXT:
         model = FeatureExtractor_ResnetXT(config.device, config.pretrained_fe)
-        crop_method = GroupScaleCenterCrop(size=config.sample_size)
-        norm = Normalize([0.49778724, 0.49780366, 0.49776983], [0.09050678, 0.09017131, 0.0898702 ])
+        # crop_method = GroupScaleCenterCrop(size=config.sample_size)
+        # norm = Normalize([0.49778724, 0.49780366, 0.49776983], [0.09050678, 0.09017131, 0.0898702 ])
+        mean = [0.49778724, 0.49780366, 0.49776983]
+        std = [0.09050678, 0.09017131, 0.0898702]
+        size = config.sample_size
 
-        spatial_transform = Compose([crop_method, ToTensor(), norm])
-        temporal_transform = SequentialCrop(size=config.sample_duration, stride=config.stride, overlap=config.overlap, max_segments=7)
+        spatial_transform = transforms.Compose([
+                transforms.Resize(size),
+                transforms.CenterCrop(size),
+                transforms.ToTensor(),
+                transforms.Normalize(mean, std)])
+
+        # spatial_transform = Compose([crop_method, ToTensor(), norm])
+        temporal_transform = SequentialCrop(size=config.sample_duration, stride=config.stride, overlap=config.overlap, max_segments=max_segments)
       
     
     # if pretrained:
@@ -237,7 +248,7 @@ if __name__ == "__main__":
     #                                 "/content/VioDenseDuplication/src/VioNet/weights/S3D_kinetics400.pt")
     pretrained_feature_extractor = "/content/drive/My Drive/VIOLENCE DATA/MyTrainedModels/resnetXT_fps10_hmdb511_52_0.3863_2.666646_SDI.pth"
 
-    pretrained_model = "/content/drive/My Drive/VIOLENCE DATA/VioNet_pth/anomaly-det_dataset(ucfcrime2local)_epochs(100000)/anomaly-det_dataset(ucfcrime2local)_epochs(100000)_resnetxt-epoch-100000.chk"
+    pretrained_model = "/content/drive/My Drive/VIOLENCE DATA/VioNet_pth/anomaly-det_dataset(UCFCrime2LocalClips)_epochs(100000)/anomaly-det_dataset(UCFCrime2LocalClips)_epochs(100000)_resnetxt-epoch-40000.chk"
     # pretrained_model = "/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/AVSS2019/VioNet_pth/anomaly-det_dataset(ucfcrime2local)_epochs(100000)_resnetxt+s3d-restore-1-epoch-30000.chk"
 
     _, anomaly_detec_name = os.path.split(pretrained_model)
@@ -246,7 +257,7 @@ if __name__ == "__main__":
                     dataset="hockey",
                     device=device,
                     input_mode='rgb',
-                    sample_duration=16,
+                    sample_duration=10,
                     stride=1,
                     overlap=0,
                     sample_size=(224,224),
