@@ -63,7 +63,7 @@ def main(config):
         norm = Normalize([0.49778724, 0.49780366, 0.49776983], [0.09050678, 0.09017131, 0.0898702 ])
         
 
-    if train_temp_transform == 'random-crop':
+    if train_temp_transform == 'standar':
         temporal_transform = RandomCrop(size=sample_duration, stride=stride, input_type=input_mode)
     elif train_temp_transform == 'segments':
         temporal_transform = SegmentsCrop(size=sample_duration, segment_size=config.segment_size, stride=stride, overlap=0.5)

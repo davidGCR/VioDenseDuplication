@@ -14,9 +14,10 @@ from transformations.spatial_transforms import Compose, ToTensor, Normalize, Gro
 from transformations.temporal_transforms import CenterCrop, SequentialCrop
 from transformations.target_transforms import Label
 from transformations.s3d_transform import s3d_transform
+from video_transforms import ToTensorVideo, RandomResizedCropVideo, NormalizeVideo
 from config import Config
-from global_var import FEAT_EXT_RESNET, FEAT_EXT_RESNEXT, FEAT_EXT_RESNEXT_S3D, FEAT_EXT_S3D
-from model import Feature_Extractor_S3D, FeatureExtractor_ResnetXT, AnomalyDetector_model
+from global_var import FEAT_EXT_RESNET, FEAT_EXT_RESNEXT, FEAT_EXT_RESNEXT_S3D, FEAT_EXT_C3D, FEAT_EXT_S3D, RWF_DATASET, HOCKEY_DATASET, DYN_IMAGE, RGB_FRAME
+from model import Feature_Extractor_S3D, FeatureExtractor_ResnetXT, AnomalyDetector_model, Feature_Extractor_C3D
 
 g_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -100,7 +101,7 @@ def eval_one_dir_an(config: Config, img_dir, feature_extractor, spatial_transfor
     anomaly_detector.eval()
     # make dataloader
 
-    val_dataset = OneVideoFolderDataset(img_dir, config.dataset, spatial_transform, temporal_transform)
+    val_dataset = OneVideoFolderDataset(img_dir, config.dataset, config.input_mode, spatial_transform, temporal_transform)
 
     data_loader = DataLoader(val_dataset,
                             num_workers = 4,
@@ -157,12 +158,8 @@ def load_classifier():
     return model
 
 def load_feature_extractor(config: Config, source):
-    # if source == FEAT_EXT_RESNET:
-    #     model = FeatureExtractorResNet()
-    # elif source == FEAT_EXT_RESNEXT:
-    #     model = FeatureExtractorResNextTempPool()
 
-    max_segments = 7 if config.dataset=="rwf-2000" else 4
+    max_segments = 7 if config.dataset==RWF_DATASET else 4
     if source == FEAT_EXT_RESNEXT_S3D:
         model_1, model_2 = FeatureExtractor_ResnetXT(config.device, config.pretrained_fe[0]), Feature_Extractor_S3D(config.device, config.pretrained_fe[1])
         model = (model_1, model_2)
@@ -180,7 +177,7 @@ def load_feature_extractor(config: Config, source):
         # norm = Normalize([0.49778724, 0.49780366, 0.49776983], [0.09050678, 0.09017131, 0.0898702 ])
         mean = [0.49778724, 0.49780366, 0.49776983]
         std = [0.09050678, 0.09017131, 0.0898702]
-        size = config.sample_size
+        size = 224
 
         spatial_transform = transforms.Compose([
                 transforms.Resize(size),
@@ -190,14 +187,18 @@ def load_feature_extractor(config: Config, source):
 
         # spatial_transform = Compose([crop_method, ToTensor(), norm])
         temporal_transform = SequentialCrop(size=config.sample_duration, stride=config.stride, overlap=config.overlap, max_segments=max_segments)
+    elif source == FEAT_EXT_C3D:
+        model = Feature_Extractor_C3D(config.device, config.pretrained_fe)
+        mean = [124 / 255, 117 / 255, 104 / 255]
+        std = [1 / (.0167 * 255)] * 3
+        size = 112
+        spatial_transform = transforms.Compose([
+            ToTensorVideo(),
+            RandomResizedCropVideo(size, size),
+            NormalizeVideo(mean=mean, std=std)
+        ])
+        temporal_transform = SequentialCrop(size=config.sample_duration, stride=config.stride, overlap=config.overlap, max_segments=max_segments)
       
-    
-    # if pretrained:
-    #     if device == torch.device('cpu'):
-    #         state_dict = torch.load(pretrained, map_location=device)    
-    #     else:
-    #         state_dict = torch.load(pretrained)
-    #     model.load_state_dict(state_dict, strict=False)
     return model, spatial_transform, temporal_transform
 
 def load_anomaly_detector(config: Config, source):
@@ -246,44 +247,46 @@ if __name__ == "__main__":
 
     # pretrained_feature_extractor = ("/content/drive/My Drive/VIOLENCE DATA/MyTrainedModels/resnetXT_fps10_hmdb511_52_0.3863_2.666646_SDI.pth",
     #                                 "/content/VioDenseDuplication/src/VioNet/weights/S3D_kinetics400.pt")
-    pretrained_feature_extractor = "/content/drive/My Drive/VIOLENCE DATA/MyTrainedModels/resnetXT_fps10_hmdb511_52_0.3863_2.666646_SDI.pth"
+    # pretrained_feature_extractor = "/content/drive/My Drive/VIOLENCE DATA/MyTrainedModels/resnetXT_fps10_hmdb511_52_0.3863_2.666646_SDI.pth"
 
-    pretrained_model = "/content/drive/My Drive/VIOLENCE DATA/VioNet_pth/anomaly-det_dataset(UCFCrime2LocalClips)_epochs(100000)/anomaly-det_dataset(UCFCrime2LocalClips)_epochs(100000)_resnetxt-epoch-40000.chk"
-    # pretrained_model = "/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/AVSS2019/VioNet_pth/anomaly-det_dataset(ucfcrime2local)_epochs(100000)_resnetxt+s3d-restore-1-epoch-30000.chk"
+    pretrained_feature_extractor = "/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/AVSS2019/src/MyTrainedModels/MFNet3D_UCF-101_Split-1_96.3.pth"
+
+    # pretrained_model = "/content/drive/My Drive/VIOLENCE DATA/VioNet_pth/anomaly-det_dataset(UCFCrime2LocalClips)_epochs(100000)/anomaly-det_dataset(UCFCrime2LocalClips)_epochs(100000)_resnetxt-epoch-40000.chk"
+    pretrained_model = "/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/AVSS2019/src/MyTrainedModels/model_40000.weights"
 
     _, anomaly_detec_name = os.path.split(pretrained_model)
     
     config = Config(model="anomaly-det",
-                    dataset="hockey",
+                    dataset=RWF_DATASET,
                     device=device,
-                    input_mode='rgb',
-                    sample_duration=10,
+                    input_mode=RGB_FRAME,
+                    sample_duration=16,
                     stride=1,
                     overlap=0,
-                    sample_size=(224,224),
+                    # sample_size=(224,224),
                     val_batch=4,
-                    input_dimension=512,#(512,1024),
+                    input_dimension=4096,#(512,1024),
                     pretrained_fe=pretrained_feature_extractor,
                     pretrained_model=pretrained_model)
     
     # dataset_dir = "/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames/val/Fight"
     # output_csvpath = "/Users/davidchoqueluqueroman/Documents/DATASETS_Local/rwf-vscores/val/Fight"
-    source = FEAT_EXT_RESNEXT
+    source = FEAT_EXT_C3D#FEAT_EXT_RESNEXT
 
-    if config.dataset == "rwf-2000":
+    if config.dataset == RWF_DATASET:
         splits = ["train/Fight", "train/NonFight", "val/Fight","val/NonFight"]
-        folder_out = "/content/drive/My Drive/VIOLENCE DATA/scores-dataset({})-ANmodel({})-input({})".format(config.dataset, anomaly_detec_name[:-4], config.input_mode)
-        # folder_out = "/Users/davidchoqueluqueroman/Documents/DATASETS_Local/scores-dataset({})-ANmodel({})-input({})".format(config.dataset, anomaly_detec_name[:-4], config.input_mode)
+        # folder_out = "/content/drive/My Drive/VIOLENCE DATA/scores-dataset({})-ANmodel({})-input({})".format(config.dataset, anomaly_detec_name[:-4], config.input_mode)
+        folder_out = "/Users/davidchoqueluqueroman/Documents/DATASETS_Local/scores-dataset({})-ANmodel({})-input({})".format(config.dataset, anomaly_detec_name[:-4], config.input_mode)
         if not os.path.isdir(folder_out):
             os.mkdir(folder_out)
             for s in splits:
                 os.makedirs(os.path.join(folder_out,s))
         for s in splits:
-            dataset_dir = "/content/DATASETS/rwf-2000_jpg/frames/{}".format(s)
-            # dataset_dir = "/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames/{}".format(s)
+            # dataset_dir = "/content/DATASETS/rwf-2000_jpg/frames/{}".format(s)
+            dataset_dir = "/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames/{}".format(s)
             output_csvpath="{}/{}".format(folder_out, s)
             main(config, source, dataset_dir, output_csvpath)
-    elif config.dataset == "hockey":
+    elif config.dataset == HOCKEY_DATASET:
         splits = ["fi", "no"]
         folder_out = "/content/drive/My Drive/VIOLENCE DATA/scores-dataset({})-ANmodel({})-input({})".format(config.dataset, anomaly_detec_name[:-4], config.input_mode)
         if not os.path.isdir(folder_out):

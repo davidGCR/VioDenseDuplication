@@ -8,6 +8,7 @@ from PIL import Image
 from dynamic_image import dynamic_image_v1
 from transformations.temporal_transforms import KeyFrameCrop, TrainGuidedKeyFrameCrop, ValGuidedKeyFrameCrop, KeySegmentCrop, SequentialCrop
 from transformations.spatial_transforms import Lighting
+from global_var import RGB_FRAME, DYN_IMAGE
 import torchvision.transforms as transforms
 import numpy as np
 import pandas as pd
@@ -298,7 +299,7 @@ class OneVideoFolderDataset(Dataset):
     """
     dataset for just calculating the output (does not need an annotation file)
     """
-    def __init__(self, img_dir, dataset, spatial_transform=None, temporal_transform=None):
+    def __init__(self, img_dir, dataset, out_type, spatial_transform=None, temporal_transform=None):
         """
         Args:
             img_dir: Directory with images
@@ -312,6 +313,7 @@ class OneVideoFolderDataset(Dataset):
         frames = list(range(1, 1 + n_frames))
         self.segments = temporal_transform(frames)
         self.dataset=dataset
+        self.out_type = out_type
         # self.template = 'frame{}.jpg' if dataset=="rwf-2000" else 'image_{}.jpg'
         # print("self.segments:",self.segments)
 
@@ -335,20 +337,25 @@ class OneVideoFolderDataset(Dataset):
             images.append(np.array(image))
           
         # print("real segment:",real_images)
-        
-        imgPIL, img = dynamic_image_v1(images)
-        video = [imgPIL]
         images = torch.from_numpy(np.stack(images,axis=0))
+        if self.out_type == DYN_IMAGE:
+            imgPIL, img = dynamic_image_v1(images)
+            video = [imgPIL]
+        elif self.out_type == RGB_FRAME:
+            video = images #(T, H, W, C)
+            # print("video: ", video.size())
+        
         # images = images.permute(3,0,1,2)
         if self.spatial_transform:
             if isinstance(self.spatial_transform, tuple):
                 video = self.spatial_transform[0](video)
                 images = self.spatial_transform[1](images)
             else:
-                video = self.spatial_transform(video[0])
-                video = [video]
-        
-        video = torch.stack(video).permute(1, 0, 2, 3)
+                # video = self.spatial_transform(video[0])
+                # video = [video]
+                video = self.spatial_transform(video)
+        if self.out_type == DYN_IMAGE:
+            video = torch.stack(video).permute(1, 0, 2, 3)
         
         return video, segment_name, images#(batch, c, T, w, h)
     
@@ -357,19 +364,30 @@ if __name__ == "__main__":
     # norm = Normalize([0.49778724, 0.49780366, 0.49776983], [0.09050678, 0.09017131, 0.0898702 ])
     # spatial_transform = Compose([crop_method, ToTensor(), norm])
 
-    mean = [0.49778724, 0.49780366, 0.49776983]
-    std = [0.09050678, 0.09017131, 0.0898702]
-    size = 224
+    # mean = [0.49778724, 0.49780366, 0.49776983]
+    # std = [0.09050678, 0.09017131, 0.0898702]
+    # size = 224
 
+    # spatial_transform = transforms.Compose([
+    #         transforms.Resize(size),
+    #         transforms.CenterCrop(size),
+    #         transforms.ToTensor(),
+    #         transforms.Normalize(mean, std)])
+
+    from video_transforms import ToTensorVideo, RandomResizedCropVideo, NormalizeVideo
+    mean = [124 / 255, 117 / 255, 104 / 255]
+    std = [1 / (.0167 * 255)] * 3
+    size = 112
     spatial_transform = transforms.Compose([
-            transforms.Resize(size),
-            transforms.CenterCrop(size),
-            transforms.ToTensor(),
-            transforms.Normalize(mean, std)])
+        ToTensorVideo(),
+        RandomResizedCropVideo(size, size),
+        NormalizeVideo(mean=mean, std=std)
+    ])
 
     temporal_transform = SequentialCrop(size=10, stride=1, overlap=0, max_segments=4)
     val_dataset = OneVideoFolderDataset(img_dir="/Users/davidchoqueluqueroman/Documents/DATASETS_Local/VioDenseDatasets/hockey_jpg/fi/fi118_xvid",
                                 dataset="hockey",
+                                out_type=RGB_FRAME,
                                 spatial_transform=spatial_transform, 
                                 temporal_transform=temporal_transform)
 
