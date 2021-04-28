@@ -253,7 +253,7 @@ def extract_from_c3d(config: Config, root, save_dir):
                                             batch_size=config.val_batch,
                                             shuffle=False,
                                             num_workers=4,
-                                            pin_memory=True)
+                                            pin_memory=False)
 
     features_writer = FeaturesWriter(num_videos=data.video_count, num_segments=config.num_segments)
 
@@ -300,7 +300,7 @@ if __name__ == "__main__":
 
     root = (os.path.join(HOME_UBUNTU, 'UCFCrime2LocalClips'),
             os.path.join(HOME_UBUNTU, 'AnomalyCRIMEDATASET/UCFCrime2Local/frames'))
-    save_dir = os.path.join(HOME_UBUNTU, 'ExtractedFeatures/Features_Dataset({})_FE()_Input({})_Frames({})_Num_Segments({})'.format(config.dataset, config.model, config.input_mode, config.sample_duration, config.num_segments))
+    save_dir = os.path.join(HOME_UBUNTU, 'ExtractedFeatures/Features_Dataset({})_FE({})_Input({})_Frames({})_Num_Segments({})'.format(config.dataset, config.model, config.input_mode, config.sample_duration, config.num_segments))
     if not os.path.isdir(save_dir):
         os.mkdir(save_dir)
     annotation_path = None
