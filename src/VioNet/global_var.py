@@ -5,14 +5,6 @@ dirname = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 folders  = dirname.split(os.sep)
 # print(folders)
 
-def getFolder(specific_folder):
-  if folders[1] == 'content':
-      folder2save = os.path.join("/content/drive/My Drive/VIOLENCE DATA", specific_folder)
-  elif folders[1] == 'Users':
-      folder2save = os.path.join("/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019", specific_folder)
-  return folder2save
-
-
 HOME_UBUNTU = "/media/david/datos/Violence DATA/"
 HOME_DRIVE = "/content/drive/My Drive/VIOLENCE DATA"
 HOME_COLAB = "/content/DATASETS"
@@ -31,3 +23,16 @@ UCFCrime2LocalClips_DATASET = "UCFCrime2LocalClips"
 
 DYN_IMAGE = "dynamic-image"
 RGB_FRAME = "rgb"
+
+
+PATH_TENSORBOARD = "VioNet_tensorboard_log"
+PATH_LOG= "VioNet_log"
+PATH_CHECKPOINT = "VioNet_pth"
+
+MODEL_ANOMALY_DET = "AnomalyDetector"
+# def getFolder(specific_folder):
+#   if folders[1] == 'content':
+#       folder2save = os.path.join("/content/drive/My Drive/VIOLENCE DATA", specific_folder)
+#   elif folders[1] == 'Users':
+#       folder2save = os.path.join("/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019", specific_folder)
+#   return folder2save

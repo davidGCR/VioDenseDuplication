@@ -8,20 +8,19 @@ from torch.utils.tensorboard import SummaryWriter
 import torch
 
 from FeatureExtraction.features_loader import FeaturesLoader, ConcatFeaturesLoader
-from VioNet.global_var import getFolder
 from VioNet.config import Config
 from VioNet.model import AnomalyDetector_model as AN
 from VioNet.models.anomaly_detector import custom_objective, RegularizedLoss
 from VioNet.epoch import train_regressor
 from utils import Log, save_checkpoint, load_checkpoint
 
-def main(config: Config, source, features_path, annotation_path):
-    if source == "resnetxt":
+def main(config: Config, source, features_path, annotation_path, home_path):
+    if source == FEAT_EXT_RESNEXT:
         data = FeaturesLoader(features_path=features_path,
                           annotation_path=annotation_path,
                           bucket_size=config.bag_size,
                           features_dim=config.input_dimension)
-    elif source == "resnetxt+s3d":
+    elif source == FEAT_EXT_RESNEXT_S3D:
         data = ConcatFeaturesLoader(features_path_1=features_path[0],
                                          features_path_2=features_path[1],
                                          annotation_path=annotation_path,
@@ -29,6 +28,11 @@ def main(config: Config, source, features_path, annotation_path):
                                          features_dim_1=config.input_dimension[0],
                                          features_dim_2=config.input_dimension[1],
                                          metadata=True)
+    elif source == FEAT_EXT_C3D:
+        data = FeaturesLoader(features_path=features_path,
+                          annotation_path=annotation_path,
+                          bucket_size=config.bag_size,
+                          features_dim=config.input_dimension)
     
 
     # feature, label = data[0]
@@ -39,27 +43,25 @@ def main(config: Config, source, features_path, annotation_path):
                         shuffle=True,
                         num_workers=4)
     
-    template_log = "/{}_dataset({})_epochs({})_{}".format(config.model,config.dataset,config.num_epoch, config.additional_info)
-    log_path = getFolder('VioNet_log')
-    chk_path = getFolder('VioNet_pth')
+    template_log = "{}_Dataset({})_Features({})_TotalEpochs({})_ExtraInfo({})".format(config.model,
+                                                                                        config.dataset,
+                                                                                        os.path.split(features_path)[1],
+                                                                                        config.num_epoch,
+                                                                                        config.additional_info)
+    log_path = os.path.join(home_path, PATH_LOG, template_log)
+    chk_path = os.path.join(home_path, PATH_CHECKPOINT, template_log)
+    tsb_path = os.path.join(home_path, PATH_TENSORBOARD, template_log)
 
-    #create a folder to checkpoints
-    chk_path = os.path.join(chk_path, "{}_dataset({})_epochs({})".format(config.model,config.dataset, config.num_epoch))
-    if not os.path.isdir(chk_path):
-        os.mkdir(chk_path)
-
-    tsb_path = getFolder('VioNet_tensorboard_log')
-    log_tsb_dir = tsb_path + template_log
-    for pth in [log_path, chk_path, tsb_path, log_tsb_dir]:
+    for pth in [log_path, chk_path, tsb_path]:
         # make dir
         if not os.path.exists(pth):
             os.mkdir(pth)
 
-    print('tensorboard dir:', log_tsb_dir)                                                
-    writer = SummaryWriter(log_tsb_dir)
+    print('tensorboard dir:', tsb_path)                                                
+    writer = SummaryWriter(tsb_path)
 
     # log
-    epoch_log = Log(log_path+template_log +".csv",['epoch', 'loss', 'lr'])
+    epoch_log = Log(os.path.join(log_path, template_log +"-LOG.csv"),['epoch', 'loss', 'lr'])
     
     #model
     model, params = AN(config, source)
@@ -98,42 +100,49 @@ def main(config: Config, source, features_path, annotation_path):
             # torch.save(model.state_dict(), chk_path+template_log+"-epoch-"+str(epoch)+".pth")
 
     
-
+from utils import get_torch_device
+from global_var import *
 
 if __name__=="__main__":
-    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    device = get_torch_device()
     config = Config(
-        model='anomaly-det',
-        dataset='UCFCrime2LocalClips',
+        model=MODEL_ANOMALY_DET,
+        dataset=UCFCrime2LocalClips_DATASET,
         device=device,
         num_epoch=100000,
-        save_every=1000,
+        save_every=2000,
         learning_rate=0.01,
         train_batch=64,
         bag_size=32
     )
-    source = "resnetxt"#resnetxt , resnetxt+s3d
+    source = FEAT_EXT_C3D#resnetxt , resnetxt+s3d
 
-    if source == "resnetxt":
+    enviroment_config = {
+        "home": HOME_UBUNTU
+    }
+
+    if source == FEAT_EXT_RESNEXT:
         # features_path="/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/features_input(dynamic-images)_frames(16)"#"/content/DATASETS/UCFCrime2Local/features_input(dynamic-images)_frames(16)"#"/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/features2D-train"#
         features_path="/content/DATASETS/UCFCrime2Local/features_from(ucfcrime2localClips)_input(dynamic-images)_frames(10)_num_segments(32)"
         config.input_dimension=512
-    elif source == "resnetxt+s3d":
+    elif source == FEAT_EXT_RESNEXT_S3D:
         # features_path = ("/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/features_input(dynamic-images)_frames(16)",
         #                  "/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/features_S3D_input(rgb)_frames(16)")
         features_path = ("/content/DATASETS/UCFCrime2Local/features_input(dynamic-images)_frames(16)",
                          "/content/DATASETS/UCFCrime2Local/features_S3D_input(rgb)_frames(16)")
         config.input_dimension=(512,1024)
+    elif source == FEAT_EXT_C3D:
+        features_path = os.path.join(enviroment_config["home"], "ExtractedFeatures", "Features_Dataset(UCFCrime2LocalClips)_FE(c3d)_Input(rgb)_Frames(16)_Num_Segments(32)")
+        config.input_dimension = 4096
     config.additional_info = source
-    annotation_path = "/content/DATASETS/UCFCrime2Local/UCFCrime2LocalClips-train_ann.txt"
+    annotation_path = os.path.join(enviroment_config["home"], config.dataset, "UCFCrime2LocalClips-train_ann.txt")
     # annotation_path="/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/ucfcrime2local_train_ann.txt"
-
     
     ##pretrined model INICIALIZATION
     # config.pretrained_model = "model_final_100000.weights"
 
     #restore training
-    config.restore_training = True
-    config.checkpoint_path = "/content/drive/MyDrive/VIOLENCE DATA/VioNet_pth/anomaly-det_dataset(UCFCrime2LocalClips)_epochs(100000)/anomaly-det_dataset(UCFCrime2LocalClips)_epochs(100000)_resnetxt-epoch-49000.chk"
+    config.restore_training = False
+    # config.checkpoint_path = "/content/drive/MyDrive/VIOLENCE DATA/VioNet_pth/anomaly-det_dataset(UCFCrime2LocalClips)_epochs(100000)/anomaly-det_dataset(UCFCrime2LocalClips)_epochs(100000)_resnetxt-epoch-49000.chk"
 
-    main(config, source, features_path, annotation_path)
+    main(config, source, features_path, annotation_path, enviroment_config["home"])

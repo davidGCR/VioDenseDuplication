@@ -57,12 +57,15 @@ class VideoImageDataset(data.Dataset):
         frames_paths.sort(key=lambda f: int(re.sub('\D', '', f)))
 
         frames_paths = [os.path.join(video_path,p) for p in frames_paths]
-        # print(frames_paths)
-        frames_idx = range(len(frames_paths))        
+        if len(frames_paths)<self.frames_per_clip:
+            diff = self.frames_per_clip - len(frames_paths)
+            while diff > 0:
+                frames_paths.append(frames_paths[len(frames_paths)-1])
+                diff -= 1  
         
         assert len(frames_paths) >= self.frames_per_clip, 'Not enough frames in video-folder: {}/{}!!!'.format(os.path.split(video_path)[1], len(frames_paths))
+        frames_idx = range(len(frames_paths))
         segments = self.sampler(frames_idx)
-        # print("video segments:", video_path, len(segments))
         
         video = []
         for i,s in enumerate(segments):

@@ -199,38 +199,38 @@ class ConcatFeaturesLoader(Dataset):
         return feature_concat, label_1
 
 if __name__ == "__main__":
-    data_combined = ConcatFeaturesLoader(features_path_1="/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/features_input(dynamic-images)_frames(16)",
-                                         features_path_2="/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/features_S3D_input(rgb)_frames(16)",
-                                         annotation_path="/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/ucfcrime2local_train_ann.txt",
-                                         bucket_size=30,
-                                         features_dim_1=512,
-                                         features_dim_2=1024,
-                                         metadata=True)
-    # feature, label = data_combined[44]
-    # print("label_1:", label)
-    # print("feature:", feature.size())
-
-    from torch.utils.data import DataLoader
-    loader = DataLoader(data_combined,batch_size=60,shuffle=True,num_workers=1)
-    
-    for feature, label in loader:
-        print("feature:",feature.size())
-        print("label:", label, label.size())
-
-    # data = FeaturesLoader(features_path="/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/features2D",
-    #                       annotation_path="/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/ucfcrime2local_train_ann.txt",
-    #                       bucket_size=30,
-    #                       features_dim=512)
-    # feature, label = data[0]
-    # print("feature:", feature.size())
-    # print("label:", label)
+    # data_combined = ConcatFeaturesLoader(features_path_1="/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/features_input(dynamic-images)_frames(16)",
+    #                                      features_path_2="/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/features_S3D_input(rgb)_frames(16)",
+    #                                      annotation_path="/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/ucfcrime2local_train_ann.txt",
+    #                                      bucket_size=30,
+    #                                      features_dim_1=512,
+    #                                      features_dim_2=1024,
+    #                                      metadata=True)
+    # # feature, label = data_combined[44]
+    # # print("label_1:", label)
+    # # print("feature:", feature.size())
 
     # from torch.utils.data import DataLoader
-    # loader = DataLoader(data,
-    #                     batch_size=60,
-    #                     shuffle=True,
-    #                     num_workers=1)
-
+    # loader = DataLoader(data_combined,batch_size=60,shuffle=True,num_workers=1)
+    
     # for feature, label in loader:
     #     print("feature:",feature.size())
     #     print("label:", label, label.size())
+
+    data = FeaturesLoader(features_path="/media/david/datos/Violence DATA/ExtractedFeatures/Features_Dataset(UCFCrime2LocalClips)_FE(c3d)_Input(rgb)_Frames(16)_Num_Segments(32)",
+                          annotation_path="/media/david/datos/Violence DATA/UCFCrime2LocalClips/UCFCrime2LocalClips-train_ann.txt",
+                          bucket_size=32,
+                          features_dim=4096)
+    feature, label = data[0]
+    print("feature:", feature.size())
+    print("label:", label)
+
+    from torch.utils.data import DataLoader
+    loader = DataLoader(data,
+                        batch_size=64,
+                        shuffle=True,
+                        num_workers=1)
+
+    for feature, label in loader:
+        print("feature:",feature.size())
+        print("label:", label, label.size())
