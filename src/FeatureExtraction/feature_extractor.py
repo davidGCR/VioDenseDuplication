@@ -7,14 +7,14 @@ import torch
 g_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 print('main g_path:', g_path)
 sys.path.insert(1, g_path)
-# from data_loader import SegmentsCrop, DynamicImageIter
+from VioNet.global_var import *
 from VioNet.customdatasets.video_image_dataset import VideoImageDataset
 from VioNet.customdatasets.make_dataset import MakeImageHMDB51, MakeRWF2000, MakeUCFCrime2LocalClips
 from VioNet.utils import get_torch_device
 from VioNet.config import Config
-from VioNet.model import FeatureExtractor_ResnetXT, Feature_Extractor_S3D
-from VioNet.transformations.temporal_transforms import DynamicImage
-from VioNet.transformations.s3d_transform import s3d_transform
+from VioNet.model import FeatureExtractor_ResnetXT, Feature_Extractor_S3D, Feature_Extractor_C3D
+from VioNet.transformations.dynamic_image_transformation import DynamicImage
+from VioNet.transformations.networks_transforms import s3d_transform, c3d_fe_transform
 from VioNet.customdatasets.video_dataset import VideoDataset
 from VioNet.utils import show_batch
 from feature_writer import FeaturesWriter
@@ -228,20 +228,68 @@ def extract_from_s3d(config: Config, root, save_dir):
 
     features_writer.dump()
 
+def extract_from_c3d(config: Config, root, save_dir):
+    from VioNet.transformations.networks_transforms import c3d_fe_transform
+    from VioNet.transformations.temporal_transforms import Segment2Images
+
+    network = Feature_Extractor_C3D(config.device, config.pretrained_fe)
+    m = MakeUCFCrime2LocalClips(root=root)
+    temporal_transform = Segment2Images(order=None)
+    spatial_transform = c3d_fe_transform()
+    
+    data=VideoImageDataset(root="",
+                        frames_per_clip=config.sample_duration, 
+                        number_of_clips=config.number_of_clips, #this will return all segments
+                        make_function=m, 
+                        stride=config.stride, 
+                        overlap=config.overlap, 
+                        position="",
+                        padding=False,
+                        return_metadata=True,
+                        temporal_transform=temporal_transform, 
+                        spatial_transform=spatial_transform)
+
+    data_iter = torch.utils.data.DataLoader(data,
+                                            batch_size=config.val_batch,
+                                            shuffle=False,
+                                            num_workers=4,
+                                            pin_memory=True)
+
+    features_writer = FeaturesWriter(num_videos=data.video_count, num_segments=config.num_segments)
+
+    with torch.no_grad():
+        for inputs, labels, path in data_iter:
+            inputs = torch.squeeze(inputs, dim=0) #remove batch dimension of 1
+            print('video:', path[0])
+            print('inputs:', inputs.size())
+
+            outputs = network(inputs.to(device)).detach().cpu().numpy()
+            for idx  in range(inputs.size()[0]):
+                clip_idx = idx
+                dir = "abnormal" if labels.item() == 1 else "normal"
+                _, file = os.path.split(path[0])
+                if os.path.isdir(os.path.join(save_dir,dir,file+'.txt')):
+                    print("Already done!!! {}/{}".format(dir,file+'.txt'))
+                    break
+                dir = os.path.join(save_dir, dir)
+                features_writer.write(feature=outputs[idx],
+                                        video_name=file,
+                                        idx=clip_idx,
+                                        dir=dir)
+    features_writer.dump()
 
 if __name__ == "__main__":
     device = get_torch_device()
     config = Config(
-        model='resnetXT',  # c3d, convlstm, densenet, densenet_lean, resnet50, densenet2D, resnetXT
-        dataset='ucfcrime2localClips',
+        model=FEAT_EXT_C3D,  # c3d, convlstm, densenet, densenet_lean, resnet50, densenet2D, resnetXT
+        dataset=UCFCrime2LocalClips_DATASET,
         device=device,
         val_batch=1,
-        input_mode='dynamic-images',
-        sample_size=(224,224),
-        sample_duration=10,
+        input_mode=RGB_FRAME,
+        sample_duration=16,
         number_of_clips=0, #0 means return al segments
         stride=1,
-        pretrained_model='/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/AVSS2019/src/MyTrainedModels/resnetXT_fps10_hmdb511_52_0.3863_2.666646_SDI.pth',#'/Users/davidchoqueluqueroman/Documents/CODIGOS/S3D/S3D_kinetics400.pt',
+        pretrained_model=os.path.join(HOME_UBUNTU, "MyTrainedModels", "MFNet3D_UCF-101_Split-1_96.3.pth"),
         num_cv=1,
         num_segments=32 #0 means no average the features
     )
@@ -250,9 +298,9 @@ if __name__ == "__main__":
     # root='/Volumes/TOSHIBA EXT/DATASET/AnomalyCRIMEALL/UCFCrime2Local/videos'
     # root='/Volumes/TOSHIBA EXT/DATASET/AnomalyCRIMEALL/UCFCrime2Local/videos'#'/Volumes/TOSHIBA EXT/DATASET/RWF-2000/train'
 
-    root = ('/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/UCFCrime2LocalClips',
-            '/Volumes/TOSHIBA EXT/DATASET/AnomalyCRIMEALL/UCFCrime2Local/frames')
-    save_dir = '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/features_from({})_input({})_frames({})_num_segments({})'.format(config.dataset,config.input_mode, config.sample_duration, config.num_segments)
+    root = (os.path.join(HOME_UBUNTU, 'UCFCrime2LocalClips'),
+            os.path.join(HOME_UBUNTU, 'AnomalyCRIMEDATASET/UCFCrime2Local/frames'))
+    save_dir = os.path.join(HOME_UBUNTU, 'ExtractedFeatures/Features_Dataset({})_FE()_Input({})_Frames({})_Num_Segments({})'.format(config.dataset, config.model, config.input_mode, config.sample_duration, config.num_segments))
     if not os.path.isdir(save_dir):
         os.mkdir(save_dir)
     annotation_path = None
@@ -260,8 +308,11 @@ if __name__ == "__main__":
     # root='/content/DATASETS/HMDB51/frames'
     # annotation_path='/content/drive/MyDrive/VIOLENCE DATA/HMDB51/testTrainMulti_7030_splits'
     
-    if config.input_mode == 'rgb':
-        extract_from_s3d(config, root, save_dir)
-    elif config.input_mode == 'dynamic-images':
+    if config.input_mode == RGB_FRAME:
+        if config.model == FEAT_EXT_S3D:
+            extract_from_s3d(config, root, save_dir)
+        elif config.model == FEAT_EXT_C3D:
+            extract_from_c3d(config, root, save_dir)
+    elif config.input_mode == DYN_IMAGE:
         extract_from_2d(config, root, annotation_path, save_dir)
     

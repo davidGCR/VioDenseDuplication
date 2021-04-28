@@ -13,6 +13,9 @@ def getFolder(specific_folder):
   return folder2save
 
 
+HOME_UBUNTU = "/media/david/datos/Violence DATA/"
+HOME_DRIVE = "/content/drive/My Drive/VIOLENCE DATA"
+
 FEAT_EXT_RESNEXT = "resnetxt"
 FEAT_EXT_S3D = "s3d"
 FEAT_EXT_C3D = "c3d"
@@ -22,7 +25,8 @@ FEAT_EXT_RESNET = "resnet"
 RWF_DATASET = "rwf-2000"
 HOCKEY_DATASET = "hockey"
 VIF_DATASET = "vif"
-# RWF_DATASET = "RWF-2000"
+UCFCrime2Local_DATASET = "UCFCrime2Local"
+UCFCrime2LocalClips_DATASET = "UCFCrime2LocalClips"
 
 DYN_IMAGE = "dynamic-image"
 RGB_FRAME = "rgb"

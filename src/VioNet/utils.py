@@ -70,3 +70,7 @@ def load_checkpoint(model, device, optimizer, path):
     loss = checkpoint['loss']
 
     return model, optimizer, epoch, loss
+
+if __name__== '__main__':
+    device = get_torch_device()
+    print("DEVICE: ", device)

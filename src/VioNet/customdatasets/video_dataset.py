@@ -122,25 +122,22 @@ class HMDB51DatasetV2(data.Dataset):
 
 g_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(1, g_path)
-from transformations.temporal_transforms import DynamicImage, tensor2PIL, PIL2numpy
-from transformations.spatial_transforms import AfineTransformation, array2PIL, DIPredefinedTransforms
+from transformations.dynamic_image_transformation import DynamicImage
+from transformations.transf_util import tensor2PIL, PIL2numpy
+from transformations.networks_transforms import DIPredefinedTransforms
+
 from utils import show_batch
 import matplotlib.pyplot as plt
+
+from VioNet.global_var import *
+from transformations.networks_transforms import c3d_fe_transform
 
 if __name__=='__main__':
 
     DN = DynamicImage(output_type="pil")
     di_t = DIPredefinedTransforms(size=224, tmp_transform=DN)
     ST = di_t.val_transform
-    # ST = torchvision.transforms.Compose([
-    #     DynamicImage(output_type="pil"),
-    #     AfineTransformation(),
-    #     torchvision.transforms.Lambda(array2PIL), #lambda x: Image.fromarray(x)
-    #     torchvision.transforms.Resize(224),
-    #     torchvision.transforms.CenterCrop(224),
-    #     torchvision.transforms.ToTensor()
-    # ])
-    dataset = VideoDataset(clip_length=10,
+    dataset = VideoDataset(clip_length=16,
                         frame_stride=1,
                         frame_rate=25,
                         dataset_path= "/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/videos/train", #"/Volumes/TOSHIBA EXT/DATASET/AnomalyCRIMEALL/Anomaly-Videos-All",#"/Users/davidchoqueluqueroman/Documents/DATASETS_Local/hmdb51/hmdb51_org",#"/Volumes/TOSHIBA EXT/DATASET/HockeyFight/videos",
@@ -163,43 +160,4 @@ if __name__=='__main__':
     show_batch(grid)
     plt.show()
 
-    # hmdb51_data_val = HMDB51DatasetV2(root='/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/hmdb51_org',
-    #                                           annotation_path='/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/testTrainMulti_7030_splits',
-    #                                           frames_per_clip=10,
-    #                                           step_between_clips=100,
-    #                                           fold=1,
-    #                                           train=False,
-    #                                           transform=ST)                                              
-    # data_loader = torch.utils.data.DataLoader(hmdb51_data_val,
-    #                                         batch_size=8,
-    #                                         shuffle=True,
-    #                                         num_workers=4)
-
-    # print('Train dataset:', len(hmdb51_data_train))
-    # print('Val dataset:', len(hmdb51_data_val))
-
-    # v, a, l = hmdb51_data_val[5000]
-    # print("video:", v.size())
-    # print("label:", l)
-    # grid = torchvision.utils.make_grid(v.permute(0,3,1,2), nrow=6, padding=50)
-    # show(grid)
-    # plt.show()
-
-    # di = DN(v)
-    # di.show()
-
-    # for idx, (v, l) in enumerate(data_loader):
-    #     if idx > 5:
-    #         break
-    #     print("video:", v.size(), v.dtype)
-    #     print("label:", l.size())
-        # print("video:", v.shape)
-        # grid = torchvision.utils.make_grid(v, nrow=5, padding=20)
-        # show(grid)
-        # for v in batch:
-        #     # v = ST(v)
-        #     grid = torchvision.utils.make_grid(v.permute(0,3,1,2), nrow=5, padding=20)
-        #     show(grid)
-        #     plt.show()
-        #     di = DN(v)
-        #     di.show()
+   

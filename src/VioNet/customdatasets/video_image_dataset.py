@@ -12,11 +12,7 @@ import re
 g_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # print('main g_path:', g_path)
 sys.path.insert(1, g_path)
-from customdatasets.make_dataset import MakeImageHMDB51, MakeRWF2000, MakeUCFCrime2LocalClips
-from transformations.temporal_transforms import SegmentsCrop, DynamicImage
-from transformations.temporal_transforms import SegmentsCrop
-from transformations.spatial_transforms import DIPredefinedTransforms
-from utils import show_batch
+
 
 class VideoImageDataset(data.Dataset):
     """
@@ -66,24 +62,33 @@ class VideoImageDataset(data.Dataset):
         segments = self.sampler(frames_idx)
         # print("video:", video_path, video_label)
         
-
-        dynamic_images = []
+        video = []
         for i,s in enumerate(segments):
             s = list(itemgetter(*s)(frames_paths)) #get frames paths
             # print("segmenets-{}:".format(i+1), [os.path.split(path)[1] for path in s])
-            image = self.temporal_transform(s)
+            image_s_ = self.temporal_transform(s)
+
+            # print("After temporal transform: ", type(image_s_), image_s_.size())
             if self.spatial_transform:
-                image = self.spatial_transform(image)
-            dynamic_images.append(image)
-        dynamic_images = torch.stack(dynamic_images, dim=0)
+                image_s_ = self.spatial_transform(image_s_)
+                # print("After spatial transform: ", type(image_s_), image_s_.size())
+            video.append(image_s_)
+        video = torch.stack(video, dim=0)
 
         if self.return_metadata:
             # clip_idx = 
             # _,file = os.path.split(video_path)
             # dir = self.make_function.classes[video_label]
-            return dynamic_images, video_label, video_path ##TO DO
+            return video, video_label, video_path ##TO DO
         else:    
-            return dynamic_images, video_label
+            return video, video_label
+
+from customdatasets.make_dataset import MakeImageHMDB51, MakeRWF2000, MakeUCFCrime2LocalClips
+from transformations.temporal_transforms import SegmentsCrop, Segment2Images
+from utils import show_batch
+from global_var import *
+from transformations.dynamic_image_transformation import DynamicImage
+from transformations.networks_transforms import dynamic_image_transform, dynamic_image_transform_without_normalization, c3d_fe_transform
 
 if __name__=='__main__':
     # m = MakeImageHMDB51(root="/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/frames",
@@ -93,17 +98,18 @@ if __name__=='__main__':
     # m = MakeRWF2000(root="/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames", train=True)
     # paths, labels = m()
     # print(paths[23], labels[23])
-    temporal_transform = DynamicImage(output_type="pil")
-    m = MakeUCFCrime2LocalClips(root=('/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/UCFCrime2LocalClips',
-                                 '/Volumes/TOSHIBA EXT/DATASET/AnomalyCRIMEALL/UCFCrime2Local/frames'))
     
-    # mean=None
-    # std=None
-    mean = [0.49778724, 0.49780366, 0.49776983]
-    std = [0.09050678, 0.09017131, 0.0898702]
-    spatial_transform = DIPredefinedTransforms(size=224, tmp_transform=None, mean=None, std=None)
+    # temporal_transform = DynamicImage(output_type="pil")
+    temporal_transform = Segment2Images(order=None)
+    m = MakeUCFCrime2LocalClips(root=(os.path.join(HOME_UBUNTU, 'UCFCrime2LocalClips'),
+                                      os.path.join(HOME_UBUNTU, 'AnomalyCRIMEDATASET/UCFCrime2Local/frames')))
+    
+    # dn=dynamic_image_transform()['val']
+    # spatial_transform=dynamic_image_transform_without_normalization()
+    spatial_transform=c3d_fe_transform()
+    
     d=VideoImageDataset(root="",
-                        frames_per_clip=10, 
+                        frames_per_clip=16, 
                         number_of_clips=0, 
                         make_function=m, 
                         stride=1, 
@@ -112,7 +118,7 @@ if __name__=='__main__':
                         padding=False,
                         return_metadata=True,
                         temporal_transform=temporal_transform, 
-                        spatial_transform=spatial_transform.val_transform) #spatial_transform.train_transform
+                        spatial_transform=spatial_transform) #spatial_transform.train_transform
     # import random
     # v, l, path = d[random.randint(0,len(d)-1)]
     # print("video:", path, v.size(), "label: ", l)
@@ -122,7 +128,7 @@ if __name__=='__main__':
 
     data_iter = torch.utils.data.DataLoader(d,
                                             batch_size=1,
-                                            shuffle=False,
+                                            shuffle=True,
                                             num_workers=1,
                                             pin_memory=True)
     for v, l, path in data_iter:
@@ -132,10 +138,3 @@ if __name__=='__main__':
         show_batch(grid, title=os.path.split(path[0])[1])
         plt.show()
 
-    # for i in random.sample(range(1,100),10):
-    #     print(i)
-    #     v, l = d[i]
-    #     print("video:", v.size(), "label: ", l)
-    #     grid = torchvision.utils.make_grid(v, nrow=6, padding=50)
-    #     show_batch(grid)
-    #     plt.show()
