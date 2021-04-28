@@ -59,8 +59,10 @@ class VideoImageDataset(data.Dataset):
         frames_paths = [os.path.join(video_path,p) for p in frames_paths]
         # print(frames_paths)
         frames_idx = range(len(frames_paths))        
+        
+        assert len(frames_paths) >= self.frames_per_clip, 'Not enough frames in video-folder: {}/{}!!!'.format(os.path.split(video_path)[1], len(frames_paths))
         segments = self.sampler(frames_idx)
-        # print("video:", video_path, video_label)
+        # print("video segments:", video_path, len(segments))
         
         video = []
         for i,s in enumerate(segments):

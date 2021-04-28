@@ -19,6 +19,7 @@ from VioNet.customdatasets.video_dataset import VideoDataset
 from VioNet.utils import show_batch
 from feature_writer import FeaturesWriter
 import numpy as np
+import gc
 
 def extract_from_2d(config: Config, root, annotation_path, save_dir):
     network = FeatureExtractor_ResnetXT(config.device, config.pretrained_model)
@@ -233,6 +234,8 @@ def extract_from_c3d(config: Config, root, save_dir):
     from VioNet.transformations.temporal_transforms import Segment2Images
 
     network = Feature_Extractor_C3D(config.device, config.pretrained_fe)
+    network.eval()
+
     m = MakeUCFCrime2LocalClips(root=root)
     temporal_transform = Segment2Images(order=None)
     spatial_transform = c3d_fe_transform()
@@ -253,24 +256,28 @@ def extract_from_c3d(config: Config, root, save_dir):
                                             batch_size=config.val_batch,
                                             shuffle=False,
                                             num_workers=4,
-                                            pin_memory=False)
+                                            pin_memory=True)
 
-    features_writer = FeaturesWriter(num_videos=data.video_count, num_segments=config.num_segments)
+    features_writer = FeaturesWriter(num_videos=data.video_count(), num_segments=config.num_segments)
 
     with torch.no_grad():
-        for inputs, labels, path in data_iter:
+        for video_num, (inputs, labels, path) in enumerate(data_iter):
+
             inputs = torch.squeeze(inputs, dim=0) #remove batch dimension of 1
-            print('video:', path[0])
-            print('inputs:', inputs.size())
+            print('{}/{} video:{}, {}'.format(len(data_iter), video_num+1, path[0], inputs.size()))
+            # print('inputs:', inputs.size())
+            dir = "abnormal" if labels.item() == 1 else "normal"
+            _, file = os.path.split(path[0])
+            if os.path.exists(os.path.join(save_dir,dir,file+'.txt')):
+                print("\tAlready DONE!!! {}/{}".format(dir,file+'.txt'))
+                continue
 
             outputs = network(inputs.to(device)).detach().cpu().numpy()
             for idx  in range(inputs.size()[0]):
+                # gc.collect()
+                # torch.cuda.empty_cache()
+
                 clip_idx = idx
-                dir = "abnormal" if labels.item() == 1 else "normal"
-                _, file = os.path.split(path[0])
-                if os.path.isdir(os.path.join(save_dir,dir,file+'.txt')):
-                    print("Already done!!! {}/{}".format(dir,file+'.txt'))
-                    break
                 dir = os.path.join(save_dir, dir)
                 features_writer.write(feature=outputs[idx],
                                         video_name=file,
@@ -279,7 +286,8 @@ def extract_from_c3d(config: Config, root, save_dir):
     features_writer.dump()
 
 if __name__ == "__main__":
-    device = get_torch_device()
+    # device = get_torch_device()
+    device = torch.device("cpu")
     config = Config(
         model=FEAT_EXT_C3D,  # c3d, convlstm, densenet, densenet_lean, resnet50, densenet2D, resnetXT
         dataset=UCFCrime2LocalClips_DATASET,
@@ -297,6 +305,10 @@ if __name__ == "__main__":
     # root='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime'#'/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/frames'
     # root='/Volumes/TOSHIBA EXT/DATASET/AnomalyCRIMEALL/UCFCrime2Local/videos'
     # root='/Volumes/TOSHIBA EXT/DATASET/AnomalyCRIMEALL/UCFCrime2Local/videos'#'/Volumes/TOSHIBA EXT/DATASET/RWF-2000/train'
+
+    # root = (os.path.join(HOME_COLAB, 'UCFCrime2LocalClips'),
+    #         os.path.join(HOME_COLAB, 'UCFCrime2Local'))
+    # save_dir = os.path.join(HOME_DRIVE, 'ExtractedFeatures/Features_Dataset({})_FE({})_Input({})_Frames({})_Num_Segments({})'.format(config.dataset, config.model, config.input_mode, config.sample_duration, config.num_segments))
 
     root = (os.path.join(HOME_UBUNTU, 'UCFCrime2LocalClips'),
             os.path.join(HOME_UBUNTU, 'AnomalyCRIMEDATASET/UCFCrime2Local/frames'))
