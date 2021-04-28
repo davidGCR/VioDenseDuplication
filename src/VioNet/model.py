@@ -28,9 +28,9 @@ g_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 def Feature_Extractor_C3D(device, pretrained_model):
     if pretrained_model:
-        model = C3D_FE(pretrained=pretrained_model)
+        model = C3D_FE(pretrained=pretrained_model).to(device)
     else:
-        model = C3D_FE(pretrained=False)
+        model = C3D_FE(pretrained=False).to(device)
     return model
     
 
