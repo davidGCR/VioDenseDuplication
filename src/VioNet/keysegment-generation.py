@@ -13,14 +13,12 @@ import torchvision.transforms as transforms
 from transformations.spatial_transforms import Compose, ToTensor, Normalize, GroupScaleCenterCrop
 from transformations.temporal_transforms import CenterCrop, SequentialCrop
 from transformations.target_transforms import Label
-from transformations.s3d_transform import s3d_transform
-from video_transforms import ToTensorVideo, RandomResizedCropVideo, NormalizeVideo
+# from video_transforms import ToTensorVideo, RandomResizedCropVideo, NormalizeVideo
 from config import Config
-from global_var import FEAT_EXT_RESNET, FEAT_EXT_RESNEXT, FEAT_EXT_RESNEXT_S3D, FEAT_EXT_C3D, FEAT_EXT_S3D, RWF_DATASET, HOCKEY_DATASET, DYN_IMAGE, RGB_FRAME
 from model import Feature_Extractor_S3D, FeatureExtractor_ResnetXT, AnomalyDetector_model, Feature_Extractor_C3D
+from transformations.networks_transforms import c3d_fe_transform, dynamic_image_transform, s3d_transform
 
 g_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 sm = torch.nn.Softmax()
 
@@ -87,6 +85,15 @@ def eval_one_dir_classifier(img_dir, model):
     # print(df.head())
     return df
 
+def load_classifier():
+    model = Densenet2D()
+    if device==torch.device('cpu'):
+        state_dict = torch.load(args.model, map_location=torch.device('cpu'))
+    else:
+        state_dict = torch.load(args.model)
+    model.load_state_dict(state_dict)
+    return model
+
 def eval_one_dir_an(config: Config, img_dir, feature_extractor, spatial_transform, temporal_transform, anomaly_detector):
   
     """
@@ -148,20 +155,10 @@ def eval_one_dir_an(config: Config, img_dir, feature_extractor, spatial_transfor
     return df
     # return 0
 
-def load_classifier():
-    model = Densenet2D()
-    if device==torch.device('cpu'):
-        state_dict = torch.load(args.model, map_location=torch.device('cpu'))
-    else:
-        state_dict = torch.load(args.model)
-    model.load_state_dict(state_dict)
-    return model
-
-def load_feature_extractor(config: Config, source):
-
+def load_feature_extractor(config: Config, pretrained_fe, source):
     max_segments = 7 if config.dataset==RWF_DATASET else 4
     if source == FEAT_EXT_RESNEXT_S3D:
-        model_1, model_2 = FeatureExtractor_ResnetXT(config.device, config.pretrained_fe[0]), Feature_Extractor_S3D(config.device, config.pretrained_fe[1])
+        model_1, model_2 = FeatureExtractor_ResnetXT(config.device, pretrained_fe[0]), Feature_Extractor_S3D(config.device, config.pretrained_fe[1])
         model = (model_1, model_2)
 
         crop_method = GroupScaleCenterCrop(size=config.sample_size)
@@ -172,54 +169,29 @@ def load_feature_extractor(config: Config, source):
         temporal_transform = SequentialCrop(size=config.sample_duration, stride=config.stride, overlap=config.overlap, max_segments=max_segments)
         spatial_transform = (spatial_transform_1, s3d_transform)
     elif source == FEAT_EXT_RESNEXT:
-        model = FeatureExtractor_ResnetXT(config.device, config.pretrained_fe)
-        # crop_method = GroupScaleCenterCrop(size=config.sample_size)
-        # norm = Normalize([0.49778724, 0.49780366, 0.49776983], [0.09050678, 0.09017131, 0.0898702 ])
-        mean = [0.49778724, 0.49780366, 0.49776983]
-        std = [0.09050678, 0.09017131, 0.0898702]
-        size = 224
-
-        spatial_transform = transforms.Compose([
-                transforms.Resize(size),
-                transforms.CenterCrop(size),
-                transforms.ToTensor(),
-                transforms.Normalize(mean, std)])
-
-        # spatial_transform = Compose([crop_method, ToTensor(), norm])
+        model = FeatureExtractor_ResnetXT(config.device, pretrained_fe)
+        spatial_transform = dynamic_image_transform()['val']
         temporal_transform = SequentialCrop(size=config.sample_duration, stride=config.stride, overlap=config.overlap, max_segments=max_segments)
     elif source == FEAT_EXT_C3D:
-        model = Feature_Extractor_C3D(config.device, config.pretrained_fe)
-        mean = [124 / 255, 117 / 255, 104 / 255]
-        std = [1 / (.0167 * 255)] * 3
-        size = 112
-        spatial_transform = transforms.Compose([
-            ToTensorVideo(),
-            RandomResizedCropVideo(size, size),
-            NormalizeVideo(mean=mean, std=std)
-        ])
+        model = Feature_Extractor_C3D(config.device, pretrained_fe)
+        spatial_transform = c3d_fe_transform()
         temporal_transform = SequentialCrop(size=config.sample_duration, stride=config.stride, overlap=config.overlap, max_segments=max_segments)
       
     return model, spatial_transform, temporal_transform
 
 def load_anomaly_detector(config: Config, source):
-    model, _ = AnomalyDetector_model(config, source) 
-    # model = AnomalyDetector(input_dim=input_dim)
-    # if pretrained:
-    #     if device == torch.device('cpu'):
-    #         checkpoint = torch.load(pretrained, map_location=device)    
-    #     else:
-    #         checkpoint = torch.load(pretrained)
-    #     model.load_state_dict(checkpoint['model_state_dict'])
+    model, _ = AnomalyDetector_model(config, source)
     return model
 
 
 def main(config: Config, source, dataset_dir, output_csvpath):
     # load trained model
-    print("*** loading model from {model}".format(model = config.pretrained_model))
-    feature_extractor, spatial_transform, temporal_transform = load_feature_extractor(config, source)
-    # feature_extractor.to(device)
+    print("*** loading Feature Extractor from {model}".format(model = config.pretrained_fe))
+    print("*** loading Anomaly Detector from {model}".format(model = config.pretrained_model))
+    feature_extractor, spatial_transform, temporal_transform = load_feature_extractor(config, config.pretrained_fe, source)
+    feature_extractor.eval()
     anomaly_detector = load_anomaly_detector(config, source)
-    # anomaly_detector.to(device)
+    anomaly_detector.eval()
     
     print("*** calculating the model output of the images in {img_dir}"
             .format(img_dir = dataset_dir))
@@ -236,9 +208,11 @@ def main(config: Config, source, dataset_dir, output_csvpath):
             df = eval_one_dir_an(config, pt, feature_extractor, spatial_transform, temporal_transform, anomaly_detector) ##Change this to use the classifier or the anomaly_detector
             df.to_csv(out_pth, index = False)
     
+from utils import get_torch_device
+from global_var import *
 
 if __name__ == "__main__":
-    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    device = get_torch_device()
     # pretrained_feature_extractor = "/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/src/MyTrainedModels/resnetXT_fps10_hmdb511_52_0.3863_2.666646_SDI.pth"
     # pretrained_model = "/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/src/MyTrainedModels/anomaly_detector_datasetUCFCrime2Local_epochs100000-epoch-19000.pth"
 
@@ -248,13 +222,19 @@ if __name__ == "__main__":
     # pretrained_feature_extractor = ("/content/drive/My Drive/VIOLENCE DATA/MyTrainedModels/resnetXT_fps10_hmdb511_52_0.3863_2.666646_SDI.pth",
     #                                 "/content/VioDenseDuplication/src/VioNet/weights/S3D_kinetics400.pt")
     # pretrained_feature_extractor = "/content/drive/My Drive/VIOLENCE DATA/MyTrainedModels/resnetXT_fps10_hmdb511_52_0.3863_2.666646_SDI.pth"
-
-    pretrained_feature_extractor = "/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/AVSS2019/src/MyTrainedModels/MFNet3D_UCF-101_Split-1_96.3.pth"
+    environment_cofig = {
+        'home': HOME_UBUNTU
+    }
+    pretrained_feature_extractor = os.path.join(environment_cofig['home'], "MyTrainedModels", "MFNet3D_UCF-101_Split-1_96.3.pth")
 
     # pretrained_model = "/content/drive/My Drive/VIOLENCE DATA/VioNet_pth/anomaly-det_dataset(UCFCrime2LocalClips)_epochs(100000)/anomaly-det_dataset(UCFCrime2LocalClips)_epochs(100000)_resnetxt-epoch-40000.chk"
-    pretrained_model = "/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/AVSS2019/src/MyTrainedModels/model_40000.weights"
+    pretrained_model = os.path.join(environment_cofig['home'],
+                                    PATH_CHECKPOINT,
+                                    "AnomalyDetector_Dataset(UCFCrime2LocalClips)_Features(c3d)_TotalEpochs(100000)_ExtraInfo(c3d)",
+                                    "Epoch-7000.chk")
 
-    _, anomaly_detec_name = os.path.split(pretrained_model)
+    h, anomaly_detec_epoch = os.path.split(pretrained_model)
+    _, anomaly_detec_config = os.path.split(h)
     
     config = Config(model="anomaly-det",
                     dataset=RWF_DATASET,
@@ -263,32 +243,32 @@ if __name__ == "__main__":
                     sample_duration=16,
                     stride=1,
                     overlap=0,
-                    # sample_size=(224,224),
                     val_batch=4,
                     input_dimension=4096,#(512,1024),
                     pretrained_fe=pretrained_feature_extractor,
                     pretrained_model=pretrained_model)
     
-    # dataset_dir = "/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames/val/Fight"
-    # output_csvpath = "/Users/davidchoqueluqueroman/Documents/DATASETS_Local/rwf-vscores/val/Fight"
     source = FEAT_EXT_C3D#FEAT_EXT_RESNEXT
+    folder_out = os.path.join(environment_cofig['home'],
+                              PATH_SCORES,
+                              "Scores-dataset({})-ANmodel({})-input({})".format(config.dataset,
+                                                                                anomaly_detec_config+"-"+anomaly_detec_epoch[:-4],
+                                                                                config.input_mode))
 
     if config.dataset == RWF_DATASET:
         splits = ["train/Fight", "train/NonFight", "val/Fight","val/NonFight"]
         # folder_out = "/content/drive/My Drive/VIOLENCE DATA/scores-dataset({})-ANmodel({})-input({})".format(config.dataset, anomaly_detec_name[:-4], config.input_mode)
-        folder_out = "/Users/davidchoqueluqueroman/Documents/DATASETS_Local/scores-dataset({})-ANmodel({})-input({})".format(config.dataset, anomaly_detec_name[:-4], config.input_mode)
         if not os.path.isdir(folder_out):
             os.mkdir(folder_out)
             for s in splits:
                 os.makedirs(os.path.join(folder_out,s))
         for s in splits:
             # dataset_dir = "/content/DATASETS/rwf-2000_jpg/frames/{}".format(s)
-            dataset_dir = "/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames/{}".format(s)
+            dataset_dir = os.path.join(environment_cofig['home'], "RWF-2000/frames/{}".format(s))
             output_csvpath="{}/{}".format(folder_out, s)
             main(config, source, dataset_dir, output_csvpath)
     elif config.dataset == HOCKEY_DATASET:
         splits = ["fi", "no"]
-        folder_out = "/content/drive/My Drive/VIOLENCE DATA/scores-dataset({})-ANmodel({})-input({})".format(config.dataset, anomaly_detec_name[:-4], config.input_mode)
         if not os.path.isdir(folder_out):
             os.mkdir(folder_out)
             for s in splits:

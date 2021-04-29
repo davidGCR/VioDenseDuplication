@@ -7,12 +7,6 @@ import torch
 import torch.nn as nn
 
 import models.densenet as dn
-# from VioNet.models.c3d import C3D
-# from VioNet.models.densenet import densenet88, densenet121
-# from VioNet.models.convlstm import ConvLSTM
-# from VioNet.models.models2D import ResNet, Densenet2D, FusedResNextTempPool, FeatureExtractorResNextTempPool
-# from VioNet.models.anomaly_detector import AnomalyDetector
-# import VioNet.models.models2D as rn
 
 from models.c3d import C3D
 from models.c3d_fe import C3D_FE
@@ -22,9 +16,9 @@ from models.convlstm import ConvLSTM
 from models.models2D import ResNet, Densenet2D, FusedResNextTempPool, FeatureExtractorResNextTempPool
 from models.anomaly_detector import AnomalyDetector
 import models.models2D as rn
-from global_var import FEAT_EXT_RESNEXT, FEAT_EXT_RESNEXT_S3D, FEAT_EXT_C3D
+from global_var import *
 
-g_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# g_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 def Feature_Extractor_C3D(device, pretrained_model):
     if pretrained_model:
@@ -77,10 +71,11 @@ def AnomalyDetector_model(config, source):
             checkpoint = torch.load(config.pretrained_model, map_location=device)    
         else:
             checkpoint = torch.load(config.pretrained_model)
-        if not source == FEAT_EXT_C3D:
-            model.load_state_dict(checkpoint['model_state_dict'], strict=False)
-        else:
-            model.load_state_dict(checkpoint)
+        # if not source == FEAT_EXT_C3D:
+        #     model.load_state_dict(checkpoint['model_state_dict'], strict=False)
+        # else:
+        #     model.load_state_dict(checkpoint)
+        model.load_state_dict(checkpoint['model_state_dict'], strict=False)
     
     params = model.parameters()
     return model, params
@@ -92,11 +87,12 @@ def VioNet_Densenet2D(config):
     params = rn.get_fine_tuning_params(model, config.ft_begin_idx)
     return model, params
 
-def VioNet_Resnet(config):
+def VioNet_Resnet(config, home_path):
     device = config.device
     model = ResNet(num_classes=config.num_classes).to(device)
     if config.pretrained_model:
-        state_dict = torch.load(g_path +'/VioNet/weights/'+ config.pretrained_model)
+        # state_dict = torch.load(g_path +'/VioNet/weights/'+ config.pretrained_model)
+        state_dict = torch.load(os.path.join(home_path, VIONET_WEIGHTS, config.pretrained_model))
         model.load_state_dict(state_dict)
 
     params = rn.get_fine_tuning_params(model, config.ft_begin_idx)
@@ -126,13 +122,14 @@ def FeatureExtractor_ResnetXT(device, pretrained_model):
     # params = rn.get_fine_tuning_params(model, config.ft_begin_idx)
     return model
 
-def VioNet_C3D(config):
+def VioNet_C3D(config, home_path):
     device = config.device
     model = C3D(num_classes=2).to(device)
 
     # print(model)
 
-    state_dict = torch.load(g_path +'/VioNet/'+ 'weights/C3D_Kinetics.pth')
+    # state_dict = torch.load(g_path +'/VioNet/'+ 'weights/C3D_Kinetics.pth')
+    state_dict = torch.load(os.path.join(home_path, VIONET_WEIGHTS, 'C3D_Kinetics.pth'))
     
     # state_dict =state_dict['state_dict']
 
@@ -165,7 +162,7 @@ def VioNet_ConvLSTM(config):
     return model, params
 
 
-def VioNet_densenet(config):
+def VioNet_densenet(config, home_path):
     device = config.device
     ft_begin_idx = config.ft_begin_idx
     sample_size = config.sample_size[0]
@@ -175,7 +172,8 @@ def VioNet_densenet(config):
                         sample_size=sample_size,
                         sample_duration=sample_duration).to(device)
 
-    state_dict = torch.load(g_path +'/VioNet/'+ 'weights/DenseNet_Kinetics.pth')
+    # state_dict = torch.load(g_path +'/VioNet/'+ 'weights/DenseNet_Kinetics.pth')
+    state_dict = torch.load(os.path.join(home_path, VIONET_WEIGHTS, 'DenseNet_Kinetics.pth'))
     model.load_state_dict(state_dict)
 
     params = dn.get_fine_tuning_params(model, ft_begin_idx)
@@ -184,7 +182,7 @@ def VioNet_densenet(config):
 
 
 # the model we finally adopted in DenseNet
-def VioNet_densenet_lean(config):
+def VioNet_densenet_lean(config, home_path):
     device = config.device
     ft_begin_idx = config.ft_begin_idx
     sample_size = config.sample_size[0]
@@ -194,7 +192,8 @@ def VioNet_densenet_lean(config):
                        sample_size=sample_size,
                        sample_duration=sample_duration).to(device)
 
-    state_dict = torch.load(g_path +'/VioNet/'+ 'weights/DenseNetLean_Kinetics.pth')
+    # state_dict = torch.load(g_path +'/VioNet/'+ 'weights/DenseNetLean_Kinetics.pth')
+    state_dict = torch.load(os.path.join(home_path, VIONET_WEIGHTS, 'DenseNetLean_Kinetics.pth'))
     model.load_state_dict(state_dict)
 
     params = dn.get_fine_tuning_params(model, ft_begin_idx)
@@ -203,4 +202,4 @@ def VioNet_densenet_lean(config):
 
 
 if __name__=="__main__":
-    print("Hey there!!!: ", g_path)
+    print("Hey there!!!: ")

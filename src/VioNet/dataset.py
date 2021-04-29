@@ -119,7 +119,7 @@ def make_dataset(root_path, annotation_path, subset, dataset_name, tmp_annotatio
         index_to_class[label] = name
 
     dataset = []
-    if dataset_name == 'rwf-2000':
+    if dataset_name == RWF_DATASET:
       for video_name, video_label in zip(video_names, video_labels):
         video_path = os.path.join(
             root_path, video_name
@@ -189,9 +189,6 @@ class VioDB(Dataset):
         self.videos, self.classes = make_dataset(
             root_path, annotation_path, subset, dataset_name, tmp_annotation_path
         )
-
-        # print('self.videos: ', self.videos)
-        # if config:
 
         self.spatial_transform = spatial_transform
         self.temporal_transform = temporal_transform
@@ -358,8 +355,21 @@ class OneVideoFolderDataset(Dataset):
             video = torch.stack(video).permute(1, 0, 2, 3)
         
         return video, segment_name, images#(batch, c, T, w, h)
-    
+
+from global_var import *
+
 if __name__ == "__main__":
+    videos, classes = make_dataset(
+            os.path.join(HOME_UBUNTU, RWF_DATASET.upper(),'frames/'),
+            os.path.join(HOME_UBUNTU, VIO_DB_DATASETS, "rwf-2000_jpg1.json"),
+            'validation',
+            RWF_DATASET,
+            os.path.join(HOME_UBUNTU, PATH_SCORES, "Scores-dataset(rwf-2000)-ANmodel(AnomalyDetector_Dataset(UCFCrime2LocalClips)_Features(c3d)_TotalEpochs(100000)_ExtraInfo(c3d)-Epoch-7000)-input(rgb)")
+        )
+    
+    print('videos:', len(videos), videos[0:3])
+    print('classes:', classes)
+
     # crop_method = GroupScaleCenterCrop(size=config.sample_size)
     # norm = Normalize([0.49778724, 0.49780366, 0.49776983], [0.09050678, 0.09017131, 0.0898702 ])
     # spatial_transform = Compose([crop_method, ToTensor(), norm])
@@ -374,65 +384,24 @@ if __name__ == "__main__":
     #         transforms.ToTensor(),
     #         transforms.Normalize(mean, std)])
 
-    from video_transforms import ToTensorVideo, RandomResizedCropVideo, NormalizeVideo
-    mean = [124 / 255, 117 / 255, 104 / 255]
-    std = [1 / (.0167 * 255)] * 3
-    size = 112
-    spatial_transform = transforms.Compose([
-        ToTensorVideo(),
-        RandomResizedCropVideo(size, size),
-        NormalizeVideo(mean=mean, std=std)
-    ])
+    # from video_transforms import ToTensorVideo, RandomResizedCropVideo, NormalizeVideo
+    # mean = [124 / 255, 117 / 255, 104 / 255]
+    # std = [1 / (.0167 * 255)] * 3
+    # size = 112
+    # spatial_transform = transforms.Compose([
+    #     ToTensorVideo(),
+    #     RandomResizedCropVideo(size, size),
+    #     NormalizeVideo(mean=mean, std=std)
+    # ])
 
-    temporal_transform = SequentialCrop(size=10, stride=1, overlap=0, max_segments=4)
-    val_dataset = OneVideoFolderDataset(img_dir="/Users/davidchoqueluqueroman/Documents/DATASETS_Local/VioDenseDatasets/hockey_jpg/fi/fi118_xvid",
-                                dataset="hockey",
-                                out_type=RGB_FRAME,
-                                spatial_transform=spatial_transform, 
-                                temporal_transform=temporal_transform)
+    # temporal_transform = SequentialCrop(size=10, stride=1, overlap=0, max_segments=4)
+    # val_dataset = OneVideoFolderDataset(img_dir="/Users/davidchoqueluqueroman/Documents/DATASETS_Local/VioDenseDatasets/hockey_jpg/fi/fi118_xvid",
+    #                             dataset="hockey",
+    #                             out_type=RGB_FRAME,
+    #                             spatial_transform=spatial_transform, 
+    #                             temporal_transform=temporal_transform)
 
-    video, segment_name, images = val_dataset[3]
-    print("video: ", video.size())
-    print("segment_name: ", segment_name)
-    print("images: ", images.size())
-
-    # data_dir = "/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS/UCLA-protest"
-    # img_dir_train = os.path.join(data_dir, "img/train")
-    # img_dir_val = os.path.join(data_dir, "img/test")
-    # txt_file_train = os.path.join(data_dir, "annot_train.txt")
-    # txt_file_val = os.path.join(data_dir, "annot_test.txt")
-
-    # normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-    #                                  std=[0.229, 0.224, 0.225])
-    # eigval = torch.Tensor([0.2175, 0.0188, 0.0045])
-    # eigvec = torch.Tensor([[-0.5675,  0.7192,  0.4009],
-    #                         [-0.5808, -0.0045, -0.8140],
-    #                         [-0.5836, -0.6948,  0.4203]])
-
-
-    # transform = transforms.Compose([
-    #                     transforms.RandomResizedCrop(224),
-    #                     transforms.RandomRotation(30),
-    #                     transforms.RandomHorizontalFlip(),
-    #                     transforms.ColorJitter(
-    #                         brightness = 0.4,
-    #                         contrast = 0.4,
-    #                         saturation = 0.4,
-    #                         ),
-    #                     transforms.ToTensor(),
-    #                     Lighting(0.1, eigval, eigvec),
-    #                     normalize,
-    #                 ])
-                    
-    # train_dataset = ProtestDataset(txt_file_train, img_dir_train, transform)
-    # train_loader = DataLoader(
-    #                 train_dataset,
-    #                 num_workers = 1,
-    #                 batch_size = 8,
-    #                 shuffle = False
-    #                 )
-    # for i, sample in enumerate(train_loader):
-    #     # measure data loading batch_time
-    #     input, target = sample['image'], sample['label']
-    #     print('target: ', target)
-    #     print('input: ', input.size())
+    # video, segment_name, images = val_dataset[3]
+    # print("video: ", video.size())
+    # print("segment_name: ", segment_name)
+    # print("images: ", images.size())

@@ -18,6 +18,8 @@ FEAT_EXT_RESNET = "resnet"
 RWF_DATASET = "rwf-2000"
 HOCKEY_DATASET = "hockey"
 VIF_DATASET = "vif"
+VIO_DB_DATASETS = "VioDB"
+VIONET_WEIGHTS = "VioNet_weights"
 UCFCrime2Local_DATASET = "UCFCrime2Local"
 UCFCrime2LocalClips_DATASET = "UCFCrime2LocalClips"
 
@@ -28,7 +30,7 @@ RGB_FRAME = "rgb"
 PATH_TENSORBOARD = "VioNet_tensorboard_log"
 PATH_LOG= "VioNet_log"
 PATH_CHECKPOINT = "VioNet_pth"
-
+PATH_SCORES = "KeysegmentScores"
 MODEL_ANOMALY_DET = "AnomalyDetector"
 # def getFolder(specific_folder):
 #   if folders[1] == 'content':

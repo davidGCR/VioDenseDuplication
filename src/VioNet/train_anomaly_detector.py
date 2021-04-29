@@ -45,7 +45,7 @@ def main(config: Config, source, features_path, annotation_path, home_path):
     
     template_log = "{}_Dataset({})_Features({})_TotalEpochs({})_ExtraInfo({})".format(config.model,
                                                                                         config.dataset,
-                                                                                        os.path.split(features_path)[1],
+                                                                                        source,
                                                                                         config.num_epoch,
                                                                                         config.additional_info)
     log_path = os.path.join(home_path, PATH_LOG, template_log)
@@ -96,7 +96,7 @@ def main(config: Config, source, features_path, annotation_path, home_path):
                             train_loss,
                             epoch)
         if epoch%config.save_every == 0:
-            save_checkpoint(model, epoch, optimizer, train_loss, chk_path+template_log+"-epoch-"+str(epoch)+".chk")
+            save_checkpoint(model, epoch, optimizer, train_loss, chk_path+"/Epoch-"+str(epoch)+".chk")
             # torch.save(model.state_dict(), chk_path+template_log+"-epoch-"+str(epoch)+".pth")
 
     
@@ -110,7 +110,7 @@ if __name__=="__main__":
         dataset=UCFCrime2LocalClips_DATASET,
         device=device,
         num_epoch=100000,
-        save_every=2000,
+        save_every=1000,
         learning_rate=0.01,
         train_batch=64,
         bag_size=32
