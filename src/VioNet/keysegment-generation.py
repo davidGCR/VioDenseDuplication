@@ -231,7 +231,7 @@ if __name__ == "__main__":
     pretrained_model = os.path.join(environment_cofig['home'],
                                     PATH_CHECKPOINT,
                                     "AnomalyDetector_Dataset(UCFCrime2LocalClips)_Features(c3d)_TotalEpochs(100000)_ExtraInfo(c3d)",
-                                    "Epoch-7000.chk")
+                                    "Epoch-10000.chk")
 
     h, anomaly_detec_epoch = os.path.split(pretrained_model)
     _, anomaly_detec_config = os.path.split(h)

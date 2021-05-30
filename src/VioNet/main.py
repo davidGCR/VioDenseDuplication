@@ -261,7 +261,8 @@ if __name__ == '__main__':
     config.input_mode = 'rgb' #rgb, dynamic-images
     config.train_temporal_transform = 'keysegment' #standar, segments, segments-keyframe, random-segments, keyframe, guided-segment, keysegment
     config.val_temporal_transform = 'keysegment'
-    config.temp_annotation_path = os.path.join(environment_config['home'], PATH_SCORES, "Scores-dataset(rwf-2000)-ANmodel(AnomalyDetector_Dataset(UCFCrime2LocalClips)_Features(c3d)_TotalEpochs(100000)_ExtraInfo(c3d)-Epoch-7000)-input(rgb)")
+    config.temp_annotation_path = os.path.join(environment_config['home'], PATH_SCORES,
+        "Scores-dataset(rwf-2000)-ANmodel(AnomalyDetector_Dataset(UCFCrime2LocalClips)_Features(c3d)_TotalEpochs(100000)_ExtraInfo(c3d)-Epoch-10000)-input(rgb)")
 
     ##### For 2D CNN ####
     # config.num_epoch = 50
