@@ -323,15 +323,16 @@ class InceptionI3d(nn.Module):
             self.add_module(k, self.end_points[k])
         
     def forward(self, x):
-        for end_point in self.VALID_ENDPOINTS:
-            if end_point in self.end_points:
-                x = self._modules[end_point](x) # use _modules to work with dataparallel
+        # for end_point in self.VALID_ENDPOINTS:
+        #     if end_point in self.end_points:
+        #         x = self._modules[end_point](x) # use _modules to work with dataparallel
 
-        x = self.logits(self.dropout(self.avg_pool(x)))
-        if self._spatial_squeeze:
-            logits = x.squeeze(3).squeeze(3)
-        # logits is batch X time X classes, which is what we want to work with
-        return logits
+        # x = self.logits(self.dropout(self.avg_pool(x)))
+        # if self._spatial_squeeze:
+        #     logits = x.squeeze(3).squeeze(3)
+        # # logits is batch X time X classes, which is what we want to work with
+        # return logits
+        return self.extract_features_intermediate(x)
         
 
     def extract_features(self, x):
@@ -352,7 +353,7 @@ from torchsummary import summary
 if __name__=="__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    input = torch.rand(1,3,16,224,224).to(device)
+    input = torch.rand(1,3,16,224,224).to(device) #for slowFAst backbone: 3x4x256x320, RWF-frames 224x224, RWF-video 640x360
     i3d = InceptionI3d(400, in_channels=3, final_endpoint='Mixed_4e').to(device)
 
     load_model_path = '/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt'
