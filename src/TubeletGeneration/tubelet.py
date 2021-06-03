@@ -263,7 +263,7 @@ def terminate_paths(live_paths, jumpgap):
     
     return final_live_paths, dead_paths
 
-def incremental_linking(start_frame, video_detections, iou_thresh, jumpgap):
+def incremental_linking(start_frame, video_detections, iou_thresh, jumpgap, plot):
     num_frames = len(video_detections)
     live_paths = []
     dead_paths = []
@@ -347,6 +347,43 @@ def incremental_linking(start_frame, video_detections, iou_thresh, jumpgap):
             ## join dead paths
             for dp in range(len(dead_paths)):
                 live_paths.append(dp)
+        
+        if plot:
+            dataset_frames_path = plot['dataset_root']
+            split = video_detections[t]['split']
+            video = video_detections[t]['video']
+            frame = video_detections[t]['fname']
+            img_path = os.path.join(dataset_frames_path, split, video, frame)
+            image = cv2.imread(img_path, cv2.IMREAD_COLOR)
+            pred_boxes = video_detections[t]['pred_boxes']
+            if pred_boxes.shape[0] != 0 and plot:
+                image = visual_utils.draw_boxes(image,
+                                                pred_boxes[:, :4],
+                                                # scores=pred_boxes[:, 4],
+                                                # tags=pred_tags_name,
+                                                line_thick=1, 
+                                                line_color='white')
+            box_tubes = []
+            tube_ids = []
+            for lp in range(path_count(live_paths)):
+                foundAt = True if t in live_paths[lp]['foundAt'] else False
+                if foundAt:
+                    bbox = live_paths[lp]['boxes'][-1]
+                    box_tubes.append(bbox)
+                    tube_ids.append(live_paths[lp]['id'])
+            if len(box_tubes):
+                box_tubes = np.array(box_tubes)
+                image = visual_utils.draw_boxes(image,
+                                                box_tubes[:, :4],
+                                                # scores=pred_boxes[:, 4],
+                                                tags=box_tubes,
+                                                line_thick=1, 
+                                                line_color='white')
+            cv2.imshow('FRAME'+str(t+1), image)
+            key = cv2.waitKey(plot['wait'])#pauses for 3 seconds before fetching next image
+            if key == 27:#if ESC is pressed, exit loop
+                cv2.destroyAllWindows()
+
     
     return live_paths
 
@@ -375,4 +412,11 @@ if __name__=="__main__":
 
     # print('tubes:', type(tubes), len(tubes))
 
-    incremental_linking(decodedArray, iou_thresh=0.3, jumpgap=3)
+    incremental_linking(start_frame=0,
+                        video_detections=decodedArray,
+                        iou_thresh=0.3,
+                        jumpgap=3,
+                        plot={
+                          'dataset_root':  '/media/david/datos/Violence DATA/RWF-2000/frames',
+                          'wait': 300
+                        })
