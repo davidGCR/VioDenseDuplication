@@ -7,7 +7,6 @@ from PIL import Image
 from torchvision import transforms
 import torch
 from operator import itemgetter
-from transformations.transf_util import imread, PIL2tensor
 
 def crop(frames, start, size, stride):
     # todo more efficient
@@ -279,6 +278,7 @@ class SegmentsCrop(object):
             stride (int): frames to skip into a segment
             overlap (float): overlapping between each segment
             padding (bool): cut or add segments to get 'size' segments for each sample
+            position (str): In case we want one segmet from the beginning, middle and end of the video 
         """
         self.size = size
         self.segment_size = segment_size
@@ -397,16 +397,16 @@ class RandomSegmentsCrop(object):
         return video_segments
 
 import torch
+# from transformations.transf_util import imread, PIL2tensor
+# class Segment2Images(object):
+#     def __init__(self, order):
+#         self.order = order #(T, H, W, C)
 
-class Segment2Images(object):
-    def __init__(self, order):
-        self.order = order #(T, H, W, C)
-
-    def __call__(self, paths):
-        frames = [PIL2tensor(imread(p)) for p in paths]
-        video = torch.stack(frames, dim=0)
-        video = video.permute(0,2,3,1).type(torch.uint8)
-        return video
+#     def __call__(self, paths):
+#         frames = [PIL2tensor(imread(p)) for p in paths]
+#         video = torch.stack(frames, dim=0)
+#         video = video.permute(0,2,3,1).type(torch.uint8)
+#         return video
 
 
 
@@ -419,14 +419,15 @@ if __name__ == '__main__':
     # temp_transform = KeyFrameCrop(size=16, stride=1)
 
     # temp_transform = SequentialCrop(size=5,stride=1,input_type="dynamic-images",overlap=0.5)
-    temp_transform = KeySegmentCrop(size=16,stride=1,input_type="rgb", segment_type="highestscore")
-    frames = list(range(1, 151))
+    # temp_transform = KeySegmentCrop(size=16,stride=1,input_type="rgb", segment_type="highestscore")
+    temp_transform = SegmentsCrop(size=8, segment_size=10, stride=1,overlap=0.5,padding=True)
+    frames = list(range(1, 41))
 
     # frames = temp_transform(frames, "/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/src/VioNet/v4dhdnsxiX4_1.csv", 0)
     # frames = temp_transform(frames, "/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/src/VioNet/fbtEhNq5a6E_0.csv")
-    frames = temp_transform(frames, "/Users/davidchoqueluqueroman/Documents/DATASETS_Local/rwf-vscores/val/NonFight/NeyOxUHJ_0.csv")
+    # frames = temp_transform(frames, "/Users/davidchoqueluqueroman/Documents/DATASETS_Local/rwf-vscores/val/NonFight/NeyOxUHJ_0.csv")
     # temp_transform = CenterCrop(size=16, stride=1)
     # temp_transform = RandomCrop(size=16, stride=1)
-    # frames = temp_transform(frames)
+    frames = temp_transform(frames)
     print(frames)
     print(len(frames))

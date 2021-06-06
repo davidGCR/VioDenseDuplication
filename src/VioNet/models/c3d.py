@@ -81,3 +81,12 @@ class C3D(nn.Module):
         out = self.classifier(out)
 
         return out
+
+import torch
+
+if __name__=='__main__':
+    model = C3D(num_classes=2)
+    input=torch.rand(1,3,8,112,112)
+    output=model(input)
+
+    print('output=', output.size())

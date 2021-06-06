@@ -19,6 +19,30 @@ from torch.utils.tensorboard import SummaryWriter
 
 g_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+# TEMPORAL_TRANSFORMATION NAMES
+STANDAR_CROP = 'standar'
+SEGMENTS_CROP = 'segments-crop' #for dynamic images
+CENTER_CROP = 'center-crop'
+KEYFRAME_CROP = 'keyframe'
+GUIDED_KEYFRAME_CROP = 'guided-segment'
+KEYSEGMENT_CROP = 'keysegment'
+
+def build_temporal_transformation(config: Config, transf_type: str):
+    if transf_type == STANDAR_CROP:
+        temporal_transform = RandomCrop(size=config.sample_duration, stride=config.stride, input_type=config.input_mode)
+    elif transf_type == SEGMENTS_CROP:
+        temporal_transform = SegmentsCrop(size=config.sample_duration, segment_size=config.segment_size, stride=config.stride, overlap=config.overlap)
+    elif transf_type == CENTER_CROP:
+        temporal_transform = CenterCrop(size=config.sample_duration, stride=config.stride, input_type=config.input_mode)
+    elif transf_type == KEYFRAME_CROP:
+        temporal_transform = KeyFrameCrop(size=config.sample_duration, stride=config.stride, input_type=config.input_mode)
+    elif transf_type == GUIDED_KEYFRAME_CROP:
+        temporal_transform = TrainGuidedKeyFrameCrop(size=config.sample_duration, segment_size=config.segment_size, stride=config.stride, overlap=0.5)
+    elif transf_type == KEYSEGMENT_CROP:
+        temporal_transform = KeySegmentCrop(size=config.sample_duration, stride=config.stride, input_type=config.input_mode, segment_type="highestscore")
+    
+    return temporal_transform
+
 def main(config, home_path):
     # load model
     if config.model == 'c3d':
@@ -46,8 +70,8 @@ def main(config, home_path):
     # cross validation phase
     cv = config.num_cv
     input_mode = config.input_mode
-    train_temp_transform = config.train_temporal_transform
-    val_temp_transform = config.val_temporal_transform
+    # train_temp_transform = config.train_temporal_transform
+    # val_temp_transform = config.val_temporal_transform
     # train set
     crop_method = GroupRandomScaleCenterCrop(size=sample_size)
     
@@ -57,18 +81,20 @@ def main(config, home_path):
     elif input_mode == 'dynamic-images':
         norm = Normalize([0.49778724, 0.49780366, 0.49776983], [0.09050678, 0.09017131, 0.0898702 ])
 
-    if train_temp_transform == 'standar':
-        temporal_transform = RandomCrop(size=sample_duration, stride=stride, input_type=input_mode)
-    elif train_temp_transform == 'segments':
-        temporal_transform = SegmentsCrop(size=sample_duration, segment_size=config.segment_size, stride=stride, overlap=0.5)
-    elif train_temp_transform == 'center-crop':
-        temporal_transform = CenterCrop(size=sample_duration, stride=stride, input_type=input_mode)
-    elif train_temp_transform == 'keyframe':
-        temporal_transform = KeyFrameCrop(size=sample_duration, stride=stride, input_type=input_mode)
-    elif train_temp_transform == 'guided-segment':
-        temporal_transform = TrainGuidedKeyFrameCrop(size=sample_duration, segment_size=config.segment_size, stride=stride, overlap=0.5)
-    elif train_temp_transform == 'keysegment':
-        temporal_transform = KeySegmentCrop(size=sample_duration, stride=stride, input_type=input_mode, segment_type="highestscore")
+    # if train_temp_transform == 'standar':
+    #     temporal_transform = RandomCrop(size=sample_duration, stride=stride, input_type=input_mode)
+    # elif train_temp_transform == 'segments':
+    #     temporal_transform = SegmentsCrop(size=sample_duration, segment_size=config.segment_size, stride=stride, overlap=0.5)
+    # elif train_temp_transform == 'center-crop':
+    #     temporal_transform = CenterCrop(size=sample_duration, stride=stride, input_type=input_mode)
+    # elif train_temp_transform == 'keyframe':
+    #     temporal_transform = KeyFrameCrop(size=sample_duration, stride=stride, input_type=input_mode)
+    # elif train_temp_transform == 'guided-segment':
+    #     temporal_transform = TrainGuidedKeyFrameCrop(size=sample_duration, segment_size=config.segment_size, stride=stride, overlap=0.5)
+    # elif train_temp_transform == 'keysegment':
+    #     temporal_transform = KeySegmentCrop(size=sample_duration, stride=stride, input_type=input_mode, segment_type="highestscore")
+
+    train_temporal_transform = build_temporal_transformation(config, config.train_temporal_transform)
 
     spatial_transform = Compose(
         [crop_method,
@@ -86,14 +112,14 @@ def main(config, home_path):
                             os.path.join(home_path, VIO_DB_DATASETS, "rwf-2000_jpg1.json"),
                             'training',
                             spatial_transform,
-                            temporal_transform,
+                            train_temporal_transform,
                             target_transform,
                             dataset,
                             tmp_annotation_path=os.path.join(g_path, config.temp_annotation_path))
     else:
         train_data = VioDB(g_path + '/VioDB/{}_jpg/'.format(dataset),
                             g_path + '/VioDB/{}_jpg{}.json'.format(dataset, cv), 'training',
-                            spatial_transform, temporal_transform, target_transform, dataset,
+                            spatial_transform, train_temporal_transform, target_transform, dataset,
                             tmp_annotation_path=os.path.join(g_path, config.temp_annotation_path))
     train_loader = DataLoader(train_data,
                               batch_size=train_batch,
@@ -110,18 +136,20 @@ def main(config, home_path):
         norm = Normalize([0.49778724, 0.49780366, 0.49776983], [0.09050678, 0.09017131, 0.0898702 ])
         
     
-    if val_temp_transform == 'standar':
-        temporal_transform = CenterCrop(size=sample_duration, stride=stride)
-    elif val_temp_transform == 'segments':
-        temporal_transform = SegmentsCrop(size=sample_duration, segment_size=config.segment_size, stride=stride, overlap=0.5)
-    elif val_temp_transform == 'center-crop':
-        temporal_transform = CenterCrop(size=sample_duration, stride=stride, input_type=input_mode)
-    elif val_temp_transform == 'keyframe':
-        temporal_transform = KeyFrameCrop(size=sample_duration, stride=stride, input_type=input_mode)
-    elif val_temp_transform == 'guided-segment':
-        temporal_transform = ValGuidedKeyFrameCrop(size=sample_duration, segment_size=config.segment_size, stride=stride, overlap=0.5)
-    elif val_temp_transform == 'keysegment':
-        temporal_transform = KeySegmentCrop(size=sample_duration, stride=stride, input_type=input_mode, segment_type="highestscore")
+    # if val_temp_transform == 'standar':
+    #     temporal_transform = CenterCrop(size=sample_duration, stride=stride)
+    # elif val_temp_transform == 'segments':
+    #     temporal_transform = SegmentsCrop(size=sample_duration, segment_size=config.segment_size, stride=stride, overlap=0.5)
+    # elif val_temp_transform == 'center-crop':
+    #     temporal_transform = CenterCrop(size=sample_duration, stride=stride, input_type=input_mode)
+    # elif val_temp_transform == 'keyframe':
+    #     temporal_transform = KeyFrameCrop(size=sample_duration, stride=stride, input_type=input_mode)
+    # elif val_temp_transform == 'guided-segment':
+    #     temporal_transform = ValGuidedKeyFrameCrop(size=sample_duration, segment_size=config.segment_size, stride=stride, overlap=0.5)
+    # elif val_temp_transform == 'keysegment':
+    #     temporal_transform = KeySegmentCrop(size=sample_duration, stride=stride, input_type=input_mode, segment_type="highestscore")
+
+    val_temporal_transform = build_temporal_transformation(config, config.val_temporal_transform)
 
     spatial_transform = Compose([crop_method, ToTensor(), norm])
     target_transform = Label()
@@ -137,15 +165,15 @@ def main(config, home_path):
                             os.path.join(home_path, VIO_DB_DATASETS, "rwf-2000_jpg1.json"),
                             'validation',
                             spatial_transform,
-                            temporal_transform,
+                            val_temporal_transform,
                             target_transform,
                             dataset,
                             tmp_annotation_path=os.path.join(g_path, config.temp_annotation_path))
     else:
-      val_data = VioDB(g_path + '/VioDB/{}_jpg/'.format(dataset),
-                      g_path + '/VioDB/{}_jpg{}.json'.format(dataset, cv), 'validation',
-                      spatial_transform, temporal_transform, target_transform, dataset,
-                      tmp_annotation_path=os.path.join(g_path, config.temp_annotation_path))
+        val_data = VioDB(g_path + '/VioDB/{}_jpg/'.format(dataset),
+                        g_path + '/VioDB/{}_jpg{}.json'.format(dataset, cv), 'validation',
+                        spatial_transform, val_temporal_transform, target_transform, dataset,
+                        tmp_annotation_path=os.path.join(g_path, config.temp_annotation_path))
     val_loader = DataLoader(val_data,
                             batch_size=val_batch,
                             shuffle=False,
@@ -225,13 +253,13 @@ from global_var import *
 from utils import get_torch_device
 if __name__ == '__main__':
     device = get_torch_device()
-    dataset = RWF_DATASET
+    dataset = HOCKEY_DATASET
     config = Config(
-        'densenet_lean',  # c3d, convlstm, densenet, densenet_lean, resnet50, densenet2D
+        'c3d',  # c3d, convlstm, densenet, densenet_lean, resnet50, densenet2D
         dataset,
         device=device,
         num_epoch=50,
-        acc_baseline=0.92,
+        acc_baseline=0.98,
         ft_begin_idx=0,
     )
     configs = {
@@ -255,12 +283,20 @@ if __name__ == '__main__':
     environment_config = {
         'home': HOME_UBUNTU
     }
+    ##Configs to SEGMENTS_CROP
+    config.sample_duration = 8#number of segments
+    config.segment_size = 10 #len of segments
+    config.stride = 1
+    config.overlap = 0.5
+
+
+
     config.train_batch = configs[dataset]['batch_size']
     config.val_batch = configs[dataset]['batch_size']
     config.learning_rate = configs[dataset]['lr']
     config.input_mode = 'rgb' #rgb, dynamic-images
-    config.train_temporal_transform = 'keysegment' #standar, segments, segments-keyframe, random-segments, keyframe, guided-segment, keysegment
-    config.val_temporal_transform = 'keysegment'
+    config.train_temporal_transform = SEGMENTS_CROP #standar, segments, segments-keyframe, random-segments, keyframe, guided-segment, keysegment
+    config.val_temporal_transform = SEGMENTS_CROP
     config.temp_annotation_path = os.path.join(environment_config['home'], PATH_SCORES,
         "Scores-dataset(rwf-2000)-ANmodel(AnomalyDetector_Dataset(UCFCrime2LocalClips)_Features(c3d)_TotalEpochs(100000)_ExtraInfo(c3d)-Epoch-10000)-input(rgb)")
 
