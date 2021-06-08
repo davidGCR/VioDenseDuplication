@@ -19,7 +19,7 @@ class Config:
             factor=0.1,
             min_lr=1e-7,
             num_epoch=1000,
-            input_mode='rgb',
+            input_type='rgb',
             train_temporal_transform = 'standar',
             val_temporal_transform = 'standar',
             number_of_clips=1,
@@ -80,7 +80,7 @@ class Config:
         # training epoch
         self.num_epoch = num_epoch
 
-        self.input_mode = input_mode 
+        self.input_type = input_type 
         self.train_temporal_transform = train_temporal_transform
         self.val_temporal_transform = val_temporal_transform
         # self.segment_size = segment_size

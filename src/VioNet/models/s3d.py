@@ -28,11 +28,11 @@ class S3D(nn.Module):
 
     def forward(self, x):
         y = self.base(x)
-        print("base: ", y.size())
+        # print("base: ", y.size())
         y = F.avg_pool3d(y, (2, y.size(3), y.size(4)), stride=1)
-        print("avg_pool: ", y.size())
+        # print("avg_pool: ", y.size())
         y = self.fc(y)
-        print("fc: ", y.size())
+        # print("fc: ", y.size())
         y = y.view(y.size(0), y.size(1), y.size(2))
         logits = torch.mean(y, 2)
 
@@ -364,10 +364,39 @@ class Mixed_5c(nn.Module):
 
 
 
+import os
 
 if __name__=='__main__':
-    model = S3D_feature_extractor()
-    input = torch.randn(4, 3, 16, 256, 384)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = S3D(num_class=2).to(device)
+
+    pretrained_model = '/media/david/datos/Violence DATA/VioNet_weights/S3D_kinetics400.pt'
+    state_dict = torch.load(pretrained_model)
+    model.load_state_dict(state_dict,  strict=False)
+    
+    ## load the weight file and copy the parameters
+    # if os.path.isfile(pretrained_model):
+    #     print ('loading weight file')
+    #     weight_dict = torch.load(pretrained_model)
+    #     model_dict = model.state_dict()
+    #     for name, param in weight_dict.items():
+    #         if 'module' in name:
+    #             name = '.'.join(name.split('.')[1:])
+    #         if name in model_dict:
+    #             if param.size() == model_dict[name].size():
+    #                 model_dict[name].copy_(param)
+    #             else:
+    #                 print (' size? ' + name, param.size(), model_dict[name].size())
+    #         else:
+    #             print (' name? ' + name)
+
+    #     print (' loaded')
+    # else:
+    #     print ('weight file?')
+    # model = model.to(device)
+
+    # model = S3D_feature_extractor()
+    input = torch.randn(4, 3, 16, 256, 384).to(device)
     # torchsummary.summary(model, input_size=(3, 13, 256, 384), device='cpu')
     out = model(input)
     print("out: ", out.size())

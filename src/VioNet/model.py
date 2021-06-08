@@ -15,6 +15,7 @@ from models.densenet import densenet88, densenet121
 from models.convlstm import ConvLSTM
 from models.models2D import ResNet, Densenet2D, FusedResNextTempPool, FeatureExtractorResNextTempPool
 from models.anomaly_detector import AnomalyDetector
+from models.i3d import InceptionI3d
 import models.models2D as rn
 from global_var import *
 
@@ -161,6 +162,27 @@ def VioNet_ConvLSTM(config):
 
     return model, params
 
+def VioNet_I3D(config):
+    model = InceptionI3d(num_classes=400, in_channels=3).to(config.device)
+    load_model_path = '/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt'
+    
+    # model = nn.DataParallel(model)
+    state_dict = torch.load(load_model_path)
+    model.load_state_dict(state_dict,  strict=False)
+    model.replace_logits(2)
+    model.to(config.device)
+    params = model.parameters()
+    return model, params
+
+def VioNet_S3D(config):
+    model = S3D(num_class=2).to(config.device)
+
+    pretrained_model = '/media/david/datos/Violence DATA/VioNet_weights/S3D_kinetics400.pt'
+    state_dict = torch.load(pretrained_model)
+    model.load_state_dict(state_dict,  strict=False)
+
+    params = model.parameters()
+    return model, params
 
 def VioNet_densenet(config, home_path):
     device = config.device

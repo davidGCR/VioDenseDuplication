@@ -420,8 +420,8 @@ if __name__ == '__main__':
 
     # temp_transform = SequentialCrop(size=5,stride=1,input_type="dynamic-images",overlap=0.5)
     # temp_transform = KeySegmentCrop(size=16,stride=1,input_type="rgb", segment_type="highestscore")
-    temp_transform = SegmentsCrop(size=8, segment_size=10, stride=1,overlap=0.5,padding=True)
-    frames = list(range(1, 41))
+    temp_transform = SegmentsCrop(size=16, segment_size=7, stride=1,overlap=0,padding=True)
+    frames = list(range(1, 121))
 
     # frames = temp_transform(frames, "/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/src/VioNet/v4dhdnsxiX4_1.csv", 0)
     # frames = temp_transform(frames, "/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/src/VioNet/fbtEhNq5a6E_0.csv")

@@ -201,7 +201,10 @@ def densenet121(**kwargs):
     return model
 
 if __name__ == "__main__":
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    input = torch.rand(1,3,16,112,112).to(device)
     model = densenet88(num_classes=2,
                        sample_size=112,
-                       sample_duration=12)
-    print(model)
+                       sample_duration=12).to(device)
+    output = model(input)
+    print('out: ',output.size(), output)
