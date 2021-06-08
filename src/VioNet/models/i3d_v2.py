@@ -464,31 +464,36 @@ def get_scores(sample, model):
 
     top_val, top_idx = torch.sort(out_tensor, 1, descending=True)
 
-    print(
-        'Top {} classes and associated probabilities: '.format(args.top_k))
-    for i in range(args.top_k):
-        print('[{}]: {:.6E}'.format(kinetics_classes[top_idx[0, i]],
-                                    top_val[0, i]))
+    # print('Top {} classes and associated probabilities: '.format(2))
+    # for i in range(args.top_k):
+    #     print('[{}]: {:.6E}'.format(kinetics_classes[top_idx[0, i]],
+    #                                 top_val[0, i]))
     return out_logit
 
 if __name__=='__main__':
-   model = I3D(num_classes=2)
-   input = torch.rand(1,3,16,224,224)
-   out_rgb, out_rgb_logits = model(input)
-   print('out_rgb:', out_rgb.size(), out_rgb)
-   print('out_rgb_logits:', out_rgb_logits.size(), out_rgb_logits)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = I3D(num_classes=2).to(device)
+    input = torch.rand(1,3,16,224,224).to(device)
+    out_rgb, out_rgb_logits = model(input)
+    print('out_rgb:', out_rgb.size(), out_rgb)
+    print('out_rgb_logits:', out_rgb_logits.size(), out_rgb_logits)
 
-   out_logit = get_scores(input, model)
+    out_logit = get_scores(input.cpu().numpy(), model)
 
-   i3d_flow = I3D(num_classes=2, modality='flow')
-   input = torch.rand(1,2,16,224,224)
-   out_flow, out_flow_logits = i3d_flow(input)
+    i3d_flow = I3D(num_classes=2, modality='flow').to(device)
+    input = torch.rand(1,2,16,224,224).to(device)
+    out_flow, out_flow_logits = i3d_flow(input)
+    print('\nout_flow:', out_flow.size(), out_flow)
+    print('out_flow_logits:', out_flow_logits.size(), out_flow_logits)
 
-   out_flow_logit = get_scores(input, i3d_flow)
-   
-   out_logit = out_logit + out_flow_logit
-   out_softmax = torch.nn.functional.softmax(out_logit, 1).data.cpu()
-   print('out_softmax:', out_softmax.size(), out_softmax)
-   
-   top_val, top_idx = torch.sort(out_softmax, 1, descending=True)
+    out_flow_logit = get_scores(input.cpu().numpy(), i3d_flow)
+    
+    out_logit = out_logit + out_flow_logit
+    out_softmax = torch.nn.functional.softmax(out_logit, 1).data.cpu()
+    print('\nout_logit:', out_logit.size(), out_logit)
+    print('out_softmax:', out_softmax.size(), out_softmax)
+    
+    top_val, top_idx = torch.sort(out_softmax, 1, descending=True)
+    print('\ntop_val:', top_val.size(), top_val)
+    print('top_idx:', top_idx.size(), top_idx)
    

@@ -4,7 +4,10 @@ import torch
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 
-from PIL import Image
+
+from PIL import Image, ImageFile
+ImageFile.LOAD_TRUNCATED_IMAGES = True
+
 from dynamic_image import dynamic_image_v1
 from transformations.temporal_transforms import KeyFrameCrop, TrainGuidedKeyFrameCrop, ValGuidedKeyFrameCrop, KeySegmentCrop, SequentialCrop
 from transformations.spatial_transforms import Lighting
@@ -39,9 +42,9 @@ def get_video_frames(video_path):
 
 
 
-def video_loader(video_dir_path, frame_indices, dataset_name):
+def video_loader(video_dir_path, frame_indices, dataset_name, input_type):
     video = []
-    if isinstance(frame_indices[0], list):
+    if input_type=='dynamic-images' and isinstance(frame_indices[0], list):
         for segment in frame_indices:
             shot_frames = []
             for i in segment:
@@ -182,10 +185,11 @@ class VioDB(Dataset):
         target_transform=None,
         dataset_name='',
         config=None,
-        tmp_annotation_path=None
+        tmp_annotation_path=None,
+        input_type='rgb'
     ):
         
-
+        self.input_type = input_type
         self.videos, self.classes = make_dataset(
             root_path, annotation_path, subset, dataset_name, tmp_annotation_path
         )
@@ -210,9 +214,10 @@ class VioDB(Dataset):
                 frames = self.temporal_transform(frames, self.videos[index]['tmp_annotation'])
             else:        
                 frames = self.temporal_transform(frames)
+                # print('frames: ', frames)
 
-        clip = self.loader(path, frames, self.dataset_name)
-        # print('input type:', type(clip), len(clip))
+        clip = self.loader(path, frames, self.dataset_name, self.input_type)
+        # print('clip type:', type(clip), len(clip), type(clip[0]))
        
         # clip list of images (H, W, C)
         if self.spatial_transform:
