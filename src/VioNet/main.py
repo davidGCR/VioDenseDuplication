@@ -13,7 +13,7 @@ from config import Config
 
 from transformations.spatial_transforms import Compose, ToTensor, Normalize
 from transformations.spatial_transforms import GroupRandomHorizontalFlip, GroupRandomScaleCenterCrop, GroupScaleCenterCrop
-from transformations.temporal_transforms import CenterCrop, RandomCrop, SegmentsCrop, RandomSegmentsCrop, KeyFrameCrop, TrainGuidedKeyFrameCrop, ValGuidedKeyFrameCrop, KeySegmentCrop
+from transformations.temporal_transforms import CenterCrop, RandomCrop, SegmentsCrop, RandomSegmentsCrop, KeyFrameCrop, TrainGuidedKeyFrameCrop, ValGuidedKeyFrameCrop, KeySegmentCrop, IntervalCrop
 from transformations.target_transforms import Label, Video
 
 from utils import Log
@@ -28,6 +28,7 @@ CENTER_CROP = 'center-crop'
 KEYFRAME_CROP = 'keyframe'
 GUIDED_KEYFRAME_CROP = 'guided-segment'
 KEYSEGMENT_CROP = 'keysegment'
+INTERVAL_CROP = 'interval-crop'
 
 def build_temporal_transformation(config: Config, transf_type: str):
     if transf_type == STANDAR_CROP:
@@ -42,7 +43,8 @@ def build_temporal_transformation(config: Config, transf_type: str):
         temporal_transform = TrainGuidedKeyFrameCrop(size=config.sample_duration, segment_size=config.segment_size, stride=config.stride, overlap=0.5)
     elif transf_type == KEYSEGMENT_CROP:
         temporal_transform = KeySegmentCrop(size=config.sample_duration, stride=config.stride, input_type=config.input_type, segment_type="highestscore")
-    
+    elif transf_type == INTERVAL_CROP:
+        temporal_transform = IntervalCrop(intervals_num=config.sample_duration, interval_len=config.segment_size)
     return temporal_transform
 
 def build_transforms_parameters(model_type):
@@ -301,9 +303,9 @@ if __name__ == '__main__':
     config.train_batch = configs[dataset]['batch_size']
     config.val_batch = configs[dataset]['batch_size']
     config.learning_rate = configs[dataset]['lr']
-    config.input_type = 'dynamic-images' #rgb, dynamic-images
-    config.train_temporal_transform = SEGMENTS_CROP #standar, segments, segments-keyframe, random-segments, keyframe, guided-segment, keysegment
-    config.val_temporal_transform = SEGMENTS_CROP
+    config.input_type = 'rgb' #rgb, dynamic-images
+    config.train_temporal_transform = INTERVAL_CROP #standar, segments, segments-keyframe, random-segments, keyframe, guided-segment, keysegment
+    config.val_temporal_transform = INTERVAL_CROP
     config.temp_annotation_path = os.path.join(environment_config['home'], PATH_SCORES,
         "Scores-dataset(rwf-2000)-ANmodel(AnomalyDetector_Dataset(UCFCrime2LocalClips)_Features(c3d)_TotalEpochs(100000)_ExtraInfo(c3d)-Epoch-10000)-input(rgb)")
 
@@ -314,7 +316,7 @@ if __name__ == '__main__':
     # config.stride = 1 #for dynamic images it's frames to skip into a segment
     # config.ft_begin_idx = 0 # 0: train all layers, -1: freeze conv layers
     # config.acc_baseline = 0.90
-    config.additional_info = "-using 16-7"
+    config.additional_info = "-using center frame of segments"
 
     if config.dataset == RWF_DATASET:
         config.num_cv = 1

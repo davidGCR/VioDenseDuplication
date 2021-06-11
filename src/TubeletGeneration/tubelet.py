@@ -4,30 +4,7 @@ import numpy as np
 import cv2
 import visual_utils
 from SORT import Sort
-from tube_utils import tube_2_JSON
-
-def JSON_2_videoDetections(json_file):
-    """
-    Load Spatial detections from  a JSON file.
-    Return a List with length frames. 
-    An element in the list contain a dict with the format:
-    {
-        'fname': 'frame1.jpg',
-        'video': '0_DzLlklZa0_3',
-        'split': 'train/Fight',
-        'pred_boxes': array[],
-        'tags': list(['person', ...])
-    }
-    """
-    with open(json_file, "r") as read_file:
-        decodedArray = json.load(read_file)
-        # print("decoded Array:", type(decodedArray), len(decodedArray))
-        
-        for f in decodedArray:
-            f['pred_boxes'] = np.asarray(f['pred_boxes'])
-        # print(decodedArray[0])
-        return decodedArray
-
+from tube_utils import tube_2_JSON, JSON_2_videoDetections, JSON_2_tube
 
 
 def bbox_iou_numpy(box1, box2):
@@ -221,14 +198,6 @@ def tracking(decodedArray,
     
     return tracked_objects
 
-def extract_tubes_from_dataset(dataset_frames_path, persons_frame_detections_path):
-    videos_list = os.listdir(dataset_frames_path)
-    for video in videos_list:
-        decodedArray = JSON_2_videoDetections(os.path.join(persons_frame_detections_path, video+'.json'))
-        tracking(decodedArray,
-                vname=video,
-                dataset_frames_path='/media/david/datos/Violence DATA/RWF-2000/frames',
-                video_out_path='/media/david/datos/PAPERS-SOURCE_CODE/VioDenseDuplication/videos_')
 
 ################################### NEW LINKING ALG ################################
 def iou_path_box(path, frame_boxes, iou_thresh):
@@ -445,7 +414,7 @@ def extract_tubes_from_dataset(dataset_persons_detections_path, folder_out):
                         plot=None)
         if not os.path.isdir(folder_out):
             os.makedirs(folder_out)
-        tube_2_JSON(output_path=os.path.join(folder_out, video_folder+'.json'), tube=live_paths)
+        tube_2_JSON(output_path=os.path.join(folder_out, video_folder), tube=live_paths)
 
 
 if __name__=="__main__":
@@ -483,8 +452,13 @@ if __name__=="__main__":
     # print('Live Paths Final:', len(live_paths))
 
     ##processing RWF-2000 dataset
-    path_in = '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/RWF-2000'
-    path_out = '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/Tubes/RWF-2000'
-    splits = ['train/Fight', 'tran/NonFight', 'val/Fight', 'val/NonFight']
+    # path_in = '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/RWF-2000'
+    # path_out = '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/Tubes/RWF-2000'
+    path_in = '/media/david/datos/Violence DATA/PersonDetections/RWF-2000'
+    path_out = '/media/david/datos/Violence DATA/Tubes/RWF-2000'
+    splits = ['train/Fight', 'train/NonFight', 'val/Fight', 'val/NonFight']
     for sp in splits:
         extract_tubes_from_dataset(dataset_persons_detections_path=os.path.join(path_in, sp), folder_out=os.path.join(path_out, sp))
+    # tubes = JSON_2_tube('/media/david/datos/Violence DATA/Tubes/RWF-2000/train/Fight/_6-B11R9FJM_2.json')
+    # print(len(tubes))
+    # print(tubes[0])

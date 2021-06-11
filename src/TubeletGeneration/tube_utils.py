@@ -47,3 +47,39 @@ def tube_2_JSON(output_path: str, tube: list):
     """
     with open(output_path, 'w') as fout:
         json.dump(tube , fout, cls=NumpyArrayEncoder)
+
+def JSON_2_tube(json_file):
+    """
+    """
+    with open(json_file, "r") as read_file:
+        decodedArray = json.load(read_file)
+        # print("decoded Array:", type(decodedArray), len(decodedArray))
+        
+        for f in decodedArray:
+            for i, box in  enumerate(f['boxes']):
+                f['boxes'][i] = np.asarray(f['boxes'][i])
+        # print(decodedArray[0])
+        return decodedArray
+
+
+def JSON_2_videoDetections(json_file):
+    """
+    Load Spatial detections from  a JSON file.
+    Return a List with length frames. 
+    An element in the list contain a dict with the format:
+    {
+        'fname': 'frame1.jpg',
+        'video': '0_DzLlklZa0_3',
+        'split': 'train/Fight',
+        'pred_boxes': array[],
+        'tags': list(['person', ...])
+    }
+    """
+    with open(json_file, "r") as read_file:
+        decodedArray = json.load(read_file)
+        # print("decoded Array:", type(decodedArray), len(decodedArray))
+        
+        for f in decodedArray:
+            f['pred_boxes'] = np.asarray(f['pred_boxes'])
+        # print(decodedArray[0])
+        return decodedArray

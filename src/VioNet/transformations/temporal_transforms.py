@@ -283,6 +283,8 @@ class IntervalCrop(object):
             segment = np.asarray(frames)[indices_segment].tolist()
             if len(segment) == self.interval_len:
                 video_segments.append(segment[self.c_idx])
+        if len(video_segments)>self.intervals_num:
+            video_segments = video_segments[:self.intervals_num]
 
         return video_segments
 
