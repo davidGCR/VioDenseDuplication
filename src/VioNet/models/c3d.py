@@ -77,7 +77,9 @@ class C3D(nn.Module):
     def forward(self, x):
 
         out = self.features.forward(x)
+        print('conv outputs=', out.size())
         out = F.adaptive_avg_pool3d(out, (1, 1, 1)).view(out.size(0), -1)
+        print('adaptive_avg_pool3d=', out.size())
         out = self.classifier(out)
 
         return out
@@ -85,8 +87,9 @@ class C3D(nn.Module):
 import torch
 
 if __name__=='__main__':
+    print('----- c3d -----')
     model = C3D(num_classes=2)
-    input=torch.rand(1,3,8,112,112)
+    input=torch.rand(1,3,16,112,112)
     output=model(input)
 
     print('output=', output.size())

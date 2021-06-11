@@ -54,10 +54,15 @@ class C3D_FE(nn.Module):
         x = self.pool4(x)
         x = self.relu(self.conv5a(x))
         x = self.relu(self.conv5b(x))
+        
+        print('c3d convs:', x.size())
+        
         x = self.pool5(x)
+
         x = x.view(-1, 8192)
-        x = self.relu(self.fc6(x))
-        # print('c3d output:', x.size())
+        x = self.fc6(x)
+        x = self.relu(x)
+        
         return x
 
     def __load_pretrained_weights(self):
@@ -120,7 +125,7 @@ class C3D_FE(nn.Module):
 
 if __name__ == "__main__":
     inputs = torch.ones((1, 3, 16, 112, 112))
-    net = C3D_FE(pretrained="/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/AnomalyDetectionCVPR2018-Pytorch/pretrained/MFNet3D_UCF-101_Split-1_96.3.pth")
-
+    # net = C3D_FE(pretrained="/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/AnomalyDetectionCVPR2018-Pytorch/pretrained/MFNet3D_UCF-101_Split-1_96.3.pth")
+    net = C3D_FE()
     outputs = net.forward(inputs)
     print(outputs.size())

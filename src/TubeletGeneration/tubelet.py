@@ -4,6 +4,7 @@ import numpy as np
 import cv2
 import visual_utils
 from SORT import Sort
+from tube_utils import tube_2_JSON
 
 def JSON_2_videoDetections(json_file):
     """
@@ -288,6 +289,8 @@ def incremental_linking(start_frame, video_detections, iou_thresh, jumpgap, plot
         elif not start_linking: #there are detections
             merge_pred_boxes = merge_close_detections(video_detections[t]['pred_boxes'], only_merged=True)
             start_linking = True if len(merge_pred_boxes)>0 else False
+            # if start_linking:
+                # print('Start tracking from {}'.format(t))
 
 
         if start_linking:
@@ -298,8 +301,8 @@ def incremental_linking(start_frame, video_detections, iou_thresh, jumpgap, plot
                 continue
 
             merge_pred_boxes = merge_close_detections(video_detections[t]['pred_boxes'], only_merged=False) if num_boxes>=2 else video_detections[t]['pred_boxes']#Join very close persons
-            print("video_detections at {}={}".format(t, video_detections[t]['pred_boxes'].shape[0]))
-            print("merge_pred_boxes at {}={}".format(t, len(merge_pred_boxes)))
+            # print("video_detections at {}={}".format(t, video_detections[t]['pred_boxes'].shape[0]))
+            # print("merge_pred_boxes at {}={}".format(t, len(merge_pred_boxes)))
             merge_pred_boxes = np.stack(merge_pred_boxes) if isinstance(merge_pred_boxes, list) else merge_pred_boxes #listo to numpy
             num_boxes = merge_pred_boxes.shape[0] #update number of bboxes in frame
 
@@ -376,8 +379,9 @@ def incremental_linking(start_frame, video_detections, iou_thresh, jumpgap, plot
                 
                 
 
-            print('Final paths at {}={}'.format(t,len(live_paths)))
-            print('Paths ---live_paths[lp][foundAt]=', [lp['foundAt'] for lp in live_paths])
+            # print('Final paths at {}={}'.format(t,len(live_paths)))
+            # print('Paths ---live_paths[lp][foundAt]=', [lp['foundAt'] for lp in live_paths])
+            
 
         if plot is not None:
             dataset_frames_path = plot['dataset_root']
@@ -418,20 +422,35 @@ def incremental_linking(start_frame, video_detections, iou_thresh, jumpgap, plot
             key = cv2.waitKey(plot['wait'])#pauses for 3 seconds before fetching next image
             if key == 27:#if ESC is pressed, exit loop
                 cv2.destroyAllWindows()            
-            
 
-    
+        # print('==>{} Live paths at {} frame'.format(len(live_paths), t)) 
+
+    live_paths = sorted(live_paths, key = lambda i: i['id'])
     return live_paths
 
-def plot_tubes(live_paths, video_detections, dataset_frames_path):
-    for frame in video_detections:
-        img_path = os.path.join(dataset_frames_path, frame['split'], frame['video'], frame['fname'])
-        image = cv2.imread(img_path, cv2.IMREAD_COLOR)
+def extract_tubes_from_dataset(dataset_persons_detections_path, folder_out):
+    """
+        Args:
+            dataset_persons_detections_path: Path to folder containing the person detections in JSON format
+    """
+    videos_list = os.listdir(dataset_persons_detections_path)
+    for i, video_folder in enumerate(videos_list):
+        assert '.json' in video_folder, 'Unrecognized format!!!'
+        print("Processing ({}/{}), pt: {}/{} ...".format(i+1,len(videos_list), dataset_persons_detections_path, video_folder))
+        person_detections = JSON_2_videoDetections("{}/{}".format(dataset_persons_detections_path, video_folder))
+        live_paths = incremental_linking(start_frame=0,
+                        video_detections=person_detections,
+                        iou_thresh=0.3,
+                        jumpgap=3,
+                        plot=None)
+        if not os.path.isdir(folder_out):
+            os.makedirs(folder_out)
+        tube_2_JSON(output_path=os.path.join(folder_out, video_folder+'.json'), tube=live_paths)
 
 
 if __name__=="__main__":
-    vname = "89UQqPuR4Q4_0"
-    decodedArray = JSON_2_videoDetections("/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/RWF-2000/train/Fight/{}.json".format(vname))
+    # vname = "89UQqPuR4Q4_0"
+    # decodedArray = JSON_2_videoDetections("/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/RWF-2000/train/Fight/{}.json".format(vname))
     # decodedArray = JSON_2_videoDetections("/media/david/datos/Violence DATA/PersonDetections/RWF-2000/train/Fight/{}.json".format(vname))
     # print("decodedArray: ", type(decodedArray), len(decodedArray), decodedArray[0])
 
@@ -448,13 +467,24 @@ if __name__=="__main__":
 
     # print('tubes:', type(tubes), len(tubes))
 
-    live_paths = incremental_linking(start_frame=0,
-                        video_detections=decodedArray,
-                        iou_thresh=0.3,
-                        jumpgap=3,
-                        plot={
-                          'dataset_root':  '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames',
-                          'wait': 300
-                        })
+    # live_paths = incremental_linking(start_frame=0,
+    #                     video_detections=decodedArray,
+    #                     iou_thresh=0.3,
+    #                     jumpgap=3,
+    #                     plot=None
+    #                     # plot={
+    #                     #   'dataset_root':  '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames',
+    #                     #   'wait': 300
+    #                     # }
+    #                     )
+    # tube_2_JSON(output_path=vname+'.json', tube=live_paths)
+    # print('Paths ---live_paths[lp][frames_name]=', [lp['frames_name'] for lp in live_paths])
+    # print('Paths ---live_paths[lp][frames_name]=', [(len(lp['boxes']), lp['len']) for lp in live_paths])
+    # print('Live Paths Final:', len(live_paths))
 
-    print('Live Paths Final:', len(live_paths))
+    ##processing RWF-2000 dataset
+    path_in = '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/RWF-2000'
+    path_out = '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/Tubes/RWF-2000'
+    splits = ['train/Fight', 'tran/NonFight', 'val/Fight', 'val/NonFight']
+    for sp in splits:
+        extract_tubes_from_dataset(dataset_persons_detections_path=os.path.join(path_in, sp), folder_out=os.path.join(path_out, sp))
