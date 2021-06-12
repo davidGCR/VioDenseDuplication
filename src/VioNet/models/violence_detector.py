@@ -1,3 +1,4 @@
+from typing import Dict
 import torch
 from torch import nn
 from i3d import InceptionI3d
@@ -32,10 +33,29 @@ class ViolenceDetector(nn.Module):
         else:
             return None
     
-    def __get_central_bbox__(self, tubelet):
-        
+    def __get_central_bbox__(self, tubelet_data: Dict):
+        tubelet = tubelet_data['boxes']
+        if len(tubelet)>2:
+            central_box = tubelet[int(len(tubelet)/2)]
+        else:
+            central_box = tubelet[0]
+
+        return central_box
     
-    def forward(self, x, tubelet):
+    def forward(self, x, tubelet_data):
         #x: b,c,t,w,h
-        video_feature = self.backbone(x)
+        video_feature = self.backbone(x) #torch.Size([4, 528, 4, 14, 14])
+        central_bbox = self.__get_central_bbox__(tubelet_data)
         roi_feature = self.roi_op(video_feature, central_bbox)
+
+
+from TubeletGeneration.tube_utils import JSON_2_tube
+
+if __name__=='__main__':
+    model = ViolenceDetector(detector_input_dim=)
+    print('------- ViolenceDetector --------')
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    input = torch.rand(1,3,16,224,224).to(device)
+    tubes = JSON_2_tube('/Users/davidchoqueluqueroman/Documents/DATASETS_Local/Tubes/RWF-2000/train/Fight/89UQqPuR4Q4_0.json.json')
+    output = 

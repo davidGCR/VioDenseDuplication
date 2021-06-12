@@ -93,14 +93,14 @@ if __name__=='__main__':
     # output_size=8,
     # with_temporal_pool=True
 
-    device = 'cuda:0' # or 'cpu'
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     device = torch.device(device)
     feature_map = torch.rand(1, 2048, 4, 16, 20).to(device)
 
-    rois = torch.rand(3, 5).to(device)
+    rois = torch.rand(1, 5).to(device)
     rois[0] = torch.tensor([1, 14, 16, 66, 70]).to(device)
-    rois[1] = torch.tensor([2, 34, 14, 85, 77]).to(device)
-    rois[2] = torch.tensor([3, 100, 126, 122, 130]).to(device)
+    # rois[1] = torch.tensor([2, 34, 14, 85, 77]).to(device)
+    # rois[2] = torch.tensor([3, 100, 126, 122, 130]).to(device)
 
     roi_op = SingleRoIExtractor3D(roi_layer_type='RoIAlign', output_size=8, with_temporal_pool=True).to(device)
     out=roi_op(feature_map, rois)
