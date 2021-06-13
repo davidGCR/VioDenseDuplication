@@ -105,3 +105,19 @@ if __name__=='__main__':
     roi_op = SingleRoIExtractor3D(roi_layer_type='RoIAlign', output_size=8, with_temporal_pool=True).to(device)
     out=roi_op(feature_map, rois)
     print('out:', out.size())
+
+    tmp_pool_avg = nn.AdaptiveAvgPool3d((1, None, None)) #torch.Size([1, 2048, 1, 8, 8])
+    tmp_pool_max = nn.AdaptiveMaxPool3d((1, None, None))
+    sp_pool_avg = nn.AdaptiveAvgPool3d((None, 1, 1))
+    sp_pool_max = nn.AdaptiveMaxPool3d((None, 1, 1))
+
+    fake_map = torch.rand(16, 2048, 4, 8, 8).to(device)
+    out = tmp_pool_avg(fake_map)
+    print('tmp_pool out:', out.size())
+
+    out = sp_pool_avg(out)
+    print('spatial_pool out:', out.size())
+
+    out = out.view(out.size(0),-1)
+    print('view out:', out.size())
+
