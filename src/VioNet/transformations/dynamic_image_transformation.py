@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from transformations.transf_util import imread
+from customdatasets.dataset_utils import imread
 from PIL import Image
 
 class DynamicImage():

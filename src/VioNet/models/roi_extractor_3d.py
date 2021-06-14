@@ -70,12 +70,12 @@ class SingleRoIExtractor3D(nn.Module):
         if self.with_temporal_pool:
             feat = [torch.mean(x, 2, keepdim=True) for x in feat]
         feat = torch.cat(feat, axis=1)
-        print('_feat:',feat.size())
+        # print('_feat:',feat.size())
 
         roi_feats = []
         for t in range(feat.size(2)):
             frame_feat = feat[:, :, t].contiguous()
-            print('frame_feat:',frame_feat.size())
+            # print('frame_feat:',frame_feat.size())
             roi_feat = self.roi_layer(frame_feat, rois)
             if self.with_global:
                 global_feat = self.global_pool(frame_feat.contiguous())

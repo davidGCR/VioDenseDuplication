@@ -44,6 +44,8 @@ class ViolenceDetector(nn.Module):
         x = self.roi_op(x, bbox)
         x = self.temporal_pool(x)
         x = self.spatial_pool(x)
+        x = x.view(x.size(0),-1)
+        x = self.detector(x)
         return x
 
 # from TubeletGeneration.tube_utils import JSON_2_tube
@@ -80,7 +82,7 @@ def get_central_bbox(tubelet_data: Dict):
 if __name__=='__main__':
     print('------- ViolenceDetector --------')
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = ViolenceDetector(detector_input_dim=2048).to(device)
+    model = ViolenceDetector(detector_input_dim=528).to(device)
     
 
     input = torch.rand(1,3,16,224,224).to(device)

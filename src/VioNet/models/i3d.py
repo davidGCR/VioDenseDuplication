@@ -266,7 +266,10 @@ class InceptionI3d(nn.Module):
 
         end_point = 'Mixed_4d'
         self.end_points[end_point] = InceptionModule(160+224+64+64, [128,128,256,24,64,64], name+end_point)
-        if self._final_endpoint == end_point: return
+        # if self._final_endpoint == end_point: return
+        if self._final_endpoint == end_point:
+            self.build()
+            return
 
         end_point = 'Mixed_4e'
         self.end_points[end_point] = InceptionModule(128+256+64+64, [112,144,288,32,64,64], name+end_point)
@@ -364,7 +367,7 @@ if __name__=="__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     input = torch.rand(4,3,16,224,224).to(device) #for slowFAst backbone: 3x4x256x320, RWF-frames 224x224, RWF-video 640x360
-    i3d = InceptionI3d(2, in_channels=3, final_endpoint='Mixed_4e').to(device)
+    i3d = InceptionI3d(2, in_channels=3, final_endpoint='Mixed_4d').to(device)
     # i3d = InceptionI3d(num_classes=2, in_channels=3).to(device)
 
     # load_model_path = '/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt'

@@ -5,11 +5,11 @@ from torch import nn
 class AnomalyDetector(nn.Module):
     def __init__(self, input_dim=4096):
         super(AnomalyDetector, self).__init__()
-        self.fc1 = nn.Linear(input_dim, 512)
+        self.fc1 = nn.Linear(input_dim, 128) #original was 512
         self.relu1 = nn.ReLU()
         self.dropout1 = nn.Dropout(0.6)
 
-        self.fc2 = nn.Linear(512, 32)
+        self.fc2 = nn.Linear(128, 32)
         self.dropout2 = nn.Dropout(0.6)
 
         self.fc3 = nn.Linear(32, 1)
@@ -26,6 +26,7 @@ class AnomalyDetector(nn.Module):
         x = self.dropout2(self.fc2(x))
         x = self.sig(self.fc3(x))
         return x
+
 
 class RegularizedLoss(torch.nn.Module):
     def __init__(self, model, original_objective, lambdas=0.001):

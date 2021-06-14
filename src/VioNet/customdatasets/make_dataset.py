@@ -65,9 +65,10 @@ class MakeImageHMDB51():
         return paths, labels
 
 class MakeRWF2000():
-    def __init__(self, root, train):
+    def __init__(self, root, train, path_annotations=None):
         self.root = root
         self.train = train
+        self.path_annotations = path_annotations
         # self.F_TAG = "Fight"
         # self.NF_TAG = "NonFight"
         self.classes = ["NonFight", "Fight"]
@@ -83,13 +84,17 @@ class MakeRWF2000():
         split = self.split()
         paths = []
         labels = []
+        annotations = []
         for idx, cl in enumerate(self.classes):
             for video_sample in os.scandir(os.path.join(self.root, split, cl)):
                 if video_sample.is_dir():
                     paths.append(os.path.join(self.root, split, cl, video_sample))
                     labels.append(idx)
+                    if self.path_annotations:
+                        assert os.path.exists(os.path.join(self.path_annotations, split, cl, video_sample.name +'.json')), "Annotation does not exist!!!"
+                        annotations.append(os.path.join(self.path_annotations, split, cl, video_sample.name +'.json'))
         
-        return paths, labels
+        return paths, labels, annotations
 
 class MakeUCFCrime2Local():
     def __init__(self, root, annotation_path, bbox_path, train):
@@ -229,10 +234,13 @@ from collections import Counter
 import random
 
 if __name__=="__main__":
-    # m = MakeRWF2000(root="/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames", train=True)
-    # paths, labels = m()
-    # print("paths: ", paths, len(paths))
-    # print("labels: ", labels, len(labels))
+    make_func = MakeRWF2000(root='/media/david/datos/Violence DATA/RWF-2000/frames', 
+                    train=True,
+                    path_annotations='/media/david/datos/Violence DATA/Tubes/RWF-2000')
+    paths, labels, annotations = make_func()
+    print("paths: ", paths[0:10], len(paths))
+    print("labels: ", labels[0:10], len(labels))
+    print("annotations: ", annotations[0:10], len(annotations))
 
     # m = MakeUCFCrime2Local(root='/Volumes/TOSHIBA EXT/DATASET/AnomalyCRIMEALL/UCFCrime2Local/frames',
     #                         annotation_path='/Volumes/TOSHIBA EXT/DATASET/AnomalyCRIMEALL/UCFCrime2Local/readme',
@@ -245,10 +253,10 @@ if __name__=="__main__":
     # print(annotations[idx][0:10])
     # print(intervals[idx])
 
-    m = MakeUCFCrime2LocalClips(root=('/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/UCFCrime2LocalClips',
-                                 '/Volumes/TOSHIBA EXT/DATASET/AnomalyCRIMEALL/UCFCrime2Local/frames'))
-    paths, labels = m()
-    idx= random.randint(0, len(paths)-1)
-    print(Counter(labels))
-    print(paths[idx])
-    print(labels[idx])
+    # m = MakeUCFCrime2LocalClips(root=('/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/UCFCrime2LocalClips',
+    #                              '/Volumes/TOSHIBA EXT/DATASET/AnomalyCRIMEALL/UCFCrime2Local/frames'))
+    # paths, labels = m()
+    # idx= random.randint(0, len(paths)-1)
+    # print(Counter(labels))
+    # print(paths[idx])
+    # print(labels[idx])
