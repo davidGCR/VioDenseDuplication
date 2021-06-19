@@ -418,8 +418,8 @@ def extract_tubes_from_dataset(dataset_persons_detections_path, folder_out):
 
 
 if __name__=="__main__":
-    # vname = "89UQqPuR4Q4_0"
-    # decodedArray = JSON_2_videoDetections("/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/RWF-2000/train/Fight/{}.json".format(vname))
+    vname = "-1l5631l3fg_2"
+    decodedArray = JSON_2_videoDetections("/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/RWF-2000/train/Fight/{}.json".format(vname))
     # decodedArray = JSON_2_videoDetections("/media/david/datos/Violence DATA/PersonDetections/RWF-2000/train/Fight/{}.json".format(vname))
     # print("decodedArray: ", type(decodedArray), len(decodedArray), decodedArray[0])
 
@@ -436,16 +436,16 @@ if __name__=="__main__":
 
     # print('tubes:', type(tubes), len(tubes))
 
-    # live_paths = incremental_linking(start_frame=0,
-    #                     video_detections=decodedArray,
-    #                     iou_thresh=0.3,
-    #                     jumpgap=3,
-    #                     plot=None
-    #                     # plot={
-    #                     #   'dataset_root':  '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames',
-    #                     #   'wait': 300
-    #                     # }
-    #                     )
+    live_paths = incremental_linking(start_frame=0,
+                            video_detections=decodedArray,
+                            iou_thresh=0.3,
+                            jumpgap=3,
+                            # plot=None
+                            plot={
+                            'dataset_root':  '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames',
+                            'wait': 300
+                            }
+                        )
     # tube_2_JSON(output_path=vname+'.json', tube=live_paths)
     # print('Paths ---live_paths[lp][frames_name]=', [lp['frames_name'] for lp in live_paths])
     # print('Paths ---live_paths[lp][frames_name]=', [(len(lp['boxes']), lp['len']) for lp in live_paths])
@@ -454,11 +454,11 @@ if __name__=="__main__":
     ##processing RWF-2000 dataset
     # path_in = '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/RWF-2000'
     # path_out = '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/Tubes/RWF-2000'
-    path_in = '/media/david/datos/Violence DATA/PersonDetections/RWF-2000'
-    path_out = '/media/david/datos/Violence DATA/Tubes/RWF-2000'
-    splits = ['train/Fight', 'train/NonFight', 'val/Fight', 'val/NonFight']
-    for sp in splits:
-        extract_tubes_from_dataset(dataset_persons_detections_path=os.path.join(path_in, sp), folder_out=os.path.join(path_out, sp))
+    # path_in = '/media/david/datos/Violence DATA/PersonDetections/RWF-2000'
+    # path_out = '/media/david/datos/Violence DATA/Tubes/RWF-2000'
+    # splits = ['train/Fight', 'train/NonFight', 'val/Fight', 'val/NonFight']
+    # for sp in splits:
+    #     extract_tubes_from_dataset(dataset_persons_detections_path=os.path.join(path_in, sp), folder_out=os.path.join(path_out, sp))
     # tubes = JSON_2_tube('/media/david/datos/Violence DATA/Tubes/RWF-2000/train/Fight/_6-B11R9FJM_2.json')
     # print(len(tubes))
     # print(tubes[0])
