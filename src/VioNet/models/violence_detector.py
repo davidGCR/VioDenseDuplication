@@ -88,7 +88,7 @@ if __name__=='__main__':
     model = ViolenceDetector(detector_input_dim=528).to(device)
     
 
-    input = torch.rand(1,3,16,224,224).to(device)
+    input = torch.rand(8,3,16,224,224).to(device)
     
     tubes = JSON_2_tube('/media/david/datos/Violence DATA/Tubes/RWF-2000/train/Fight/_6-B11R9FJM_2.json')
     bbox = get_central_bbox(tubes[0]).to(device)
