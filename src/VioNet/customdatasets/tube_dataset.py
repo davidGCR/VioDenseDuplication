@@ -59,7 +59,7 @@ class TubeDataset(data.Dataset):
             boxes = list(itemgetter(*idxs)(boxes))
             video_images = list(itemgetter(*idxs)(video_images))
         boxes = torch.stack(boxes, dim=0).squeeze()
-        video_images = torch.stack(video_images, dim=0)
+        video_images = torch.stack(video_images, dim=0).permute(0,2,1,3,4)
         # return path, label, annotation, frames_names, boxes, video_images
         return boxes, video_images, label
 
