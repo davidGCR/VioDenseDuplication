@@ -1,9 +1,12 @@
 from typing import Dict
 import torch
 from torch import nn
-from i3d import InceptionI3d
-from roi_extractor_3d import SingleRoIExtractor3D
-from anomaly_detector import AnomalyDetector
+from models.i3d import InceptionI3d
+from models.roi_extractor_3d import SingleRoIExtractor3D
+from models.anomaly_detector import AnomalyDetector
+# from i3d import InceptionI3d
+# from roi_extractor_3d import SingleRoIExtractor3D
+# from anomaly_detector import AnomalyDetector
 
 
 class ViolenceDetector(nn.Module):

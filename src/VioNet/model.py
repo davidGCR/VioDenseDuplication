@@ -17,9 +17,16 @@ from models.models2D import ResNet, Densenet2D, FusedResNextTempPool, FeatureExt
 from models.anomaly_detector import AnomalyDetector
 from models.i3d import InceptionI3d
 import models.models2D as rn
+from models.violence_detector import ViolenceDetector
 from global_var import *
 
 # g_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+def ViolenceDetector_model(config, device):
+    model = ViolenceDetector(detector_input_dim=528).to(device)
+    params = model.parameters()
+    return model, params
+
 
 def Feature_Extractor_C3D(device, pretrained_model):
     if pretrained_model:
