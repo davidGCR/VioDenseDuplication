@@ -16,7 +16,8 @@ class ViolenceDetector(nn.Module):
                       roi_layer_output=8,
                       roi_with_temporal_pool=True,
                       roi_spatial_scale=16,
-                      detector_input_dim=2048
+                      detector_input_dim=2048,
+                      device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
                       ):
         super(ViolenceDetector, self).__init__()
         #Backbone
@@ -24,12 +25,24 @@ class ViolenceDetector(nn.Module):
         self.backbone = self.__build_backbone__(backbone_name)
         
         #Roi_pool
-        self.roi_op = SingleRoIExtractor3D(roi_layer_type=roi_layer_type, featmap_stride=roi_spatial_scale, output_size=roi_layer_output, with_temporal_pool=roi_with_temporal_pool)
+        self.roi_op = SingleRoIExtractor3D(roi_layer_type=roi_layer_type,
+                                            featmap_stride=roi_spatial_scale,
+                                            output_size=roi_layer_output,
+                                            with_temporal_pool=roi_with_temporal_pool)
 
         self.temporal_pool = nn.AdaptiveAvgPool3d((1, None, None))
         self.spatial_pool = nn.AdaptiveAvgPool3d((None, 1, 1))
         #Classification Head
-        self.detector = AnomalyDetector(input_dim=detector_input_dim)
+        self.detector = AnomalyDetector(input_dim=detector_input_dim).to(device)
+        # self.fc1 = nn.Linear(detector_input_dim, 128) #original was 512
+        # self.relu1 = nn.ReLU()
+        # self.dropout1 = nn.Dropout(0.6)
+
+        # self.fc2 = nn.Linear(128, 32)
+        # self.dropout2 = nn.Dropout(0.6)
+
+        # self.fc3 = nn.Linear(32, 1)
+        # self.sig = nn.Sigmoid()
 
 
     def __build_backbone__(self, backbone_name):
@@ -42,13 +55,17 @@ class ViolenceDetector(nn.Module):
     def forward(self, x, bbox):
         #x: b,c,t,w,h
         x = self.backbone(x) #torch.Size([4, 528, 4, 14, 14])
+        print('X before ROIAling:', x.size())
         # central_bbox = self.__get_central_bbox__(tubelet_data)
         
         x = self.roi_op(x, bbox)
+        print('X after ROIAling:', x.size())
         x = self.temporal_pool(x)
         x = self.spatial_pool(x)
         x = x.view(x.size(0),-1)
+        print('X view:', x.size())
         x = self.detector(x)
+        # x = self.fc1(x)
         return x
 
 # from TubeletGeneration.tube_utils import JSON_2_tube
@@ -84,16 +101,26 @@ def get_central_bbox(tubelet_data: Dict):
 
 if __name__=='__main__':
     print('------- ViolenceDetector --------')
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    # device = torch.device("cpu")
     model = ViolenceDetector(detector_input_dim=528).to(device)
+    # print(model)
     
-    tubes_num = 50
+    tubes_num = 4
     input = torch.rand(tubes_num,3,16,224,224).to(device)
     
-    tubes = JSON_2_tube('/media/david/datos/Violence DATA/Tubes/RWF-2000/train/Fight/_6-B11R9FJM_2.json')
-    bbox = get_central_bbox(tubes[0]).to(device)
-    bbox_batch = [bbox for i in range(tubes_num)]
-    bbox = torch.stack(bbox_batch, dim=0).squeeze()
+    # tubes = JSON_2_tube('/media/david/datos/Violence DATA/Tubes/RWF-2000/train/Fight/_6-B11R9FJM_2.json')
+    # bbox = get_central_bbox(tubes[0]).to(device)
+    # bbox_batch = [bbox for i in range(tubes_num)]
+    # bbox = torch.stack(bbox_batch, dim=0).squeeze()
+
+    bbox = torch.tensor([
+            [ 1.0000,  69.8389,  68.9140, 111.6870, 246.7374],
+            [ 2.0000,  89.5030,  55.2829, 123.0316, 195.3472],
+            [ 3.0000,  62.5481,  49.0223, 122.0747, 203.4146],
+            # [24.0000,  62.5481,  49.0223, 122.0747, 203.4146]
+            [ 4.0000,  80.0366,  44.7882, 125.0502, 198.5162]
+        ]).to(device)
 
     
     print('central bbox:', bbox.size(), bbox)

@@ -29,11 +29,11 @@ def main(config: Config):
                                 transforms.CenterCrop(224),
                                 transforms.ToTensor()
                             ]),
-                            max_num_tubes=8)
+                            max_num_tubes=2)
     loader = DataLoader(dataset,
                         batch_size=4,
                         shuffle=False,
-                        num_workers=0,
+                        num_workers=4,
                         pin_memory=True,
                         collate_fn=my_collate)
 
@@ -56,18 +56,20 @@ def main(config: Config):
 
         video_images = [torch.rand(v.size()[0],3,16,224,224) for v in video_images]
         scores = []
-        for i in range(len(video_images)):
+        for i in range(1):
             video_images[i] = video_images[i].to(device)
             boxes[i] = boxes[i].to(device)
             # labels[i] = labels[i].to(device)
 
-            print('boxes[i]: ', boxes[i].size())
+            print('boxes[i]: ', boxes[i], boxes[i].size())
             print('video_images[i]: ', video_images[i].size())
             print('labels: ', labels[i])
 
             y_pred = model(video_images[i], boxes[i])
             scores.append(y_pred)
         print('Scores: ', scores)
+        if i==1:
+            break
 
 if __name__=='__main__':
     config = Config(

@@ -78,12 +78,15 @@ class TubeCrop(object):
         # assert len(tubes) >= 1, "No tubes in video!!!==>{}".format(tube_path)
         # if len(tubes) < 1:
         #     return None, None
+        
         segments = []
         boxes = []
         for tube in tubes:
             frames_idxs = self.__centered_frames__(tube['foundAt'])
             if len(frames_idxs) > 0:
                 bbox = self.__central_bbox__(tube['boxes'], tube['id']+1)
+                
+                
                 boxes.append(bbox)
                 segments.append(frames_idxs)
         
@@ -105,11 +108,14 @@ class TubeCrop(object):
             return []
 
     def __central_bbox__(self, tube, id):
+        width = 224
+        height = 224
         if len(tube)>2:
             central_box = tube[int(len(tube)/2)]
         else:
             central_box = tube[0]
-
+        central_box = central_box[0:4]
+        central_box = np.array([max(central_box[0], 0), max(central_box[1], 0), min(central_box[2], width - 1), min(central_box[3], height - 1)])
         central_box = np.insert(central_box[0:4], 0, id).reshape(1,-1)
         central_box = torch.from_numpy(central_box).float()
         return central_box

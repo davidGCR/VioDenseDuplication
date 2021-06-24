@@ -88,6 +88,7 @@ class SingleRoIExtractor3D(nn.Module):
         return torch.stack(roi_feats, dim=2)
 
 if __name__=='__main__':
+    print('-----Roi3D------')
     # type='SingleRoIExtractor3D',
     # roi_layer_type='RoIAlign',
     # output_size=8,
@@ -95,10 +96,10 @@ if __name__=='__main__':
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     device = torch.device(device)
-    feature_map = torch.rand(1, 2048, 4, 16, 20).to(device)
+    feature_map = torch.rand(4, 528, 4, 14, 14).to(device)
 
     rois = torch.rand(1, 5).to(device)
-    rois[0] = torch.tensor([1, 14, 16, 66, 70]).to(device)
+    rois[0] = torch.tensor([4.0000,  62.5481,  49.0223, 122.0747, 203.4146]).to(device)#torch.tensor([1, 14, 16, 66, 70]).to(device)
     # rois[1] = torch.tensor([2, 34, 14, 85, 77]).to(device)
     # rois[2] = torch.tensor([3, 100, 126, 122, 130]).to(device)
 
@@ -106,18 +107,18 @@ if __name__=='__main__':
     out=roi_op(feature_map, rois)
     print('out:', out.size())
 
-    tmp_pool_avg = nn.AdaptiveAvgPool3d((1, None, None)) #torch.Size([1, 2048, 1, 8, 8])
-    tmp_pool_max = nn.AdaptiveMaxPool3d((1, None, None))
-    sp_pool_avg = nn.AdaptiveAvgPool3d((None, 1, 1))
-    sp_pool_max = nn.AdaptiveMaxPool3d((None, 1, 1))
+    # tmp_pool_avg = nn.AdaptiveAvgPool3d((1, None, None)) #torch.Size([1, 2048, 1, 8, 8])
+    # tmp_pool_max = nn.AdaptiveMaxPool3d((1, None, None))
+    # sp_pool_avg = nn.AdaptiveAvgPool3d((None, 1, 1))
+    # sp_pool_max = nn.AdaptiveMaxPool3d((None, 1, 1))
 
-    fake_map = torch.rand(16, 2048, 4, 8, 8).to(device)
-    out = tmp_pool_avg(fake_map)
-    print('tmp_pool out:', out.size())
+    # fake_map = torch.rand(16, 2048, 4, 8, 8).to(device)
+    # out = tmp_pool_avg(fake_map)
+    # print('tmp_pool out:', out.size())
 
-    out = sp_pool_avg(out)
-    print('spatial_pool out:', out.size())
+    # out = sp_pool_avg(out)
+    # print('spatial_pool out:', out.size())
 
-    out = out.view(out.size(0),-1)
-    print('view out:', out.size())
+    # out = out.view(out.size(0),-1)
+    # print('view out:', out.size())
 
