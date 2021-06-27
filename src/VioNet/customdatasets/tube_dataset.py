@@ -26,7 +26,7 @@ class TubeDataset(data.Dataset):
         self.spatial_transform = spatial_transform
         self.make_function = make_function
         self.paths, self.labels, self.annotations = self.make_function()
-        self.sampler = TubeCrop(tube_len=frames_per_tube, min_tube_len=min_frames_per_tube, central_frame=True)
+        self.sampler = TubeCrop(tube_len=frames_per_tube, min_tube_len=min_frames_per_tube, central_frame=True, max_num_tubes=max_num_tubes)
         self.return_metadata = return_metadata
         self.max_num_tubes = max_num_tubes
     
@@ -54,10 +54,10 @@ class TubeDataset(data.Dataset):
                 img = self.spatial_transform(imread(i)) if self.spatial_transform else imread(i)
                 tube_images.append(img)
             video_images.append(torch.stack(tube_images, dim=0))
-        if len(boxes) > self.max_num_tubes:
-            idxs = random.sample(range(len(boxes)), self.max_num_tubes)
-            boxes = list(itemgetter(*idxs)(boxes))
-            video_images = list(itemgetter(*idxs)(video_images))
+        # if len(boxes) > self.max_num_tubes:
+        #     idxs = random.sample(range(len(boxes)), self.max_num_tubes)
+        #     boxes = list(itemgetter(*idxs)(boxes))
+        #     video_images = list(itemgetter(*idxs)(video_images))
         boxes = torch.stack(boxes, dim=0).squeeze()
         video_images = torch.stack(video_images, dim=0).permute(0,2,1,3,4)
         # return path, label, annotation, frames_names, boxes, video_images
@@ -66,13 +66,14 @@ class TubeDataset(data.Dataset):
 
 
 class TubeCrop(object):
-    def __init__(self, tube_len=16, min_tube_len=8, central_frame=True):
+    def __init__(self, tube_len=16, min_tube_len=8, central_frame=True, max_num_tubes=4):
         """
         Args:
         """
         self.tube_len = tube_len
         self.min_tube_len = min_tube_len
         self.central_frame = central_frame
+        self.max_num_tubes = max_num_tubes
 
     def __call__(self, tubes: list, tube_path: str):
         # assert len(tubes) >= 1, "No tubes in video!!!==>{}".format(tube_path)
@@ -85,11 +86,16 @@ class TubeCrop(object):
             frames_idxs = self.__centered_frames__(tube['foundAt'])
             if len(frames_idxs) > 0:
                 bbox = self.__central_bbox__(tube['boxes'], tube['id']+1)
-                
-                
                 boxes.append(bbox)
                 segments.append(frames_idxs)
-        
+        if len(boxes) > self.max_num_tubes:
+            idxs = random.sample(range(len(boxes)), self.max_num_tubes)
+            boxes = list(itemgetter(*idxs)(boxes))
+            # print('=====len: ', len(boxes))
+            for id,box in enumerate(boxes):
+                boxes[id][0,0] = id+1
+            segments = list(itemgetter(*idxs)(segments))
+
         if len(boxes) < 1:
             return None, None
         

@@ -29,19 +29,19 @@ def main(config: Config):
                                 transforms.CenterCrop(224),
                                 transforms.ToTensor()
                             ]),
-                            max_num_tubes=2)
+                            max_num_tubes=4)
     loader = DataLoader(dataset,
                         batch_size=4,
-                        shuffle=False,
+                        shuffle=True,
                         num_workers=4,
                         pin_memory=True,
                         collate_fn=my_collate)
 
     model, params = ViolenceDetector_model(config, device)
     # print(model)
-    optimizer = torch.optim.Adadelta(params, lr=config.learning_rate, eps=1e-8)
+    # optimizer = torch.optim.Adadelta(params, lr=config.learning_rate, eps=1e-8)
 
-    criterion = RegularizedLoss(model, custom_objective)
+    # criterion = RegularizedLoss(model, custom_objective)
     
     ##iterate over dataset
     for i, data in enumerate(loader):
@@ -61,9 +61,9 @@ def main(config: Config):
             boxes[i] = boxes[i].to(device)
             # labels[i] = labels[i].to(device)
 
-            print('boxes[i]: ', boxes[i], boxes[i].size())
-            print('video_images[i]: ', video_images[i].size())
-            print('labels: ', labels[i])
+            print('boxes[{}]: '.format(i), boxes[i], boxes[i].size())
+            print('video_images[{}]: '.format(i), video_images[i].size())
+            print('labels[{}]: '.format(i), labels[i])
 
             y_pred = model(video_images[i], boxes[i])
             scores.append(y_pred)
