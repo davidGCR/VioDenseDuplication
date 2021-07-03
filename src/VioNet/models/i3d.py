@@ -370,11 +370,11 @@ if __name__=="__main__":
     i3d = InceptionI3d(2, in_channels=3, final_endpoint='Mixed_4d').to(device)
     # i3d = InceptionI3d(num_classes=2, in_channels=3).to(device)
 
-    # load_model_path = '/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt'
+    load_model_path = '/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt'
     
     # i3d = nn.DataParallel(i3d)
-    # state_dict = torch.load(load_model_path)
-    # i3d.load_state_dict(state_dict,  strict=False)
+    state_dict = torch.load(load_model_path)
+    i3d.load_state_dict(state_dict,  strict=False)
 
     # i3d.replace_logits(2)
     # i3d.to(device)

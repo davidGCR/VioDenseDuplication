@@ -3,10 +3,50 @@ import torch
 from torch import nn
 from models.i3d import InceptionI3d
 from models.roi_extractor_3d import SingleRoIExtractor3D
+# from mmaction.models import SingleRoIExtractor3D
+
 from models.anomaly_detector import AnomalyDetector
 # from i3d import InceptionI3d
 # from roi_extractor_3d import SingleRoIExtractor3D
 # from anomaly_detector import AnomalyDetector
+
+class RoiHead(nn.Module):
+    def __init__(self,roi_layer_type='RoIAlign',
+                      roi_layer_output=8,
+                      roi_with_temporal_pool=True,
+                      roi_spatial_scale=16):
+        
+        super(RoiHead, self).__init__()
+        self.roi_op = SingleRoIExtractor3D(roi_layer_type=roi_layer_type,
+                                            featmap_stride=roi_spatial_scale,
+                                            output_size=roi_layer_output,
+                                            with_temporal_pool=roi_with_temporal_pool)
+
+        self.temporal_pool = nn.AdaptiveAvgPool3d((1, None, None))
+        self.spatial_pool = nn.AdaptiveAvgPool3d((None, 1, 1))
+        self.detector = nn.Sequential(
+            nn.Linear(528, 128), #original was 512
+            nn.ReLU(),
+            nn.Dropout(0.6),
+            nn.Linear(128, 32),
+            nn.Dropout(0.6),
+            nn.Linear(32, 1),
+            nn.Sigmoid()
+        )
+    
+    def forward(self, x, bbox):
+        #x: b,c,t,w,h
+        x, _ = self.roi_op(x, bbox)
+        print('X type after ROIAling:', type(x), x.device)
+        print('X after ROIAling:', x.size())
+        x = self.temporal_pool(x)
+        x = self.spatial_pool(x)
+        x = x.view(x.size(0),-1)
+        # print('X view:', x.size())
+        x = self.detector(x)
+        # x = self.fc1(x)
+        return x
+
 
 
 class ViolenceDetector(nn.Module):
@@ -25,29 +65,37 @@ class ViolenceDetector(nn.Module):
         self.backbone = self.__build_backbone__(backbone_name)
         
         #Roi_pool
-        self.roi_op = SingleRoIExtractor3D(roi_layer_type=roi_layer_type,
-                                            featmap_stride=roi_spatial_scale,
-                                            output_size=roi_layer_output,
-                                            with_temporal_pool=roi_with_temporal_pool)
+        # self.roi_op = SingleRoIExtractor3D(roi_layer_type=roi_layer_type,
+        #                                     featmap_stride=roi_spatial_scale,
+        #                                     output_size=roi_layer_output,
+        #                                     with_temporal_pool=roi_with_temporal_pool)
 
-        self.temporal_pool = nn.AdaptiveAvgPool3d((1, None, None))
-        self.spatial_pool = nn.AdaptiveAvgPool3d((None, 1, 1))
-        #Classification Head
-        self.detector = AnomalyDetector(input_dim=detector_input_dim).to(device)
-        # self.fc1 = nn.Linear(detector_input_dim, 128) #original was 512
-        # self.relu1 = nn.ReLU()
-        # self.dropout1 = nn.Dropout(0.6)
+        # self.temporal_pool = nn.AdaptiveAvgPool3d((1, None, None))
+        # self.spatial_pool = nn.AdaptiveAvgPool3d((None, 1, 1))
+        # #Classification Head
+        # # self.detector = AnomalyDetector(input_dim=detector_input_dim)
 
-        # self.fc2 = nn.Linear(128, 32)
-        # self.dropout2 = nn.Dropout(0.6)
+        # self.detector = nn.Sequential(
+        #     nn.Linear(detector_input_dim, 128), #original was 512
+        #     nn.ReLU(),
+        #     nn.Dropout(0.6),
+        #     nn.Linear(128, 32),
+        #     nn.Dropout(0.6),
+        #     nn.Linear(32, 1),
+        #     nn.Sigmoid()
+        # )
 
-        # self.fc3 = nn.Linear(32, 1)
-        # self.sig = nn.Sigmoid()
+        self.head = RoiHead()
+        
 
 
     def __build_backbone__(self, backbone_name):
         if backbone_name == 'i3d':
-            return  InceptionI3d(2, in_channels=3, final_endpoint=self.final_endpoint)
+            i3d = InceptionI3d(2, in_channels=3, final_endpoint=self.final_endpoint)
+            load_model_path = '/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt'
+            state_dict = torch.load(load_model_path)
+            i3d.load_state_dict(state_dict,  strict=False)
+            return i3d
         else:
             return None
 
@@ -55,17 +103,21 @@ class ViolenceDetector(nn.Module):
     def forward(self, x, bbox):
         #x: b,c,t,w,h
         x = self.backbone(x) #torch.Size([4, 528, 4, 14, 14])
-        print('X before ROIAling:', x.size())
+        print('X before ROIAling:', x.size(), x.device)
+        print('BBobx before ROIAling:', bbox.size(), bbox.device)
         # central_bbox = self.__get_central_bbox__(tubelet_data)
         
-        x = self.roi_op(x, bbox)
-        print('X after ROIAling:', x.size())
-        x = self.temporal_pool(x)
-        x = self.spatial_pool(x)
-        x = x.view(x.size(0),-1)
-        print('X view:', x.size())
-        x = self.detector(x)
-        # x = self.fc1(x)
+        # x, _ = self.roi_op(x, bbox)
+        # print('X type after ROIAling:', type(x), x.device)
+        # print('X after ROIAling:', x.size())
+        # x = self.temporal_pool(x)
+        # x = self.spatial_pool(x)
+        # x = x.view(x.size(0),-1)
+        # print('X view:', x.size())
+        # x = self.detector(x)
+        # # x = self.fc1(x)
+
+        x = self.head(x, bbox)
         return x
 
 # from TubeletGeneration.tube_utils import JSON_2_tube

@@ -2,6 +2,7 @@
 from torch._C import device
 from torch.utils.tensorboard import SummaryWriter
 import torch
+from torchvision.transforms.transforms import Resize
 
 #data
 from customdatasets.make_dataset import MakeRWF2000
@@ -26,18 +27,34 @@ def main(config: Config):
                             min_frames_per_tube=8, 
                             make_function=make_dataset,
                             spatial_transform=transforms.Compose([
-                                transforms.CenterCrop(224),
+                                # transforms.CenterCrop(224),
+                                # transforms.Resize(256),
                                 transforms.ToTensor()
                             ]),
-                            max_num_tubes=4)
+                            max_num_tubes=8)
     loader = DataLoader(dataset,
-                        batch_size=4,
-                        shuffle=True,
+                        batch_size=1,
+                        shuffle=False,
                         num_workers=4,
-                        pin_memory=True,
+                        # pin_memory=True,
                         collate_fn=my_collate)
 
-    model, params = ViolenceDetector_model(config, device)
+    
+    # from models.roi_extractor_3d import SingleRoIExtractor3D
+    # from models.anomaly_detector import AnomalyDetector
+    # roi_op = SingleRoIExtractor3D(roi_layer_type='RoIAlign',
+    #                             featmap_stride=16,
+    #                             output_size=8,    
+    #                             with_temporal_pool=True)
+    # model = AnomalyDetector()
+
+    from models.violence_detector import RoiHead
+    model = RoiHead()
+    model.to(device)
+
+    # model, params = ViolenceDetector_model(config, device)
+    # torch.backends.cudnn.enabled = False
+    # model.cuda(device=0)
     # print(model)
     # optimizer = torch.optim.Adadelta(params, lr=config.learning_rate, eps=1e-8)
 
@@ -49,14 +66,19 @@ def main(config: Config):
         boxes, video_images, labels = data
         # boxes, video_images, labels = boxes.to(device), video_images.to(device), labels.to(device)
         print('_____ {} ______'.format(i+1))
+
+        if not boxes:
+            continue
         
-        print('boxes: ', type(boxes), len(boxes), '-boxes[0]: ', boxes[0].size())
+        print('boxes: ', type(boxes), len(boxes))#, '-boxes[0]: ', boxes[0].size())
         print('video_images: ', type(video_images), len(video_images), '-video_images[0]: ', video_images[0].size())
         print('labels: ', type(labels), len(labels), '-labels: ', labels)
 
-        video_images = [torch.rand(v.size()[0],3,16,224,224) for v in video_images]
+        # video_images = [torch.rand(v.size()[0],3,16,224,224) for v in video_images]
+        video_images = [torch.rand(2, 528, 4, 14, 14).to(device) for v in video_images]
+        
         scores = []
-        for i in range(1):
+        for i in range(len(video_images)):
             video_images[i] = video_images[i].to(device)
             boxes[i] = boxes[i].to(device)
             # labels[i] = labels[i].to(device)
@@ -66,6 +88,8 @@ def main(config: Config):
             print('labels[{}]: '.format(i), labels[i])
 
             y_pred = model(video_images[i], boxes[i])
+            # roi_out = roi_op(video_images[i])
+
             scores.append(y_pred)
         print('Scores: ', scores)
         if i==1:

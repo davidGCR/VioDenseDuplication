@@ -23,7 +23,7 @@ from global_var import *
 # g_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 def ViolenceDetector_model(config, device):
-    model = ViolenceDetector(detector_input_dim=528).to(device)
+    model = ViolenceDetector(detector_input_dim=528, roi_layer_type='RoIAlign').to(device)
     params = model.parameters()
     return model, params
 

@@ -59,6 +59,9 @@ class TubeDataset(data.Dataset):
         #     boxes = list(itemgetter(*idxs)(boxes))
         #     video_images = list(itemgetter(*idxs)(video_images))
         boxes = torch.stack(boxes, dim=0).squeeze()
+        if len(boxes.shape)==1:
+            boxes = torch.unsqueeze(boxes, dim=0)
+            
         video_images = torch.stack(video_images, dim=0).permute(0,2,1,3,4)
         # return path, label, annotation, frames_names, boxes, video_images
         return boxes, video_images, label
@@ -96,7 +99,7 @@ class TubeCrop(object):
                 boxes[id][0,0] = id+1
             segments = list(itemgetter(*idxs)(segments))
 
-        if len(boxes) < 1:
+        if len(boxes) == 0:
             return None, None
         
         return boxes, segments
@@ -114,8 +117,7 @@ class TubeCrop(object):
             return []
 
     def __central_bbox__(self, tube, id):
-        width = 224
-        height = 224
+        width, height = 224, 224
         if len(tube)>2:
             central_box = tube[int(len(tube)/2)]
         else:
