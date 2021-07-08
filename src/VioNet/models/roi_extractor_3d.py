@@ -181,8 +181,8 @@ class SingleRoIExtractor3D(nn.Module):
         roi_feats = []
         for t in range(feat.size(2)):
             frame_feat = feat[:, :, t].contiguous()
-            print('frame feat:',frame_feat.size(), frame_feat.device)
-            print('rois:',rois.size(), rois.device)
+            # print('frame feat:',frame_feat.size(), frame_feat.device)
+            # print('rois:',rois.size(), rois.device)
             roi_feat = self.roi_layer(frame_feat, rois)
             if self.with_global:
                 global_feat = self.global_pool(frame_feat.contiguous())

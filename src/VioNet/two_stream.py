@@ -1,0 +1,410 @@
+import os
+from random import sample
+
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader
+from global_var import *
+
+from epoch import train, val, test
+from model import VioNet_C3D, VioNet_ConvLSTM, VioNet_densenet, VioNet_densenet_lean, VioNet_Resnet, VioNet_Densenet2D, VioNet_I3D, VioNet_S3D
+from dataset import VioDB
+from config import Config
+
+from transformations.spatial_transforms import Compose, ToTensor, Normalize
+from transformations.spatial_transforms import GroupRandomHorizontalFlip, GroupRandomScaleCenterCrop, GroupScaleCenterCrop
+from transformations.temporal_transforms import CenterCrop, RandomCrop, SegmentsCrop, RandomSegmentsCrop, KeyFrameCrop, TrainGuidedKeyFrameCrop, ValGuidedKeyFrameCrop, KeySegmentCrop, IntervalCrop
+from transformations.target_transforms import Label, Video
+
+from utils import Log
+from torch.utils.tensorboard import SummaryWriter
+
+g_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# TEMPORAL_TRANSFORMATION NAMES
+STANDAR_CROP = 'standar'
+SEGMENTS_CROP = 'segments-crop' #for dynamic images
+CENTER_CROP = 'center-crop'
+KEYFRAME_CROP = 'keyframe'
+GUIDED_KEYFRAME_CROP = 'guided-segment'
+KEYSEGMENT_CROP = 'keysegment'
+INTERVAL_CROP = 'interval-crop'
+
+def build_temporal_transformation(config: Config, transf_type: str):
+    """
+    config.sample_duration
+    config.stride
+    config.input_type
+    conig.segment_size
+    """
+    if transf_type == STANDAR_CROP:
+        temporal_transform = RandomCrop(size=config.sample_duration, stride=config.stride, input_type=config.input_type)
+    elif transf_type == SEGMENTS_CROP:
+        temporal_transform = SegmentsCrop(size=config.sample_duration, segment_size=config.segment_size, stride=config.stride, overlap=config.overlap)
+    elif transf_type == CENTER_CROP:
+        temporal_transform = CenterCrop(size=config.sample_duration, stride=config.stride, input_type=config.input_type)
+    elif transf_type == KEYFRAME_CROP:
+        temporal_transform = KeyFrameCrop(size=config.sample_duration, stride=config.stride, input_type=config.input_type)
+    elif transf_type == GUIDED_KEYFRAME_CROP:
+        temporal_transform = TrainGuidedKeyFrameCrop(size=config.sample_duration, segment_size=config.segment_size, stride=config.stride, overlap=0.5)
+    elif transf_type == KEYSEGMENT_CROP:
+        temporal_transform = KeySegmentCrop(size=config.sample_duration, stride=config.stride, input_type=config.input_type, segment_type="highestscore")
+    elif transf_type == INTERVAL_CROP:
+        temporal_transform = IntervalCrop(intervals_num=config.sample_duration, interval_len=config.segment_size)
+    return temporal_transform
+
+def build_transforms_parameters(model_type):
+    if model_type == 'i3d':
+        sample_size = (224,224)
+        norm = Normalize([38.756858/255, 3.88248729/255, 40.02898126/255], [110.6366688/255, 103.16065604/255, 96.29023126/255])
+    elif model_type == 's3d':
+        sample_size = (224,224)
+        norm = Normalize([0.485, 0.456, 0.406],[0.229, 0.224, 0.225]) #from pytorch
+    elif model_type == 'densenet_lean':
+        sample_size = (112,112)
+        norm = Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    return sample_size, norm
+
+def dyn_img_transf_parameters():
+    return Normalize([0.49778724, 0.49780366, 0.49776983], [0.09050678, 0.09017131, 0.0898702 ])
+
+def get_model(config, home_path):
+    if config.model == 'c3d':
+        model, params = VioNet_C3D(config, home_path)
+    elif config.model == 'convlstm':
+        model, params = VioNet_ConvLSTM(config)
+    elif config.model == 'densenet':
+        model, params = VioNet_densenet(config, home_path)
+    elif config.model == 'densenet_lean':
+        model, params = VioNet_densenet_lean(config, home_path)
+    elif config.model == 'resnet50':
+        model, params = VioNet_Resnet(config, home_path)
+    elif config.model == 'densenet2D':
+        model, params = VioNet_Densenet2D(config)
+    elif config.model == 'i3d':
+        model, params = VioNet_I3D(config)
+    elif config.model == 's3d':
+        model, params = VioNet_S3D(config)
+    else:
+        model, params = VioNet_densenet_lean(config, home_path)
+    
+    return model, params
+
+def get_two_models(pretrained_path_1, pretrained_path_2):
+    if config.model == 'i3d':
+        config.pretrained_model = pretrained_path_1
+        model_1, _ = VioNet_I3D(config)
+        config.pretrained_model = pretrained_path_2
+        model_2, _ = VioNet_I3D(config)
+    return model_1, model_2
+
+
+def val_two_stream(config: Config, home_path):
+    # load model
+    model_1, model_2 = get_two_models('/media/david/datos/Violence DATA/VioNet_pth/i3d_fps16_rwf-20001_15_0.8356_0.394731.pth',
+                                      '/media/david/datos/Violence DATA/VioNet_pth/i3d_fps16_rwf_2000_(dynamic-images)_1_15_0.8044_0.426578.pth')
+
+    # dataset
+    dataset = config.dataset
+
+    # cross validation phase
+    cv = config.num_cv
+    sample_size, norm = build_transforms_parameters(model_type=config.model)
+    
+    # val set
+    crop_method = GroupScaleCenterCrop(size=sample_size)
+    # RGB stream
+    config.val_temporal_transform = INTERVAL_CROP
+    val_temporal_transform_1 = build_temporal_transformation(config, config.val_temporal_transform)
+    # DI stream
+    config.val_temporal_transform = SEGMENTS_CROP
+    val_temporal_transform_2 = build_temporal_transformation(config, config.val_temporal_transform)
+    
+    spatial_transform = Compose([crop_method, ToTensor(), norm])
+    target_transform = Label()
+    val_batch = config.val_batch
+
+    if dataset == RWF_DATASET:
+        val_data_1 = VioDB(os.path.join(home_path, RWF_DATASET.upper(),'frames/'),
+                            os.path.join(home_path, VIO_DB_DATASETS, "rwf-2000_jpg1.json"),
+                            'validation',
+                            spatial_transform,
+                            val_temporal_transform_1,
+                            target_transform,
+                            dataset,
+                            tmp_annotation_path=os.path.join(g_path, config.temp_annotation_path),
+                            input_type=config.input_type)
+        val_data_2 = VioDB(os.path.join(home_path, RWF_DATASET.upper(),'frames/'),
+                            os.path.join(home_path, VIO_DB_DATASETS, "rwf-2000_jpg1.json"),
+                            'validation',
+                            spatial_transform,
+                            val_temporal_transform_2,
+                            target_transform,
+                            dataset,
+                            tmp_annotation_path=os.path.join(g_path, config.temp_annotation_path),
+                            input_type=config.input_type)
+    else:
+        val_data_1 = VioDB(os.path.join(home_path, VIO_DB_DATASETS, dataset+'_jpg'), #g_path + '/VioDB/{}_jpg/'.format(dataset),
+                        os.path.join(home_path, VIO_DB_DATASETS,'{}_jpg{}.json'.format(dataset, cv)), #g_path + '/VioDB/{}_jpg{}.json'.format(dataset, cv),
+                        'validation',
+                        spatial_transform,
+                        val_temporal_transform_1, 
+                        target_transform,
+                        dataset,
+                        tmp_annotation_path=os.path.join(g_path, config.temp_annotation_path),
+                        input_type=config.input_type)
+    val_loader_1 = DataLoader(val_data_1,
+                            batch_size=val_batch,
+                            shuffle=False,
+                            num_workers=4,
+                            pin_memory=True)
+    val_loader_2 = DataLoader(val_data_2,
+                            batch_size=val_batch,
+                            shuffle=False,
+                            num_workers=4,
+                            pin_memory=True)
+
+    # prepare
+    criterion = nn.CrossEntropyLoss().to(device)
+    
+    val_loss, val_acc = val(1, val_loader, model, criterion, device, val_log=None)
+    print("Validation loss: {}, Accuray: {}".format(val_loss, val_acc))
+
+def val_one_stream(config, home_path):
+    # load model
+    model, params = get_model(config, home_path)
+
+    # dataset
+    dataset = config.dataset
+    stride = config.stride
+    sample_duration = config.sample_duration
+
+    # cross validation phase
+    cv = config.num_cv
+    input_mode = config.input_type
+    sample_size, norm = build_transforms_parameters(model_type=config.model)
+    
+    # val set
+    crop_method = GroupScaleCenterCrop(size=sample_size)
+    val_temporal_transform = build_temporal_transformation(config, config.val_temporal_transform)
+    spatial_transform = Compose([crop_method, ToTensor(), norm])
+    target_transform = Label()
+    val_batch = config.val_batch
+
+    if dataset == RWF_DATASET:
+        val_data = VioDB(os.path.join(home_path, RWF_DATASET.upper(),'frames/'),
+                            os.path.join(home_path, VIO_DB_DATASETS, "rwf-2000_jpg1.json"),
+                            'validation',
+                            spatial_transform,
+                            val_temporal_transform,
+                            target_transform,
+                            dataset,
+                            tmp_annotation_path=os.path.join(g_path, config.temp_annotation_path),
+                            input_type=config.input_type)
+    else:
+        val_data = VioDB(os.path.join(home_path, VIO_DB_DATASETS, dataset+'_jpg'), #g_path + '/VioDB/{}_jpg/'.format(dataset),
+                        os.path.join(home_path, VIO_DB_DATASETS,'{}_jpg{}.json'.format(dataset, cv)), #g_path + '/VioDB/{}_jpg{}.json'.format(dataset, cv),
+                        'validation',
+                        spatial_transform,
+                        val_temporal_transform, 
+                        target_transform,
+                        dataset,
+                        tmp_annotation_path=os.path.join(g_path, config.temp_annotation_path),
+                        input_type=config.input_type)
+    val_loader = DataLoader(val_data,
+                            batch_size=val_batch,
+                            shuffle=False,
+                            num_workers=4,
+                            pin_memory=True)
+
+    # prepare
+    criterion = nn.CrossEntropyLoss().to(device)
+    
+    val_loss, val_acc = val(1, val_loader, model, criterion, device, val_log=None)
+    print("Validation loss: {}, Accuray: {}".format(val_loss, val_acc))
+    
+
+def train_stream(config, home_path):
+    # load model
+    model, params = get_model(config, home_path)
+
+    # dataset
+    dataset = config.dataset
+    stride = config.stride
+    sample_duration = config.sample_duration
+
+    # cross validation phase
+    cv = config.num_cv
+    input_mode = config.input_type
+
+    sample_size, norm = build_transforms_parameters(model_type=config.model)
+    
+    # train set
+    crop_method = GroupRandomScaleCenterCrop(size=sample_size)
+    train_temporal_transform = build_temporal_transformation(config, config.train_temporal_transform)
+    spatial_transform = Compose([crop_method,
+                                 GroupRandomHorizontalFlip(),
+                                 ToTensor(), 
+                                 norm])
+    target_transform = Label()
+
+    train_batch = config.train_batch
+    if dataset == RWF_DATASET:
+        train_data = VioDB(os.path.join(home_path, RWF_DATASET.upper(),'frames/'),
+                            os.path.join(home_path, VIO_DB_DATASETS, "rwf-2000_jpg1.json"),
+                            'training',
+                            spatial_transform,
+                            train_temporal_transform,
+                            target_transform,
+                            dataset,
+                            tmp_annotation_path=os.path.join(g_path, config.temp_annotation_path),
+                            input_type=config.input_type)
+    else:
+        train_data = VioDB(os.path.join(home_path, VIO_DB_DATASETS, dataset+'_jpg'),#g_path + '/VioDB/{}_jpg/'.format(dataset),
+                            os.path.join(home_path, VIO_DB_DATASETS,'{}_jpg{}.json'.format(dataset, cv)),#g_path + '/VioDB/{}_jpg{}.json'.format(dataset, cv),
+                            'training',
+                            spatial_transform,
+                            train_temporal_transform,
+                            target_transform,
+                            dataset,
+                            tmp_annotation_path=os.path.join(g_path, config.temp_annotation_path),
+                            input_type=config.input_type)
+    train_loader = DataLoader(train_data,
+                              batch_size=train_batch,
+                              shuffle=True,
+                              num_workers=0,
+                              pin_memory=True)
+
+    template =  '{}_fps{}_{}_split({})_input({})_TmpTransform({})_Info({})'.format(config.model,
+                                                                         sample_duration,
+                                                                         dataset,
+                                                                         cv,
+                                                                         input_mode,
+                                                                         config.train_temporal_transform,
+                                                                         config.additional_info
+                                                                         )
+    log_path = os.path.join(home_path, PATH_LOG, template)
+    # chk_path = os.path.join(PATH_CHECKPOINT, template)
+    tsb_path = os.path.join(home_path, PATH_TENSORBOARD, template)
+
+    for pth in [log_path, tsb_path]:
+        if not os.path.exists(pth):
+            os.mkdir(pth)
+
+    print('tensorboard dir:', tsb_path)                                                
+    writer = SummaryWriter(tsb_path)
+
+    # log
+    batch_log = Log(log_path+'/batch_log.csv', ['epoch', 'batch', 'iter', 'loss', 'acc', 'lr'])
+    epoch_log = Log(log_path+'/epoch_log.csv', ['epoch', 'loss', 'acc', 'lr'])
+
+    # prepare
+    criterion = nn.CrossEntropyLoss().to(device)
+    learning_rate = config.learning_rate
+    momentum = config.momentum
+    weight_decay = config.weight_decay
+
+    optimizer = torch.optim.SGD(params=params,
+                                lr=learning_rate,
+                                momentum=momentum,
+                                weight_decay=weight_decay)
+
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,
+                                                           verbose=True,
+                                                           factor=config.factor,
+                                                           min_lr=config.min_lr)
+
+    acc_baseline = config.acc_baseline
+    loss_baseline = 1
+
+    for i in range(config.num_epoch):
+        train_loss, train_acc, lr = train(i, train_loader, model, criterion, optimizer, device, batch_log, epoch_log)    
+        epoch = i+1
+        writer.add_scalar('training loss', train_loss, epoch)
+        writer.add_scalar('training accuracy', train_acc, epoch)
+
+        scheduler.step(train_loss)
+        if train_loss < loss_baseline:
+            torch.save(model.state_dict(),
+                       os.path.join(home_path, PATH_CHECKPOINT,'{}_fps{}_{}_({})_fold({})_{}_{:.4f}_{:.6f}.pth'.format(config.model,
+                                                                                                            sample_duration,
+                                                                                                            dataset,
+                                                                                                            config.input_type.replace(' ','-'),
+                                                                                                            cv,
+                                                                                                            epoch,
+                                                                                                            train_acc,
+                                                                                                            train_loss)
+                                    )
+                        )
+            loss_baseline = train_loss
+
+from global_var import *
+from utils import get_torch_device
+if __name__ == '__main__':
+    device = get_torch_device()
+    dataset = RWF_DATASET
+    config = Config(
+        'i3d',  # c3d, convlstm, densenet, densenet_lean, resnet50, densenet2D
+        dataset,
+        device=device,
+        num_epoch=15,
+        acc_baseline=0.81,
+        ft_begin_idx=0,
+        # sample_size = (224,224) #for i3d, rest use 112x112
+    )
+    configs = {
+        'hockey': {
+            'lr': 1e-2,
+            'batch_size': 8
+        },
+        'movie': {
+            'lr': 1e-3,
+            'batch_size': 16
+        },
+        'vif': {
+            'lr': 1e-3,
+            'batch_size': 16
+        },
+        'rwf-2000': {
+            'lr': 1e-3,
+            'batch_size': 8
+        }
+    }
+    environment_config = {
+        'home': HOME_UBUNTU
+    }
+    ##Configs to SEGMENTS_CROP
+    config.sample_duration = 16 #number of segments
+    config.segment_size = 7 #len of segments
+    config.stride = 1
+    config.overlap = 0
+
+    config.train_batch = configs[dataset]['batch_size']
+    config.val_batch = configs[dataset]['batch_size']
+    config.learning_rate = configs[dataset]['lr']
+    config.input_type = 'dynamic-images' #rgb, dynamic-images
+    config.train_temporal_transform = SEGMENTS_CROP #standar, segments, segments-keyframe, random-segments, keyframe, guided-segment, keysegment
+    config.val_temporal_transform = SEGMENTS_CROP
+    # config.temp_annotation_path = os.path.join(environment_config['home'], PATH_SCORES,
+    #     "Scores-dataset(rwf-2000)-ANmodel(AnomalyDetector_Dataset(UCFCrime2LocalClips)_Features(c3d)_TotalEpochs(100000)_ExtraInfo(c3d)-Epoch-10000)-input(rgb)")
+
+    ##### For 2D CNN ####
+    # config.num_epoch = 50
+    # config.sample_size = (224,224)
+    # config.sample_duration = 16
+    # config.stride = 1 #for dynamic images it's frames to skip into a segment
+    # config.ft_begin_idx = 0 # 0: train all layers, -1: freeze conv layers
+    # config.acc_baseline = 0.90
+    config.additional_info = "-DI-STREAM"
+
+    if config.dataset == RWF_DATASET:
+        config.num_cv = 1
+        # train_stream(config, environment_config['home'])
+
+        # config.pretrained_model = '/media/david/datos/Violence DATA/VioNet_pth/i3d_fps16_rwf-20001_15_0.8356_0.394731.pth'
+        config.pretrained_model = '/media/david/datos/Violence DATA/VioNet_pth/i3d_fps16_rwf_2000_(dynamic-images)_1_15_0.8044_0.426578.pth'
+        val_one_stream(config, environment_config['home'])
+    elif config.dataset == HOCKEY_DATASET:
+        for i in range(1,6):
+            config.num_cv = i
+            train_stream(config, environment_config['home'])

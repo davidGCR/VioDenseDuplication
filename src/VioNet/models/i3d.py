@@ -332,11 +332,11 @@ class InceptionI3d(nn.Module):
             for end_point in self.VALID_ENDPOINTS: #torch.Size([4, 1024, 2, 7, 7])
                 if end_point in self.end_points:
                     x = self._modules[end_point](x) # use _modules to work with dataparallel
-            print("Before logits: ", x.size())
+            # print("Before logits: ", x.size())
             x = self.avg_pool(x) #torch.Size([4, 1024, 1, 1, 1])
-            print("After avg_pool: ", x.size())
+            # print("After avg_pool: ", x.size())
             x = self.logits(self.dropout(x)) #torch.Size([4, 2, 1, 1, 1])
-            print("After logits: ", x.size())
+            # print("After logits: ", x.size())
             
             if self._spatial_squeeze:
                 logits = x.squeeze(3).squeeze(3)

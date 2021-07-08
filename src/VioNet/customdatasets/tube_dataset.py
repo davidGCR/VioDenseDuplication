@@ -9,9 +9,109 @@ from operator import itemgetter
 from customdatasets.dataset_utils import imread
 from customdatasets.make_dataset import MakeRWF2000
 
+
+class OneVideoTubeDataset(data.Dataset):
+    """
+    Load tubelets from one video
+    Use to extract features tube-by-tube from just a video
+    """
+
+    def __init__(self, frames_per_tube,
+                       min_frames_per_tube,
+                       video_path,
+                       annotation_path,
+                       spatial_transform=None,
+                       max_num_tubes=0):
+        self.frames_per_tube = frames_per_tube
+        self.min_frames_per_tube = min_frames_per_tube
+        self.spatial_transform = spatial_transform
+        self.video_path = video_path
+        self.annotation_path = annotation_path
+        self.max_num_tubes = max_num_tubes
+        self.sampler = TubeCrop(tube_len=frames_per_tube, min_tube_len=min_frames_per_tube, central_frame=True, max_num_tubes=max_num_tubes)
+        self.boxes, self.segments, self.idxs = self.sampler(JSON_2_tube(annotation_path), annotation_path)
+        print('self.idxs:', self.idxs)
+    
+    def __len__(self):
+        if self.boxes is not None:
+            return len(self.boxes)
+        else:
+            return 0
+
+    def __getitem__(self, index):
+        if self.boxes == None:
+            return None, None
+        frames_names = []
+        segment = self.segments[index]
+        box = self.boxes[index]
+       
+        frames = [os.path.join(self.video_path,'frame{}.jpg'.format(i+1)) for i in segment]
+        frames_names.append(frames)
+        tube_images = [] #one tube-16 frames
+        for i in frames:
+            img = self.spatial_transform(imread(i)) if self.spatial_transform else imread(i)
+            tube_images.append(img)
+        # video_images.append(torch.stack(tube_images, dim=0))
+        tube_images = torch.stack(tube_images, dim=0) #torch.Size([16, 3, 224, 224])
+        # print("tube_images stacked:", tube_images.size())
+        # tube_images.permute(0,2,1,3,4)
+        
+        return box, tube_images
+
+class TubeFeaturesDataset(data.Dataset):
+    """
+    Load tubelet features from files (txt)
+    """
+
+    def __init__(self, frames_per_tube,
+                       min_frames_per_tube,
+                       make_function,
+                       max_num_tubes=4,
+                       map_shape=(1,528,4,14,14)):
+        # self.annotation_path = annotation_path
+        self.max_num_tubes = max_num_tubes
+        self.map_shape = map_shape
+        self.paths, self.labels, self.annotations, self.feat_annotations = make_function()
+        self.sampler = TubeCrop(tube_len=frames_per_tube, min_tube_len=min_frames_per_tube, central_frame=True, max_num_tubes=max_num_tubes)
+        
+    
+    def __getitem__(self, index):
+        path = self.paths[index]
+        label = self.labels[index]
+        box_annotation = self.annotations[index]
+        feat_annotation = self.feat_annotations[index]
+        boxes, segments, idxs = self.sampler(JSON_2_tube(box_annotation), box_annotation)
+        
+        f_maps = self.read_features(feat_annotation, idxs)
+        f_maps = torch.reshape(f_maps, self.map_shape)
+        
+        boxes = torch.stack(boxes, dim=0).squeeze()
+        if len(boxes.shape)==1:
+            boxes = torch.unsqueeze(boxes, dim=0)
+        return boxes, f_maps, label
+    
+    # def get_feature(self):
+    #     features = read_features(f"{feature_subpath}.txt", self.features_dim, self.bucket_size)
+    
+    def read_features(self, annotation_path, idxs, features_dim=413952):
+        if not os.path.exists(annotation_path):
+            raise Exception(f"Feature doesn't exist: {annotation_path}")
+        features = None
+        with open(annotation_path, 'r') as fp:
+            data = fp.read().splitlines(keepends=False)
+            # idxs = random.sample(range(len(data)), self.max_num_tubes)
+            data = list(itemgetter(*idxs)(data))
+            features = np.zeros((len(data), features_dim))
+            for i, line in enumerate(data):
+                features[i, :] = [float(x) for x in line.split(' ')]
+        # features = features[0:max_features, :]
+        features = torch.from_numpy(features).float()
+        
+        return features
+
 class TubeDataset(data.Dataset):
     """
-    Load videos stored as images folders.
+    Load video tubelets
     Use this to load raw frames from tubes.
     """
 
@@ -37,7 +137,7 @@ class TubeDataset(data.Dataset):
         path = self.paths[index]
         label = self.labels[index]
         annotation = self.annotations[index]
-        boxes, segments = self.sampler(JSON_2_tube(annotation), annotation)
+        boxes, segments, idxs = self.sampler(JSON_2_tube(annotation), annotation)
 
         if boxes == None:
             return None, None, None
@@ -91,7 +191,10 @@ class TubeCrop(object):
                 bbox = self.__central_bbox__(tube['boxes'], tube['id']+1)
                 boxes.append(bbox)
                 segments.append(frames_idxs)
-        if len(boxes) > self.max_num_tubes:
+        
+
+        idxs = range(len(boxes))
+        if self.max_num_tubes != 0 and len(boxes) > self.max_num_tubes:
             idxs = random.sample(range(len(boxes)), self.max_num_tubes)
             boxes = list(itemgetter(*idxs)(boxes))
             # print('=====len: ', len(boxes))
@@ -100,9 +203,9 @@ class TubeCrop(object):
             segments = list(itemgetter(*idxs)(segments))
 
         if len(boxes) == 0:
-            return None, None
+            return None, None, None
         
-        return boxes, segments
+        return boxes, segments, idxs
     
     def __centered_frames__(self, tube_frames_idxs: list):
         if len(tube_frames_idxs) == self.tube_len: 

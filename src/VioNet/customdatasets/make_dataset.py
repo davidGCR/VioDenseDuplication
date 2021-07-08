@@ -65,10 +65,11 @@ class MakeImageHMDB51():
         return paths, labels
 
 class MakeRWF2000():
-    def __init__(self, root, train, path_annotations=None):
+    def __init__(self, root, train, path_annotations=None, path_feat_annotations=None):
         self.root = root
         self.train = train
         self.path_annotations = path_annotations
+        self.path_feat_annotations = path_feat_annotations
         # self.F_TAG = "Fight"
         # self.NF_TAG = "NonFight"
         self.classes = ["NonFight", "Fight"]
@@ -85,6 +86,7 @@ class MakeRWF2000():
         paths = []
         labels = []
         annotations = []
+        feat_annotations = []
         for idx, cl in enumerate(self.classes):
             for video_sample in os.scandir(os.path.join(self.root, split, cl)):
                 if video_sample.is_dir():
@@ -93,8 +95,11 @@ class MakeRWF2000():
                     if self.path_annotations:
                         assert os.path.exists(os.path.join(self.path_annotations, split, cl, video_sample.name +'.json')), "Annotation does not exist!!!"
                         annotations.append(os.path.join(self.path_annotations, split, cl, video_sample.name +'.json'))
+                    if self.path_feat_annotations:
+                        assert os.path.exists(os.path.join(self.path_feat_annotations, split, cl, video_sample.name +'.txt')), "Feature annotation does not exist!!!"
+                        feat_annotations.append(os.path.join(self.path_feat_annotations, split, cl, video_sample.name +'.txt'))
         
-        return paths, labels, annotations
+        return paths, labels, annotations, feat_annotations
 
 class MakeUCFCrime2Local():
     def __init__(self, root, annotation_path, bbox_path, train):

@@ -170,28 +170,49 @@ def VioNet_ConvLSTM(config):
     return model, params
 
 def VioNet_I3D(config):
+    """
+    Load I3D model
+        config.device
+        config.pretrained_model
+    """
     model = InceptionI3d(num_classes=400, in_channels=3).to(config.device)
-    load_model_path = '/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt'
-    
-    # model = nn.DataParallel(model)
-    state_dict = torch.load(load_model_path)
-    model.load_state_dict(state_dict,  strict=False)
-    model.replace_logits(2)
+    if  not config.pretrained_model:
+        config.pretrained_model = '/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt' 
+        # model = nn.DataParallel(model)
+        state_dict = torch.load(config.pretrained_model)
+        model.load_state_dict(state_dict,  strict=False)
+        model.replace_logits(2)
+    else:
+        model.replace_logits(2)
+        state_dict = torch.load(config.pretrained_model)
+        model.load_state_dict(state_dict,  strict=False)
     model.to(config.device)
     params = model.parameters()
     return model, params
 
 def VioNet_S3D(config):
+    """
+    Load S3D model
+        config.device
+        config.pretrained_model
+    """
     model = S3D(num_class=2).to(config.device)
-
-    pretrained_model = '/media/david/datos/Violence DATA/VioNet_weights/S3D_kinetics400.pt'
-    state_dict = torch.load(pretrained_model)
+    if not config.pretrained_model:
+        config.pretrained_model = '/media/david/datos/Violence DATA/VioNet_weights/S3D_kinetics400.pt'
+    state_dict = torch.load(config.pretrained_model)
     model.load_state_dict(state_dict,  strict=False)
 
     params = model.parameters()
     return model, params
 
 def VioNet_densenet(config, home_path):
+    """
+    Load DENSENET model
+        config.device
+        config.pretrained_model
+        config.sample_size
+        config.sample_duration
+    """
     device = config.device
     ft_begin_idx = config.ft_begin_idx
     sample_size = config.sample_size[0]

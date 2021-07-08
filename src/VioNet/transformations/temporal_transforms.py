@@ -270,6 +270,9 @@ class KeySegmentCrop(object):
             return [sample]
 
 class IntervalCrop(object):
+    """
+    split videos in N segments and get the central frame of each segment
+    """
     def __init__(self, intervals_num=16, interval_len=7):
         self.intervals_num = intervals_num
         self.interval_len = interval_len
