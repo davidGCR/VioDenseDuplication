@@ -4,10 +4,12 @@ from random import sample
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
+from configs_datasets import *#hockey_MDIResNet_config, hockey_i3d_config, rwf_config, environment_config, build_transforms_parameters
+# from VioNet.configs_datasets import hockey_config, rwf_config
 from global_var import *
 
 from epoch import train, val, test
-from model import VioNet_C3D, VioNet_ConvLSTM, VioNet_densenet, VioNet_densenet_lean, VioNet_Resnet, VioNet_Densenet2D, VioNet_I3D, VioNet_S3D
+from model import get_model
 from dataset import VioDB
 from config import Config
 
@@ -21,69 +23,10 @@ from torch.utils.tensorboard import SummaryWriter
 
 g_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# TEMPORAL_TRANSFORMATION NAMES
-STANDAR_CROP = 'standar'
-SEGMENTS_CROP = 'segments-crop' #for dynamic images
-CENTER_CROP = 'center-crop'
-KEYFRAME_CROP = 'keyframe'
-GUIDED_KEYFRAME_CROP = 'guided-segment'
-KEYSEGMENT_CROP = 'keysegment'
-INTERVAL_CROP = 'interval-crop'
-
-def build_temporal_transformation(config: Config, transf_type: str):
-    if transf_type == STANDAR_CROP:
-        temporal_transform = RandomCrop(size=config.sample_duration, stride=config.stride, input_type=config.input_type)
-    elif transf_type == SEGMENTS_CROP:
-        temporal_transform = SegmentsCrop(size=config.sample_duration, segment_size=config.segment_size, stride=config.stride, overlap=config.overlap)
-    elif transf_type == CENTER_CROP:
-        temporal_transform = CenterCrop(size=config.sample_duration, stride=config.stride, input_type=config.input_type)
-    elif transf_type == KEYFRAME_CROP:
-        temporal_transform = KeyFrameCrop(size=config.sample_duration, stride=config.stride, input_type=config.input_type)
-    elif transf_type == GUIDED_KEYFRAME_CROP:
-        temporal_transform = TrainGuidedKeyFrameCrop(size=config.sample_duration, segment_size=config.segment_size, stride=config.stride, overlap=0.5)
-    elif transf_type == KEYSEGMENT_CROP:
-        temporal_transform = KeySegmentCrop(size=config.sample_duration, stride=config.stride, input_type=config.input_type, segment_type="highestscore")
-    elif transf_type == INTERVAL_CROP:
-        temporal_transform = IntervalCrop(intervals_num=config.sample_duration, interval_len=config.segment_size)
-    return temporal_transform
-
-def build_transforms_parameters(model_type):
-    if model_type == 'i3d':
-        sample_size = (224,224)
-        norm = Normalize([38.756858/255, 3.88248729/255, 40.02898126/255], [110.6366688/255, 103.16065604/255, 96.29023126/255])
-    elif model_type == 's3d':
-        sample_size = (224,224)
-        norm = Normalize([0.485, 0.456, 0.406],[0.229, 0.224, 0.225]) #from pytorch
-    elif model_type == 'densenet_lean':
-        sample_size = (112,112)
-        norm = Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    return sample_size, norm
-
-def dyn_img_transf_parameters():
-    return Normalize([0.49778724, 0.49780366, 0.49776983], [0.09050678, 0.09017131, 0.0898702 ])
-
 
 def main(config, home_path):
     # load model
-    if config.model == 'c3d':
-        model, params = VioNet_C3D(config, home_path)
-    elif config.model == 'convlstm':
-        model, params = VioNet_ConvLSTM(config)
-    elif config.model == 'densenet':
-        model, params = VioNet_densenet(config, home_path)
-    elif config.model == 'densenet_lean':
-        model, params = VioNet_densenet_lean(config, home_path)
-    elif config.model == 'resnet50':
-        model, params = VioNet_Resnet(config, home_path)
-    elif config.model == 'densenet2D':
-        model, params = VioNet_Densenet2D(config)
-    elif config.model == 'i3d':
-        model, params = VioNet_I3D(config)
-    elif config.model == 's3d':
-        model, params = VioNet_S3D(config)
-    else:
-        model, params = VioNet_densenet_lean(config, home_path)
-
+    model, params = get_model(config, home_path)
     # dataset
     dataset = config.dataset
     # sample_size = config.sample_size
@@ -108,7 +51,7 @@ def main(config, home_path):
     # else:
     #     norm = Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 
-    train_temporal_transform = build_temporal_transformation(config, config.train_temporal_transform)
+    train_temporal_transform = build_temporal_transformation(config, config.train_temporal_transform, 'train')
     spatial_transform = Compose([crop_method,
                                  GroupRandomHorizontalFlip(),
                                  ToTensor(), 
@@ -154,7 +97,7 @@ def main(config, home_path):
     # elif input_mode == 'dynamic-images':
     #     norm = Normalize([0.49778724, 0.49780366, 0.49776983], [0.09050678, 0.09017131, 0.0898702 ])
 
-    val_temporal_transform = build_temporal_transformation(config, config.val_temporal_transform)
+    val_temporal_transform = build_temporal_transformation(config, config.val_temporal_transform, 'val')
     spatial_transform = Compose([crop_method, ToTensor(), norm])
     target_transform = Label()
 
@@ -216,7 +159,7 @@ def main(config, home_path):
     train_val_log = Log(log_path+'/train_val_LOG.csv', ['epoch', 'train_loss', 'train_acc', 'lr', 'val_loss', 'val_acc'])
 
     # prepare
-    criterion = nn.CrossEntropyLoss().to(device)
+    criterion = nn.CrossEntropyLoss().to(config.device)
     learning_rate = config.learning_rate
     momentum = config.momentum
     weight_decay = config.weight_decay
@@ -235,8 +178,8 @@ def main(config, home_path):
     loss_baseline = 1
 
     for i in range(config.num_epoch):
-        train_loss, train_acc, lr = train(i, train_loader, model, criterion, optimizer, device, batch_log, epoch_log)
-        val_loss, val_acc = val(i, val_loader, model, criterion, device, val_log)
+        train_loss, train_acc, lr = train(i, train_loader, model, criterion, optimizer, config.device, batch_log, epoch_log)
+        val_loss, val_acc = val(i, val_loader, model, criterion, config.device, val_log)
         epoch = i+1
         train_val_log.log({'epoch': epoch, 'train_loss': train_loss, 'train_acc': train_acc, 'lr': lr, 'val_loss': val_loss, 'val_acc': val_acc})
         writer.add_scalar('training loss', train_loss, epoch)
@@ -260,68 +203,20 @@ def main(config, home_path):
             loss_baseline = val_loss
 
 from global_var import *
-from utils import get_torch_device
+# from configs_datasets import *
+
 if __name__ == '__main__':
-    device = get_torch_device()
-    dataset = RWF_DATASET
-    config = Config(
-        'i3d',  # c3d, convlstm, densenet, densenet_lean, resnet50, densenet2D
-        dataset,
-        device=device,
-        num_epoch=15,
-        acc_baseline=0.81,
-        ft_begin_idx=0,
-        # sample_size = (224,224) #for i3d, rest use 112x112
-    )
-    configs = {
-        'hockey': {
-            'lr': 1e-2,
-            'batch_size': 8
-        },
-        'movie': {
-            'lr': 1e-3,
-            'batch_size': 16
-        },
-        'vif': {
-            'lr': 1e-3,
-            'batch_size': 16
-        },
-        'rwf-2000': {
-            'lr': 1e-3,
-            'batch_size': 8
-        }
-    }
-    environment_config = {
-        'home': HOME_UBUNTU
-    }
-    ##Configs to SEGMENTS_CROP
-    config.sample_duration = 16 #number of segments
-    config.segment_size = 7 #len of segments
-    config.stride = 1
-    config.overlap = 0
-
-    config.train_batch = configs[dataset]['batch_size']
-    config.val_batch = configs[dataset]['batch_size']
-    config.learning_rate = configs[dataset]['lr']
-    config.input_type = 'rgb' #rgb, dynamic-images
-    config.train_temporal_transform = INTERVAL_CROP #standar, segments, segments-keyframe, random-segments, keyframe, guided-segment, keysegment
-    config.val_temporal_transform = INTERVAL_CROP
-    config.temp_annotation_path = os.path.join(environment_config['home'], PATH_SCORES,
-        "Scores-dataset(rwf-2000)-ANmodel(AnomalyDetector_Dataset(UCFCrime2LocalClips)_Features(c3d)_TotalEpochs(100000)_ExtraInfo(c3d)-Epoch-10000)-input(rgb)")
-
-    ##### For 2D CNN ####
-    # config.num_epoch = 50
-    # config.sample_size = (224,224)
-    # config.sample_duration = 16
-    # config.stride = 1 #for dynamic images it's frames to skip into a segment
-    # config.ft_begin_idx = 0 # 0: train all layers, -1: freeze conv layers
-    # config.acc_baseline = 0.90
-    config.additional_info = "-using center frame of segments"
+    
+    # config = rwf_config()
+    # config = hockey_MDIResNet_config()
+    config = rwf_MDIResNet_config()
 
     if config.dataset == RWF_DATASET:
         config.num_cv = 1
+        
         main(config, environment_config['home'])
     elif config.dataset == HOCKEY_DATASET:
-        for i in range(1,6):
+        
+        for i in range(1,2):
             config.num_cv = i
             main(config, environment_config['home'])

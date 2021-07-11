@@ -1,5 +1,6 @@
 import os
 import sys
+from google.protobuf.reflection import ParseMessage
 # g_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # sys.path.insert(1, g_path)
 
@@ -15,12 +16,52 @@ from models.densenet import densenet88, densenet121
 from models.convlstm import ConvLSTM
 from models.models2D import ResNet, Densenet2D, FusedResNextTempPool, FeatureExtractorResNextTempPool
 from models.anomaly_detector import AnomalyDetector
-from models.i3d import InceptionI3d
+from models.i3d import InceptionI3d, TwoStreamI3D
 import models.models2D as rn
 from models.violence_detector import ViolenceDetector
 from global_var import *
 
 # g_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+def get_model(config, home_path):
+    if config.model == 'c3d':
+        model, params = VioNet_C3D(config, home_path)
+    elif config.model == 'convlstm':
+        model, params = VioNet_ConvLSTM(config)
+    elif config.model == 'densenet':
+        model, params = VioNet_densenet(config, home_path)
+    elif config.model == 'densenet_lean':
+        model, params = VioNet_densenet_lean(config, home_path)
+    elif config.model == 'resnet50':
+        model, params = VioNet_Resnet(config, home_path)
+    elif config.model == 'densenet2D':
+        model, params = VioNet_Densenet2D(config)
+    elif config.model == 'i3d':
+        model, params = VioNet_I3D(config)
+    elif config.model == 'two-i3d':
+        model, params = VioNet_TwoStreamI3D(config)
+    elif config.model == 'two-i3dv2':
+        model, params = VioNet_TwoStreamI3D(config, freeze=True)
+    elif config.model == 's3d':
+        model, params = VioNet_S3D(config)
+    elif config.model == 'MDIResNet':
+        model, params = MDI_ResNet(config)
+    else:
+        model, params = VioNet_densenet_lean(config, home_path)
+    
+    return model, params
+
+def get_two_models(config, pretrained_path_1, pretrained_path_2):
+    if config.model == 'i3d':
+        config.pretrained_model = pretrained_path_1
+        model_1, _ = VioNet_I3D(config)
+        config.pretrained_model = pretrained_path_2
+        model_2, _ = VioNet_I3D(config)
+    return model_1, model_2
+
+def MDI_ResNet(config):
+    model = ResNet(num_classes=2, model_name='resnet50').to(config.device)
+    params = model.parameters()
+    return model, params
 
 def ViolenceDetector_model(config, device):
     model = ViolenceDetector(detector_input_dim=528, roi_layer_type='RoIAlign').to(device)
@@ -187,6 +228,14 @@ def VioNet_I3D(config):
         state_dict = torch.load(config.pretrained_model)
         model.load_state_dict(state_dict,  strict=False)
     model.to(config.device)
+    params = model.parameters()
+    return model, params
+
+def VioNet_TwoStreamI3D(config, freeze=False):
+    if  not config.pretrained_model:
+        config.pretrained_model = '/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt' 
+    
+    model = TwoStreamI3D(num_classes=2, num_features=2048, load_model_path=config.pretrained_model, freeze=freeze).to(config.device)
     params = model.parameters()
     return model, params
 

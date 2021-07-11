@@ -38,3 +38,17 @@ MODEL_ANOMALY_DET = "AnomalyDetector"
 #   elif folders[1] == 'Users':
 #       folder2save = os.path.join("/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019", specific_folder)
 #   return folder2save
+
+
+# TEMPORAL_TRANSFORMATION NAMES
+STANDAR_CROP = 'standar'
+SEGMENTS_CROP = 'segments-crop' #for dynamic images
+CENTER_CROP = 'center-crop'
+KEYFRAME_CROP = 'keyframe'
+GUIDED_KEYFRAME_CROP = 'guided-segment'
+KEYSEGMENT_CROP = 'keysegment'
+INTERVAL_CROP = 'interval-crop'
+
+#MODEL NAMES
+I3D = 'i3d'
+MDIResNet = 'MDIResNet'

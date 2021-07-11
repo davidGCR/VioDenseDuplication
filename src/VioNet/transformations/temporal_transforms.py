@@ -273,14 +273,17 @@ class IntervalCrop(object):
     """
     split videos in N segments and get the central frame of each segment
     """
-    def __init__(self, intervals_num=16, interval_len=7):
+    def __init__(self, intervals_num=16, interval_len=7, overlap=0):
         self.intervals_num = intervals_num
         self.interval_len = interval_len
         self.c_idx = int(self.interval_len/2)
+        self.overlap = overlap
+        self.overlap_length = int(self.overlap*self.interval_len)
     
     def __call__(self, frames):
         indices = [x for x in range(0, len(frames), 1)]
-        indices_segments = [indices[x:x + self.interval_len] for x in range(0, len(indices), self.interval_len)]
+        indices_segments = [indices[x:x + self.interval_len] for x in range(0, len(indices), self.interval_len-self.overlap_length)]
+        
         video_segments = []
         for i, indices_segment in enumerate(indices_segments): #Generate segments using indices
             segment = np.asarray(frames)[indices_segment].tolist()
@@ -441,11 +444,11 @@ if __name__ == '__main__':
     # frames = temp_transform(frames)
     # print('Video video_segments:\n', len(video_segments), '\n',video_segments)
     # temp_transform = KeyFrameCrop(size=16, stride=1)
-
-    # temp_transform = SequentialCrop(size=5,stride=1,input_type="dynamic-images",overlap=0.5)
+# 
+    # temp_transform = SequentialCrop(size=5,stride=1,overlap=0.7, max_segments=16)
     # temp_transform = KeySegmentCrop(size=16,stride=1,input_type="rgb", segment_type="highestscore")
-    # temp_transform = SegmentsCrop(size=16, segment_size=1, stride=1,overlap=0.5,padding=True)
-    temp_transform = IntervalCrop(intervals_num=16, interval_len=7)
+    temp_transform = SegmentsCrop(size=6, segment_size=10, stride=1,overlap=0,padding=True, position='middle')
+    # temp_transform = IntervalCrop(intervals_num=16, interval_len=5, overlap=0.7)
     frames = list(range(1, 121))
 
     # frames = temp_transform(frames, "/Users/davidchoqueluqueroman/Documents/CODIGOS/AVSS2019/src/VioNet/v4dhdnsxiX4_1.csv", 0)

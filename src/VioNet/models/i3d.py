@@ -266,10 +266,10 @@ class InceptionI3d(nn.Module):
 
         end_point = 'Mixed_4d'
         self.end_points[end_point] = InceptionModule(160+224+64+64, [128,128,256,24,64,64], name+end_point)
-        # if self._final_endpoint == end_point: return
-        if self._final_endpoint == end_point:
-            self.build()
-            return
+        if self._final_endpoint == end_point: return
+        # if self._final_endpoint == end_point:
+        #     self.build()
+        #     return
 
         end_point = 'Mixed_4e'
         self.end_points[end_point] = InceptionModule(128+256+64+64, [112,144,288,32,64,64], name+end_point)
@@ -291,14 +291,23 @@ class InceptionI3d(nn.Module):
         end_point = 'Mixed_5b'
         self.end_points[end_point] = InceptionModule(256+320+128+128, [256,160,320,32,128,128], name+end_point)
         if self._final_endpoint == end_point: return
+        # if self._final_endpoint == end_point:
+        #     self.build()
+        #     return
+
+        self.avg_pool = nn.AvgPool3d(kernel_size=[2, 7, 7],
+                                     stride=(1, 1, 1))
 
         end_point = 'Mixed_5c'
         self.end_points[end_point] = InceptionModule(256+320+128+128, [384,192,384,48,128,128], name+end_point)
-        if self._final_endpoint == end_point: return
+        # if self._final_endpoint == end_point: return
+        if self._final_endpoint == end_point:
+            self.build()
+            return
 
         end_point = 'Logits'
-        self.avg_pool = nn.AvgPool3d(kernel_size=[2, 7, 7],
-                                     stride=(1, 1, 1))
+        # self.avg_pool = nn.AvgPool3d(kernel_size=[2, 7, 7],
+        #                              stride=(1, 1, 1))
         self.dropout = nn.Dropout(dropout_keep_prob)
         self.logits = Unit3D(in_channels=384+384+128+128, output_channels=self._num_classes,
                              kernel_shape=[1, 1, 1],
@@ -343,6 +352,8 @@ class InceptionI3d(nn.Module):
             logits = torch.squeeze(logits, dim=2) #added to train [batch, num_classes]
             # logits is batch X time X classes, which is what we want to work with
             return logits
+        elif self._final_endpoint == 'Mixed_5c':
+            return self.extract_features(x)
         else:
             return self.extract_features_intermediate(x)
         
@@ -359,33 +370,78 @@ class InceptionI3d(nn.Module):
                 x = self._modules[end_point](x)
         return x
 
+class TwoStreamI3D(nn.Module):
+    # def __init__(self, num_classes=400, spatial_squeeze=True,
+    #              final_endpoint='Logits', name='inception_i3d', in_channels=3, dropout_keep_prob=0.5):
+    def __init__(self, num_classes=2, num_features=2048, load_model_path=None, freeze=False):
+        super(TwoStreamI3D, self).__init__()
+        
+        self.rgb_stream = InceptionI3d(2, in_channels=3, final_endpoint='Mixed_5c')
+        self.di_stream = InceptionI3d(2, in_channels=3, final_endpoint='Mixed_5c')
+        
+        if load_model_path:
+            state_dict = torch.load(load_model_path)
+            self.rgb_stream.load_state_dict(state_dict,  strict=False)
+            self.di_stream.load_state_dict(state_dict,  strict=False)
+        if freeze:
+            for param in self.rgb_stream.parameters():
+                param.requires_grad = False
+            for param in self.di_stream.parameters():
+                param.requires_grad = False
+
+        # self.fc1 = nn.Linear(num_features, 1024)
+        # self.fc2 = nn.Linear(1024, num_classes)
+
+        self.fc1 = nn.Linear(num_features, num_classes)
+    
+    def forward(self, X):
+        x1, x2 = X
+        f_1 = self.rgb_stream.extract_features(x1)
+        f_2 = self.di_stream.extract_features(x2)
+        f_1 = torch.squeeze(f_1)
+        f_2 = torch.squeeze(f_2)
+        x1_x2 = torch.cat((f_1, f_2), dim=1)
+        out = self.fc1(x1_x2)
+        # out = self.fc2(out)
+        return out
+
 
 from torchsummary import summary
 
 if __name__=="__main__":
     print('------- i3d --------')
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # device = torch.device("cpu")
 
-    input = torch.rand(4,3,64,224,224).to(device) #for slowFAst backbone: 3x4x256x320, RWF-frames 224x224, RWF-video 640x360
-    i3d = InceptionI3d(2, in_channels=3, final_endpoint='Mixed_4d').to(device)
+    input = torch.rand(4,3,16,224,224).to(device) #for slowFAst backbone: 3x4x256x320, RWF-frames 224x224, RWF-video 640x360
+    # i3d = InceptionI3d(2, in_channels=3, final_endpoint='Mixed_5c').to(device)
     # i3d = InceptionI3d(num_classes=2, in_channels=3).to(device)
+    # print(i3d)
+    # i3d.eval()
 
-    load_model_path = '/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt'
+    # load_model_path = '/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt'
     
     # i3d = nn.DataParallel(i3d)
-    state_dict = torch.load(load_model_path)
-    i3d.load_state_dict(state_dict,  strict=False)
+    # state_dict = torch.load(load_model_path)
+    # i3d.load_state_dict(state_dict,  strict=False)
 
     # i3d.replace_logits(2)
     # i3d.to(device)
     # i3d.logits.output_channels=2
 
     # summary(i3d, (3, 64, 320, 400))
-    output = i3d(input)
+    # output = i3d(input)
+    # output = i3d.extract_features(input)
     # output = torch.squeeze(output, dim=2)
     # features = i3d.extract_features(input)
     # features = i3d.extract_features_intermediate(input)
-    print("output: ", output.size())
+    # print("output: ", output.size())
 
     # print("features: ", features.size())
+
+    twoI3D = TwoStreamI3D(num_classes=2, num_features=2048).to(device)
+    output = twoI3D((input, input))
+    print("output: ", output.size())
+
+
 
