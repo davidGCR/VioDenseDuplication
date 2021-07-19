@@ -170,7 +170,7 @@ def train(
     return losses.avg, accuracies.avg, optimizer.param_groups[0]['lr']
 
 
-def val(epoch, data_loader, model, criterion, device, val_log):
+def val(epoch, data_loader, model, criterion, device, val_log=None):
     print('validation at epoch: {}'.format(epoch))
 
     # set model to evaluate mode
@@ -197,8 +197,8 @@ def val(epoch, data_loader, model, criterion, device, val_log):
         'Loss(val): {loss.avg:.4f}\t'
         'Acc(val): {acc.avg:.3f}'.format(epoch, loss=losses, acc=accuracies)
     )
-
-    val_log.log({'epoch': epoch, 'loss': losses.avg, 'acc': accuracies.avg})
+    if val_log:
+        val_log.log({'epoch': epoch, 'loss': losses.avg, 'acc': accuracies.avg})
 
     return losses.avg, accuracies.avg
 

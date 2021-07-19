@@ -31,10 +31,10 @@ class Identity(nn.Module):
 
 class ResNet(nn.Module):
     def __init__(self, num_classes = 2,
-                        numDiPerVideos = 1, 
+                        # numDiPerVideos = 1, 
                         model_name = 'resnet50'):
         super(ResNet, self).__init__()
-        self.numDiPerVideos = numDiPerVideos
+        # self.numDiPerVideos = numDiPerVideos
         self.num_classes = num_classes
         # self.joinType = joinType
         model_ft = None
@@ -68,9 +68,10 @@ class ResNet(nn.Module):
         # (ipts, vid_name, dynamicImages, one_box)
         # (x, vid_name, dynamicImages, bboxes) = X
         # print('X input:', X.size())
-        # batch_size, C, timesteps, H, W = x.size()
+        batch_size, C, timesteps, H, W = X.size()
         # c_in = x.view(batch_size * timesteps, C, H, W)
-        x = torch.squeeze(X)
+        x = X.view(batch_size * timesteps, C, H, W)
+        x = torch.squeeze(x)
         x = self.convLayers(x)  #torch.Size([8, 2048, 7, 7]
         
         x = self.bn(x) # torch.Size([8, 2048, 7, 7])
@@ -79,8 +80,8 @@ class ResNet(nn.Module):
         # print('AdaptiveAvgPool2d: ', x.size())
         x = torch.flatten(x, 1)
         # num_fc_input_features = self.linear.in_features
-        # x = x.view(batch_size, timesteps, num_fc_input_features)
-        # x = x.max(dim=1).values
+        x = x.view(batch_size, timesteps, self.classifier.in_features)
+        x = x.max(dim=1).values
         x = self.classifier(x)
         return x
 
@@ -212,10 +213,15 @@ class FeatureExtractorResNextTempPool(nn.Module):
         return x
 
 if __name__ == '__main__':
-    # model = Densenet2D()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = ResNet(num_classes=2, model_name='resnet50').to(device)
     # params = get_fine_tuning_params(model, 0)
     # print(params)
     # print(model)
     # _model = FusedResNextTempPool(num_classes=51)
-    _model = FeatureExtractorResNextTempPool()
-    torchsummary.summary(_model, input_size=(10,3, 224, 224), device='cpu')
+    # _model = FeatureExtractorResNextTempPool()
+    # torchsummary.summary(model, input_size=(3, 224, 224), device='cpu')
+
+    input = torch.rand(4,3,6,224,224).to(device)
+    out = model(input)
+    print('out: ', out.size())

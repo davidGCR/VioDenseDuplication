@@ -230,7 +230,7 @@ class VioDB(Dataset):
         if self.target_transform:
             target = self.target_transform(target)
         
-        
+        # print('VioNet input:', clip.size())
 
         return clip, target
 

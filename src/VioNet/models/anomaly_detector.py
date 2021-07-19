@@ -22,7 +22,12 @@ class AnomalyDetector(nn.Module):
         nn.init.xavier_normal_(self.fc3.weight)
 
     def forward(self, x):
-        x = self.dropout1(self.relu1(self.fc1(x)))
+        print('fc1 input: ', x.size())
+        x = self.fc1(x)
+        print('fc1 out: ', x.size())
+        x = self.relu1(x)
+        # x = self.dropout1(x)
+        # x = self.dropout1(self.relu1(self.fc1(x)))
         x = self.dropout2(self.fc2(x))
         x = self.sig(self.fc3(x))
         return x
@@ -89,3 +94,12 @@ def custom_objective(y_pred, y_true):
 
     final_loss = (hinge_loss + lambdas*smoothness_loss + lambdas*sparsity_loss).mean()
     return final_loss
+
+if __name__=='__main__':
+    print('___Anomaly_Detector___')
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    input_dim = 528
+    detector = AnomalyDetector(input_dim=input_dim).to(device)
+    input = torch.rand(1,input_dim).to(device)
+    out = detector(input)
+    print('out: ', out.size())

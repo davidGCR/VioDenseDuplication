@@ -24,7 +24,8 @@ class Config:
             val_temporal_transform = 'standar',
             number_of_clips=1,
             overlap =0,
-            position="",
+            train_sampling_type='start',
+            val_sampling_type='middle',
             additional_info = "",
             temp_annotation_path="",
             pretrained_model = None,
@@ -97,3 +98,6 @@ class Config:
         self.restore_training = restore_training
         self.checkpoint_path = checkpoint_path
         self.num_segments = num_segments
+        self.train_sampling_type = train_sampling_type
+        self.val_sampling_type = val_sampling_type
+
