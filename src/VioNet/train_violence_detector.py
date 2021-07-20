@@ -1,5 +1,7 @@
 
 from os import path
+from PIL import Image, ImageFile
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 from torch._C import device
 from torch.utils.tensorboard import SummaryWriter
 import torch
@@ -26,7 +28,8 @@ def load_features(config: Config):
     make_dataset = MakeRWF2000(root='/media/david/datos/Violence DATA/RWF-2000/frames',
                                 train=False,
                                 path_annotations='/media/david/datos/Violence DATA/Tubes/RWF-2000',
-                                path_feat_annotations='/media/david/datos/Violence DATA/i3d-FeatureMaps/rwf')
+                                path_feat_annotations='/media/david/datos/Violence DATA/i3d-FeatureMaps/rwf'
+                                )
     dataset = TubeFeaturesDataset(frames_per_tube=16,
                                     min_frames_per_tube=8,
                                     make_function=make_dataset,
@@ -118,8 +121,8 @@ def extract_features(confi: Config, output_folder: str):
 def main(config: Config):
     device = config.device
     make_dataset = MakeRWF2000(root='/media/david/datos/Violence DATA/RWF-2000/frames',#'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames', 
-                                train=True,
-                                path_annotations='/media/david/datos/Violence DATA/Tubes/RWF-2000')#'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/Tubes/RWF-2000')
+                                train=False,
+                                path_annotations='/media/david/datos/Violence DATA/ActionTubes/RWF-2000')#'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/Tubes/RWF-2000')
     dataset = TubeDataset(frames_per_tube=16, 
                             min_frames_per_tube=8, 
                             make_function=make_dataset,
@@ -128,13 +131,14 @@ def main(config: Config):
                                 # transforms.Resize(256),
                                 transforms.ToTensor()
                             ]),
-                            max_num_tubes=0)
+                            max_num_tubes=4)
     loader = DataLoader(dataset,
-                        batch_size=1,
-                        shuffle=False,
+                        batch_size=4,
+                        shuffle=True,
                         num_workers=4,
                         # pin_memory=True,
-                        collate_fn=my_collate)
+                        collate_fn=my_collate
+                        )
 
     ################## Head Detector ########################
     # from models.roi_extractor_3d import SingleRoIExtractor3D
@@ -146,64 +150,77 @@ def main(config: Config):
     # model = AnomalyDetector()
 
     # from models.violence_detector import RoiHead
-    # model = RoiHead()
-    # model.to(device)
+    # head = RoiHead()
+    # head.to(device)
 
     ################## Full Detector ########################
 
-    # model, params = ViolenceDetector_model(config, device)
+    model, params = ViolenceDetector_model(config, device)
     # torch.backends.cudnn.enabled = False
-    # model.cuda(device=0)
+    model.eval()
     # print(model)
     # optimizer = torch.optim.Adadelta(params, lr=config.learning_rate, eps=1e-8)
 
     # criterion = RegularizedLoss(model, custom_objective)
     
     ################## Feature Extractor ########################
-    from models.i3d import InceptionI3d
-    model = InceptionI3d(2, in_channels=3, final_endpoint='Mixed_4e').to(device)
-    load_model_path = '/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt'
-    state_dict = torch.load(load_model_path)
-    model.load_state_dict(state_dict,  strict=False) 
-    model.eval()
+    # from models.i3d import InceptionI3d
+    # model = InceptionI3d(2, in_channels=3, final_endpoint='Mixed_4e').to(device)
+    # load_model_path = '/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt'
+    # state_dict = torch.load(load_model_path)
+    # model.load_state_dict(state_dict,  strict=False) 
+    # model.eval()
+
+    from models.anomaly_detector import custom_objective
+    from torch import nn
+    bceloss = nn.BCELoss()
 
     ##iterate over dataset
-    for i, data in enumerate(loader):
+    for i, data in enumerate(loader): #iterate over batches of videos
         # path, label, annotation,frames_names, boxes, video_images = data
         boxes, video_images, labels = data
         # boxes, video_images, labels = boxes.to(device), video_images.to(device), labels.to(device)
         print('_____ {} ______'.format(i+1))
 
         if not boxes:
+            print('No boxes')
             continue
         
-        print('boxes: ', type(boxes), len(boxes))#, '-boxes[0]: ', boxes[0].size())
-        print('video_images: ', type(video_images), len(video_images), '-video_images[0]: ', video_images[0].size())
+        # print('boxes: ', type(boxes), len(boxes))#, '-boxes[0]: ', boxes[0].size())
+        # print('video_images: ', type(video_images), len(video_images), '-video_images[0]: ', video_images[0].size())
+        labels = torch.tensor(labels).float().to(device)
         print('labels: ', type(labels), len(labels), '-labels: ', labels)
-
-        # video_images = [torch.rand(v.size()[0],3,16,224,224) for v in video_images]
-        # video_images = [torch.rand(2, 528, 4, 14, 14).to(device) for v in video_images]
+        
         
         scores = []
-        for i in range(len(video_images)):
-            video_images[i] = video_images[i].to(device)
-            boxes[i] = boxes[i].to(device)
+        for j in range(len(video_images)): # iterate over videos into a batch
+            video_images[j] = video_images[j].to(device)
+            boxes[j] = boxes[j].to(device)
             # labels[i] = labels[i].to(device)
 
-            print('boxes[{}]: '.format(i), boxes[i], boxes[i].size())
-            print('video_images[{}]: '.format(i), video_images[i].size())
-            print('labels[{}]: '.format(i), labels[i])
+            # print('boxes[{}]: '.format(i), boxes[i], boxes[i].size())
+            print('video_images[{}]: '.format(j), video_images[j].size())
+            # print('labels[{}]: '.format(i), labels[i])
 
-            out = model(video_images[i])
-            print('out feature: ', out.size())
+            # out = model(video_images[i])
+            # print('out feature: ', out.size())
 
             # y_pred = model(video_images[i], boxes[i])
             # roi_out = roi_op(video_images[i])
 
-            # scores.append(y_pred)
-        # print('Scores: ', scores)
-        # if i==1:
-        #     break
+            out = model(video_images[j], boxes[j]) #get score of video tubes
+            print('out[{}]: {}, {}'.format(j, out, out.size()))
+
+            # get the max score for each video
+            instance_max_score = out.max(dim=0)[0]
+            scores.append(instance_max_score.item())
+            # anomal_segments_scores_maxes = out.max(dim=-1)[0]
+
+            # print("--instance_max_score:", instance_max_score)
+        scores = torch.tensor(scores).float().to(device)
+        print('scores: {} - {}, dtype:{}'.format(scores, scores.size(), scores.type()))
+        loss = bceloss(scores,labels)
+        print('loss: ', loss)
 
 if __name__=='__main__':
     config = Config(
@@ -211,6 +228,6 @@ if __name__=='__main__':
         dataset='',
         device=get_torch_device()
     )
-    # main(config)
+    main(config)
     # extract_features(config, output_folder='/media/david/datos/Violence DATA/i3d-FeatureMaps/rwf')
-    load_features(config)
+    # load_features(config)

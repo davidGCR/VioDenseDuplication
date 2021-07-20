@@ -125,7 +125,7 @@ class TubeDataset(data.Dataset):
         self.min_frames_per_tube = min_frames_per_tube
         self.spatial_transform = spatial_transform
         self.make_function = make_function
-        self.paths, self.labels, self.annotations = self.make_function()
+        self.paths, self.labels, self.annotations, _ = self.make_function()
         self.sampler = TubeCrop(tube_len=frames_per_tube, min_tube_len=min_frames_per_tube, central_frame=True, max_num_tubes=max_num_tubes)
         self.return_metadata = return_metadata
         self.max_num_tubes = max_num_tubes
@@ -198,9 +198,11 @@ class TubeCrop(object):
             idxs = random.sample(range(len(boxes)), self.max_num_tubes)
             boxes = list(itemgetter(*idxs)(boxes))
             # print('=====len: ', len(boxes))
-            for id,box in enumerate(boxes):
-                boxes[id][0,0] = id+1
+            # for id,box in enumerate(boxes):
+            #     boxes[id][0,0] = id
             segments = list(itemgetter(*idxs)(segments))
+        for id,box in enumerate(boxes):
+            boxes[id][0,0] = id
 
         if len(boxes) == 0:
             return None, None, None
@@ -243,8 +245,8 @@ def my_collate(batch):
     # print('images:', type(boxes), len(images))
     # print('boxes[i]:', type(boxes[0]), boxes[0].size())
     # print('images[i]:', type(images[0]), images[0].size())
-    # return [torch.stack(boxes, dim=0), torch.stack(images, dim=0)]
-    return boxes, images, labels
+    # return [torch.stack(boxes, dim=0), torch.stack(images, dim=0)], labels
+    return boxes, images, labels#torch.stack(labels, dim=0)
 
 import json
 from torch.utils.data import DataLoader

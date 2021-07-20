@@ -63,11 +63,14 @@ def custom_objective(y_pred, y_true):
     normal_vids_indices = (y_true == 0).nonzero().flatten()
     anomal_vids_indices = (y_true == 1).nonzero().flatten()
 
-    # print("normal_vids_indices:", normal_vids_indices)
-    # print("anomal_vids_indices:", anomal_vids_indices)
+    print("normal_vids_indices:", normal_vids_indices)
+    print("anomal_vids_indices:", anomal_vids_indices)
 
     normal_segments_scores = y_pred[normal_vids_indices]  # (batch/2, 32, 1)
     anomal_segments_scores = y_pred[anomal_vids_indices]  # (batch/2, 32, 1)
+
+    print("normal_segments_scores:", normal_segments_scores)
+    print("anomal_segments_scores:", anomal_segments_scores)
 
     # just for reducing the last dimension
     normal_segments_scores = torch.sum(normal_segments_scores, dim=(-1,))  # (batch/2, 32)

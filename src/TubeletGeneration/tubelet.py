@@ -6,10 +6,13 @@ import visual_utils
 from SORT import Sort
 from tube_utils import tube_2_JSON, JSON_2_videoDetections, JSON_2_tube
 import sys
-sys.path.insert(1, '/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/AVSS2019/src')
+# sys.path.insert(1, '/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/AVSS2019/src')
+sys.path.insert(1, '/media/david/datos/PAPERS-SOURCE_CODE/VioDenseDuplication/src')
 from TubeletGeneration.motion_segmentation import MotionSegmentation
 from TubeletGeneration.incremental_linking import IncrementalLinking
 
+from PIL import Image, ImageFile
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 
 def plot_image_detections(decodedArray, dataset_path):
@@ -167,14 +170,14 @@ def extract_tubes_from_dataset(dataset_persons_detections_path, folder_out, data
             'path': dataset_persons_detections_path,
             'num': len(live_paths)
             })
-        # if not os.path.isdir(folder_out):
-        #     os.makedirs(folder_out)
-        # tube_2_JSON(output_path=os.path.join(folder_out, video_folder), tube=live_paths)
-    CountFrequency(num_live_paths)
+        if not os.path.isdir(folder_out):
+            os.makedirs(folder_out)
+        tube_2_JSON(output_path=os.path.join(folder_out, video_folder), tube=live_paths)
+    # CountFrequency(num_live_paths)
 
-    videos_no_tubes = get_videos_from_num_tubes(num_live_paths, 0)
-    for v in videos_no_tubes:
-        print(v)
+    # videos_no_tubes = get_videos_from_num_tubes(num_live_paths, 0)
+    # for v in videos_no_tubes:
+    #     print(v)
 
     return num_live_paths
 
@@ -198,13 +201,14 @@ def extract_tubes_from_video(dataset_root, persons_detections, frames, plot=None
 
 
 if __name__=="__main__":
-    vname = "-1l5631l3fg_2"
-    decodedArray = JSON_2_videoDetections("/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/RWF-2000/train/Fight/{}.json".format(vname))
+    # vname = "-1l5631l3fg_2"
+    # decodedArray = JSON_2_videoDetections("/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/RWF-2000/train/Fight/{}.json".format(vname))
     # decodedArray = JSON_2_videoDetections("/media/david/datos/Violence DATA/PersonDetections/RWF-2000/train/Fight/{}.json".format(vname))
     # print("decodedArray: ", type(decodedArray), len(decodedArray), decodedArray[0])
     # plot_image_detections(decodedArray, "/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames")
     
-    dataset_root = '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames'
+    # dataset_root = '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames'
+    dataset_root = '/media/david/datos/Violence DATA/RWF-2000/frames'
     # split = 'train/Fight'
     # video = 'rn7Qjaj9_1'
     # persons_detections_path = '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/RWF-2000/{}/{}.json'.format(split,video)
@@ -223,11 +227,11 @@ if __name__=="__main__":
 
     ##processing RWF-2000 dataset
     
-    path_in = '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/RWF-2000'
-    path_out = '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/Tubes/RWF-2000'
+    # path_in = '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/RWF-2000'
+    # path_out = '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/Tubes/RWF-2000'
    
-    # path_in = '/media/david/datos/Violence DATA/PersonDetections/RWF-2000'
-    # path_out = '/media/david/datos/Violence DATA/Tubes/RWF-2000'
+    path_in = '/media/david/datos/Violence DATA/PersonDetections/RWF-2000'
+    path_out = '/media/david/datos/Violence DATA/ActionTubes/RWF-2000'
    
     splits = ['train/Fight', 'train/NonFight', 'val/Fight', 'val/NonFight']
     for sp in splits:

@@ -14,7 +14,8 @@ class RoiHead(nn.Module):
     def __init__(self,roi_layer_type='RoIAlign',
                       roi_layer_output=8,
                       roi_with_temporal_pool=True,
-                      roi_spatial_scale=16):
+                      roi_spatial_scale=16,
+                      fc_input_dim=528):
         
         super(RoiHead, self).__init__()
         self.roi_op = SingleRoIExtractor3D(roi_layer_type=roi_layer_type,
@@ -25,7 +26,7 @@ class RoiHead(nn.Module):
         self.temporal_pool = nn.AdaptiveAvgPool3d((1, None, None))
         self.spatial_pool = nn.AdaptiveAvgPool3d((None, 1, 1))
         self.detector = nn.Sequential(
-            nn.Linear(528, 128), #original was 512
+            nn.Linear(fc_input_dim, 128), #original was 512, 528
             nn.ReLU(),
             nn.Dropout(0.6),
             nn.Linear(128, 32),
@@ -37,8 +38,8 @@ class RoiHead(nn.Module):
     def forward(self, x, bbox):
         #x: b,c,t,w,h
         x, _ = self.roi_op(x, bbox)
-        print('X type after ROIAling:', type(x), x.device)
-        print('X after ROIAling:', x.size())
+        # print('X type after ROIAling:', type(x), x.device)
+        # print('X after ROIAling:', x.size())
         x = self.temporal_pool(x)
         x = self.spatial_pool(x)
         x = x.view(x.size(0),-1)
@@ -56,8 +57,7 @@ class ViolenceDetector(nn.Module):
                       roi_layer_output=8,
                       roi_with_temporal_pool=True,
                       roi_spatial_scale=16,
-                      detector_input_dim=2048,
-                      device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                      fc_input_dim=2048
                       ):
         super(ViolenceDetector, self).__init__()
         #Backbone
@@ -85,7 +85,11 @@ class ViolenceDetector(nn.Module):
         #     nn.Sigmoid()
         # )
 
-        self.head = RoiHead()
+        self.head = RoiHead(roi_layer_type=roi_layer_type,
+                            roi_layer_output=roi_layer_output,
+                            roi_with_temporal_pool=roi_with_temporal_pool,
+                            roi_spatial_scale=roi_spatial_scale,
+                            fc_input_dim=fc_input_dim)
         
 
 
@@ -103,9 +107,9 @@ class ViolenceDetector(nn.Module):
     def forward(self, x, bbox):
         #x: b,c,t,w,h
         x = self.backbone(x) #torch.Size([4, 528, 4, 14, 14])
-        print('X before ROIAling:', x.size(), x.device)
-        print('BBobx before ROIAling:', bbox.size(), bbox.device)
-        # central_bbox = self.__get_central_bbox__(tubelet_data)
+        # print('X before ROIAling:', x.size(), x.device)
+        # print('BBobx before ROIAling:', bbox.size(), bbox.device)
+
         
         # x, _ = self.roi_op(x, bbox)
         # print('X type after ROIAling:', type(x), x.device)
@@ -161,24 +165,8 @@ if __name__=='__main__':
     tubes_num = 4
     input = torch.rand(tubes_num,3,16,224,224).to(device)
     
-<<<<<<< HEAD
     tubes = JSON_2_tube('/media/david/datos/Violence DATA/Tubes/RWF-2000/train/Fight/_6-B11R9FJM_2.json')
     bbox = get_central_bbox(tubes[0]).to(device)
-=======
-    # tubes = JSON_2_tube('/media/david/datos/Violence DATA/Tubes/RWF-2000/train/Fight/_6-B11R9FJM_2.json')
-    # bbox = get_central_bbox(tubes[0]).to(device)
-    # bbox_batch = [bbox for i in range(tubes_num)]
-    # bbox = torch.stack(bbox_batch, dim=0).squeeze()
-
-    bbox = torch.tensor([
-            [ 1.0000,  69.8389,  68.9140, 111.6870, 246.7374],
-            [ 2.0000,  89.5030,  55.2829, 123.0316, 195.3472],
-            [ 3.0000,  62.5481,  49.0223, 122.0747, 203.4146],
-            # [24.0000,  62.5481,  49.0223, 122.0747, 203.4146]
-            [ 4.0000,  80.0366,  44.7882, 125.0502, 198.5162]
-        ]).to(device)
-
->>>>>>> 3675845e577cf592a9ef0271771e7acdab5a7e78
     
     print('central bbox:', bbox.size(), bbox)
 
