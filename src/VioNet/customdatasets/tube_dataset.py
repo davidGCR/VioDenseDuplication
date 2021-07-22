@@ -1,3 +1,4 @@
+from numpy.core.numeric import indices
 import torch.utils.data as data
 import numpy as np
 import torch
@@ -126,10 +127,27 @@ class TubeDataset(data.Dataset):
         self.spatial_transform = spatial_transform
         self.make_function = make_function
         self.paths, self.labels, self.annotations, _ = self.make_function()
+        self.paths, self.labels, self.annotations = self.filter_data_without_tubelet()
         self.sampler = TubeCrop(tube_len=frames_per_tube, min_tube_len=min_frames_per_tube, central_frame=True, max_num_tubes=max_num_tubes)
         self.return_metadata = return_metadata
         self.max_num_tubes = max_num_tubes
     
+    def filter_data_without_tubelet(self):
+        indices_2_remove = []
+        for index in range(len(self.paths)):
+            path = self.paths[index]
+            label = self.labels[index]
+            annotation = self.annotations[index]
+            tubelets = JSON_2_tube(annotation)
+            if len(tubelets) == 0:
+                print('No tubelets at: ',path)
+                indices_2_remove.append(index)
+
+        paths = [self.paths[i] for i in range(len(self.paths)) if i not in indices_2_remove]
+        labels = [self.labels[i] for i in range(len(self.labels)) if i not in indices_2_remove]
+        annotations = [self.annotations[i] for i in range(len(self.annotations)) if i not in indices_2_remove]
+        return paths, labels, annotations
+
     def __len__(self):
         return len(self.paths)
     
@@ -139,12 +157,15 @@ class TubeDataset(data.Dataset):
         annotation = self.annotations[index]
         boxes, segments, idxs = self.sampler(JSON_2_tube(annotation), annotation)
 
-        if boxes == None:
-            return None, None, None
+        if boxes == None or len(boxes) == 0:
+            return None, None, None, None, None
+        # if len(boxes)==0:
+        #     return None, None, None, None
         # print('Loaded Boxes:', len(boxes))
         # print('segments: ', segments, len(segments))
         frames_names = []
         video_images = []
+        num_tubes = len(segments)
         for seg in segments:
             # frames = list(itemgetter(*seg)(frames_paths))
             frames = [os.path.join(path,'frame{}.jpg'.format(i+1)) for i in seg]
@@ -164,7 +185,7 @@ class TubeDataset(data.Dataset):
             
         video_images = torch.stack(video_images, dim=0).permute(0,2,1,3,4)
         # return path, label, annotation, frames_names, boxes, video_images
-        return boxes, video_images, label
+        return boxes, video_images, label, num_tubes, path
 
 
 
@@ -181,7 +202,7 @@ class TubeCrop(object):
     def __call__(self, tubes: list, tube_path: str):
         # assert len(tubes) >= 1, "No tubes in video!!!==>{}".format(tube_path)
         # if len(tubes) < 1:
-        #     return None, None
+        #     return None, None, None
         
         segments = []
         boxes = []
@@ -219,7 +240,9 @@ class TubeCrop(object):
             centered_array = arr[m-int(self.tube_len/2) : m+int(self.tube_len/2)]
             return centered_array.tolist()
         if len(tube_frames_idxs) < self.tube_len:
-            return []
+            last_idx = tube_frames_idxs[len(tube_frames_idxs)-1]
+            tube_frames_idxs += (self.tube_len - len(tube_frames_idxs))*[last_idx]
+            return tube_frames_idxs
 
     def __central_bbox__(self, tube, id):
         width, height = 224, 224
@@ -233,12 +256,28 @@ class TubeCrop(object):
         central_box = torch.from_numpy(central_box).float()
         return central_box
 
+from torch.utils.data.dataloader import default_collate
+
+def my_collate_2(batch):
+    # batch = filter (lambda x:x is not None, batch)
+    boxes = [item[0] for item in batch if item[0] is not None]
+    images = [item[1] for item in batch if item[1] is not None]
+    labels = [item[2] for item in batch if item[2] is not None]
+    num_tubes = [item[3] for item in batch if item[3] is not None]
+    batch = (boxes, images, labels, num_tubes)
+    return default_collate(batch)
+
 def my_collate(batch):
     # print('BATCH: ', type(batch), len(batch), len(batch[0]))
     boxes = [item[0] for item in batch if item[0] is not None]
     images = [item[1] for item in batch if item[1] is not None]
     labels = [item[2] for item in batch if item[2] is not None]
-    # print('BATCH filtered: ', len(boxes), len(images), len(labels))
+    num_tubes = [item[3] for item in batch if item[3] is not None]
+    paths = [item[4] for item in batch if item[4]]
+
+    # num_tubes = [batch[3][i] for i,item in enumerate(batch) if item[2] is not None]
+
+    print('BATCH filtered: ', len(boxes), len(images), len(labels), len(num_tubes), paths)
     # target = torch.LongTensor(target)
 
     # print('boxes:', type(boxes), len(boxes))
@@ -246,7 +285,12 @@ def my_collate(batch):
     # print('boxes[i]:', type(boxes[0]), boxes[0].size())
     # print('images[i]:', type(images[0]), images[0].size())
     # return [torch.stack(boxes, dim=0), torch.stack(images, dim=0)], labels
-    return boxes, images, labels#torch.stack(labels, dim=0)
+    boxes = torch.cat(boxes,dim=0)
+    images = torch.cat(images,dim=0)
+    labels = torch.tensor(labels)
+    num_tubes = torch.tensor(num_tubes)
+
+    return boxes, images, labels, num_tubes, paths#torch.stack(labels, dim=0)
 
 import json
 from torch.utils.data import DataLoader

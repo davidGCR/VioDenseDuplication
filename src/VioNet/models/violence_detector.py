@@ -63,27 +63,6 @@ class ViolenceDetector(nn.Module):
         #Backbone
         self.final_endpoint = final_endpoint
         self.backbone = self.__build_backbone__(backbone_name)
-        
-        #Roi_pool
-        # self.roi_op = SingleRoIExtractor3D(roi_layer_type=roi_layer_type,
-        #                                     featmap_stride=roi_spatial_scale,
-        #                                     output_size=roi_layer_output,
-        #                                     with_temporal_pool=roi_with_temporal_pool)
-
-        # self.temporal_pool = nn.AdaptiveAvgPool3d((1, None, None))
-        # self.spatial_pool = nn.AdaptiveAvgPool3d((None, 1, 1))
-        # #Classification Head
-        # # self.detector = AnomalyDetector(input_dim=detector_input_dim)
-
-        # self.detector = nn.Sequential(
-        #     nn.Linear(detector_input_dim, 128), #original was 512
-        #     nn.ReLU(),
-        #     nn.Dropout(0.6),
-        #     nn.Linear(128, 32),
-        #     nn.Dropout(0.6),
-        #     nn.Linear(32, 1),
-        #     nn.Sigmoid()
-        # )
 
         self.head = RoiHead(roi_layer_type=roi_layer_type,
                             roi_layer_output=roi_layer_output,
@@ -104,24 +83,21 @@ class ViolenceDetector(nn.Module):
             return None
 
     
-    def forward(self, x, bbox):
+    def forward(self, x, bbox, num_tubes=0):
         #x: b,c,t,w,h
-        x = self.backbone(x) #torch.Size([4, 528, 4, 14, 14])
-        # print('X before ROIAling:', x.size(), x.device)
-        # print('BBobx before ROIAling:', bbox.size(), bbox.device)
-
+        # x = self.backbone(x) #torch.Size([4, 528, 4, 14, 14])
+        # x = self.head(x, bbox)
+        # batch, c, t, h, w = x.size()
+        x = self.backbone(x)
+        # scores = []
+        # for j in range(num_tubes.size(0)): # iterate over videos into a batch
+        #     n_tubes = num_tubes[j]
+        #     video_batch = x[num_tubes[j-1]:j*n_tubes + n_tubes, :, :, :, :]
+        #     out = self.backbone(x)
+        #     # get the max score for each video
+        #     instance_max_score = out.max(dim=0)[0]
+        # #     scores.append(instance_max_score.item())
         
-        # x, _ = self.roi_op(x, bbox)
-        # print('X type after ROIAling:', type(x), x.device)
-        # print('X after ROIAling:', x.size())
-        # x = self.temporal_pool(x)
-        # x = self.spatial_pool(x)
-        # x = x.view(x.size(0),-1)
-        # print('X view:', x.size())
-        # x = self.detector(x)
-        # # x = self.fc1(x)
-
-        x = self.head(x, bbox)
         return x
 
 # from TubeletGeneration.tube_utils import JSON_2_tube

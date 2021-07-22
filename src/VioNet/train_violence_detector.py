@@ -11,7 +11,7 @@ import os
 
 #data
 from customdatasets.make_dataset import MakeRWF2000
-from customdatasets.tube_dataset import TubeDataset, my_collate, OneVideoTubeDataset, TubeFeaturesDataset
+from customdatasets.tube_dataset import TubeDataset, my_collate, my_collate_2, OneVideoTubeDataset, TubeFeaturesDataset
 from torch.utils.data import DataLoader, dataset
 
 from config import Config
@@ -21,7 +21,10 @@ from epoch import train_regressor
 from utils import Log, save_checkpoint, load_checkpoint
 from utils import get_torch_device
 from feature_writer2 import FeaturesWriter
-# device = get_torch_device()
+from models.anomaly_detector import custom_objective
+from torch import nn
+from epoch import train, val
+import numpy as np
 
 def load_features(config: Config):
     device = config.device
@@ -121,7 +124,7 @@ def extract_features(confi: Config, output_folder: str):
 def main(config: Config):
     device = config.device
     make_dataset = MakeRWF2000(root='/media/david/datos/Violence DATA/RWF-2000/frames',#'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames', 
-                                train=False,
+                                train=True,
                                 path_annotations='/media/david/datos/Violence DATA/ActionTubes/RWF-2000')#'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/Tubes/RWF-2000')
     dataset = TubeDataset(frames_per_tube=16, 
                             min_frames_per_tube=8, 
@@ -133,9 +136,9 @@ def main(config: Config):
                             ]),
                             max_num_tubes=4)
     loader = DataLoader(dataset,
-                        batch_size=4,
+                        batch_size=2,
                         shuffle=True,
-                        num_workers=4,
+                        num_workers=1,
                         # pin_memory=True,
                         collate_fn=my_collate
                         )
@@ -157,7 +160,7 @@ def main(config: Config):
 
     model, params = ViolenceDetector_model(config, device)
     # torch.backends.cudnn.enabled = False
-    model.eval()
+    # model.eval()
     # print(model)
     # optimizer = torch.optim.Adadelta(params, lr=config.learning_rate, eps=1e-8)
 
@@ -171,62 +174,123 @@ def main(config: Config):
     # model.load_state_dict(state_dict,  strict=False) 
     # model.eval()
 
-    from models.anomaly_detector import custom_objective
-    from torch import nn
-    bceloss = nn.BCELoss()
+    
+    optimizer = torch.optim.Adadelta(params, lr=config.learning_rate, eps=1e-8)
+    # optimizer = torch.optim.SGD(params=params,
+    #                             lr=learning_rate,
+    #                             momentum=momentum,
+    #                             weight_decay=weight_decay)
+    criterion = nn.BCELoss()
+    # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,
+    #                                                        verbose=True,
+    #                                                        factor=config.factor,
+    #                                                        min_lr=config.min_lr)
+    from utils import AverageMeter
+    from epoch import calculate_accuracy_2
+
+    # for epoch in range(config.num_epoch):
+    #     model.train()
+    #     losses = AverageMeter()
+    #     accuracies = AverageMeter()
+    #     for i, (boxes, video_images, labels) in enumerate(loader):
+    #         labels = torch.tensor(labels).float().to(device)
+    #         if not boxes:
+    #             # print('No boxes')
+    #             continue
+    #         # zero the parameter gradients
+    #         optimizer.zero_grad()
+    #         scores = []
+    #         for j in range(len(video_images)): # iterate over videos into a batch
+    #             video_images[j] = video_images[j].to(device)
+    #             boxes[j] = boxes[j].to(device)
+    #             # print('video_images[{}]: '.format(j), video_images[j].size())
+    #             out = model(video_images[j], boxes[j]) #get score of video tubes
+    #             # print('out[{}]: {}, {}'.format(j, out, out.size()))
+    #             # get the max score for each video
+    #             instance_max_score = out.max(dim=0)[0]
+    #             scores.append(instance_max_score.item())
+                
+    #         scores = torch.tensor(scores).float().to(device)
+    #         # print('scores: {} - {}, dtype:{}'.format(scores, scores.size(), scores.type()))
+    #         loss = criterion(scores,labels)
+
+    #         preds = np.round(scores.cpu().numpy())
+    #         acc = (preds == labels.cpu().numpy()).sum() / preds.shape[0]
+    #         # calculate_accuracy_2(scores, labels)
+
+    #         # meter
+    #         losses.update(loss.item(), len(video_images))
+    #         accuracies.update(acc, len(video_images))
+
+    #         # backward + optimize
+    #         loss.backward()
+    #         optimizer.step()
+
+    #         # meter
+    #         # batch_time.update(time.time() - end_time)
+    #         # end_time = time.time()
+
+    #         print(
+    #             'Epoch: [{0}][{1}/{2}]\t'
+    #             # 'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
+    #             # 'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
+    #             'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
+    #             'Acc {acc.val:.3f} ({acc.avg:.3f})'.format(
+    #                 epoch,
+    #                 i + 1,
+    #                 len(loader),
+    #                 # batch_time=batch_time,
+    #                 # data_time=data_time,
+    #                 loss=losses,
+    #                 acc=accuracies
+    #             )
+    #         )
+
 
     ##iterate over dataset
     for i, data in enumerate(loader): #iterate over batches of videos
         # path, label, annotation,frames_names, boxes, video_images = data
-        boxes, video_images, labels = data
-        # boxes, video_images, labels = boxes.to(device), video_images.to(device), labels.to(device)
+        boxes, video_images, labels, num_tubes, paths = data
+        boxes, video_images, labels = boxes.to(device), video_images.to(device), labels.to(device)
         print('_____ {} ______'.format(i+1))
-
-        if not boxes:
+        print('paths: ', paths)
+        if boxes.size(0)==0:
             print('No boxes')
             continue
         
-        # print('boxes: ', type(boxes), len(boxes))#, '-boxes[0]: ', boxes[0].size())
-        # print('video_images: ', type(video_images), len(video_images), '-video_images[0]: ', video_images[0].size())
-        labels = torch.tensor(labels).float().to(device)
-        print('labels: ', type(labels), len(labels), '-labels: ', labels)
+        print('boxes: ', type(boxes), boxes.size())#, '-boxes[0]: ', boxes[0].size())
+        print('video_images: ', type(video_images), video_images.size())
+        print('labels: ', type(labels), labels.size())
+        print('num_tubes: ', num_tubes)
         
+        # labels = torch.tensor(labels).float().to(device)
+        # print('labels: ', type(labels), len(labels), '-labels: ', labels)
         
-        scores = []
-        for j in range(len(video_images)): # iterate over videos into a batch
-            video_images[j] = video_images[j].to(device)
-            boxes[j] = boxes[j].to(device)
-            # labels[i] = labels[i].to(device)
-
-            # print('boxes[{}]: '.format(i), boxes[i], boxes[i].size())
-            print('video_images[{}]: '.format(j), video_images[j].size())
-            # print('labels[{}]: '.format(i), labels[i])
-
-            # out = model(video_images[i])
-            # print('out feature: ', out.size())
-
-            # y_pred = model(video_images[i], boxes[i])
-            # roi_out = roi_op(video_images[i])
-
-            out = model(video_images[j], boxes[j]) #get score of video tubes
-            print('out[{}]: {}, {}'.format(j, out, out.size()))
-
-            # get the max score for each video
-            instance_max_score = out.max(dim=0)[0]
-            scores.append(instance_max_score.item())
-            # anomal_segments_scores_maxes = out.max(dim=-1)[0]
-
-            # print("--instance_max_score:", instance_max_score)
-        scores = torch.tensor(scores).float().to(device)
-        print('scores: {} - {}, dtype:{}'.format(scores, scores.size(), scores.type()))
-        loss = bceloss(scores,labels)
-        print('loss: ', loss)
+        # out = model(video_images, boxes)
+        # print('out: ', out.size())
+        # scores = []
+        # for j in range(len(video_images)): # iterate over videos into a batch
+        #     video_images[j] = video_images[j].to(device)
+        #     boxes[j] = boxes[j].to(device)
+        #     # print('video_images[{}]: '.format(j), video_images[j].size())
+        #     out = model(video_images[j], boxes[j]) #get score of video tubes
+        #     # print('out[{}]: {}, {}'.format(j, out, out.size()))
+        #     # get the max score for each video
+        #     instance_max_score = out.max(dim=0)[0]
+        #     scores.append(instance_max_score.item())
+            
+        # scores = torch.tensor(scores).float().to(device)
+        # # print('scores: {} - {}, dtype:{}'.format(scores, scores.size(), scores.type()))
+        # loss = criterion(scores,labels)
+        # # print('loss: ', loss)
 
 if __name__=='__main__':
     config = Config(
         model='',
         dataset='',
-        device=get_torch_device()
+        device=get_torch_device(),
+        num_epoch=20,
+        learning_rate=0.001
     )
     main(config)
     # extract_features(config, output_folder='/media/david/datos/Violence DATA/i3d-FeatureMaps/rwf')

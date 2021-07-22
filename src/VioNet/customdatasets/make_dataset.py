@@ -80,6 +80,10 @@ class MakeRWF2000():
     def split(self):
         split = "train" if self.train else "val"
         return split
+    
+    # def check_annotation(self, an_path):
+
+
 
     def __call__(self):
         split = self.split()
