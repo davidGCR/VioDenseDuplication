@@ -123,6 +123,8 @@ def extract_features(confi: Config, output_folder: str):
 
 def main(config: Config):
     device = config.device
+    #'/content/DATASETS/RWF-2000/frames'
+    #'/content/DATASETS/ActionTubes/RWF-2000'
     make_dataset = MakeRWF2000(root='/media/david/datos/Violence DATA/RWF-2000/frames',#'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames', 
                                 train=True,
                                 path_annotations='/media/david/datos/Violence DATA/ActionTubes/RWF-2000')#'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/Tubes/RWF-2000')

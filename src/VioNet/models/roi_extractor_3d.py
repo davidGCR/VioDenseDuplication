@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from mmcv.ops import RoIAlign, RoIPool
+# from mmcv.ops import RoIAlign, RoIPool
 from torchvision.ops.roi_align import RoIAlign
 
 # class SingleRoIExtractor3D(nn.Module):
