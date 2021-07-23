@@ -128,6 +128,8 @@ class TubeDataset(data.Dataset):
         self.make_function = make_function
         self.paths, self.labels, self.annotations, _ = self.make_function()
         self.paths, self.labels, self.annotations = self.filter_data_without_tubelet()
+
+        print('paths: {}, labels:{}, annot:{}'.format(len(self.paths), len(self.labels), len(self.annotations)))
         self.sampler = TubeCrop(tube_len=frames_per_tube, min_tube_len=min_frames_per_tube, central_frame=True, max_num_tubes=max_num_tubes)
         self.return_metadata = return_metadata
         self.max_num_tubes = max_num_tubes
