@@ -1,7 +1,8 @@
+from numpy.core.fromnumeric import size
 import torch
 import torch.nn as nn
-# from mmcv.ops import RoIAlign, RoIPool
-from torchvision.ops.roi_align import RoIAlign
+from mmcv.ops import RoIAlign, RoIPool
+# from torchvision.ops.roi_align import RoIAlign
 
 # class SingleRoIExtractor3D(nn.Module):
 #     """Extract RoI features from a single level feature map.
@@ -141,16 +142,16 @@ class SingleRoIExtractor3D(nn.Module):
         if self.roi_layer_type == 'RoIPool':
             self.roi_layer = RoIPool(self.output_size, self.spatial_scale)
         else:
-            # self.roi_layer = RoIAlign(
-            #     self.output_size,
-            #     self.spatial_scale,
-            #     sampling_ratio=self.sampling_ratio,
-            #     pool_mode=self.pool_mode,
-            #     aligned=self.aligned)
-            self.roi_layer = RoIAlign(output_size=self.output_size,
-                                        spatial_scale=self.spatial_scale,
-                                        sampling_ratio=self.sampling_ratio,
-                                        aligned=self.aligned)
+            self.roi_layer = RoIAlign(
+                self.output_size,
+                self.spatial_scale,
+                sampling_ratio=self.sampling_ratio,
+                pool_mode=self.pool_mode,
+                aligned=self.aligned)
+            # self.roi_layer = RoIAlign(output_size=self.output_size,
+            #                             spatial_scale=self.spatial_scale,
+            #                             sampling_ratio=self.sampling_ratio,
+            #                             aligned=self.aligned)
 
         self.global_pool = nn.AdaptiveAvgPool2d(self.output_size)
 
@@ -178,12 +179,17 @@ class SingleRoIExtractor3D(nn.Module):
 
         feat = torch.cat(feat, axis=1).contiguous()
 
+        # print('feat:',feat.size(), feat.device)
+
         roi_feats = []
+        # rois[:,0] = rois[:,0]-rois[0,0] 
+        # print('rois: ', rois) 
         for t in range(feat.size(2)):
             frame_feat = feat[:, :, t].contiguous()
-            # print('frame feat:',frame_feat.size(), frame_feat.device)
+            # print('frame feat t:',frame_feat.size(), frame_feat.device)
             # print('rois:',rois.size(), rois.device)
             roi_feat = self.roi_layer(frame_feat, rois)
+            # print('roi_feat:',roi_feat.size(), roi_feat.device)
             if self.with_global:
                 global_feat = self.global_pool(frame_feat.contiguous())
                 inds = rois[:, 0].type(torch.int64)
@@ -203,17 +209,32 @@ if __name__=='__main__':
     # with_temporal_pool=True
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    device = torch.device(device)
-    feature_map = torch.rand(4, 528, 4, 14, 14).to(device)
+    feature_map = torch.rand(1, 3, 4, 14, 14).to(device)
 
-    rois = torch.rand(1, 5).to(device)
-    rois[0] = torch.tensor([4.0000,  62.5481,  49.0223, 122.0747, 203.4146]).to(device)#torch.tensor([1, 14, 16, 66, 70]).to(device)
-    # rois[1] = torch.tensor([2, 34, 14, 85, 77]).to(device)
+    rois = torch.rand(2, 5).to(device)
+    rois[0] = torch.tensor([0,  62.5481,  49.0223, 122.0747, 203.4146]).to(device)#torch.tensor([1, 14, 16, 66, 70]).to(device)
+    rois[1] = torch.tensor([1, 34, 14, 85, 77]).to(device)
     # rois[2] = torch.tensor([3, 100, 126, 122, 130]).to(device)
 
-    roi_op = SingleRoIExtractor3D(roi_layer_type='RoIAlign', output_size=8, with_temporal_pool=True).to(device)
-    out=roi_op(feature_map, rois)
+    roi_op = SingleRoIExtractor3D(roi_layer_type='RoIAlign',
+                                    output_size=8,
+                                    featmap_stride=16,
+                                    sampling_ratio=0,
+                                    with_temporal_pool=True).to(device)
+                # roi_layer_type='RoIAlign',
+                #  featmap_stride=16,
+                #  output_size=16,
+                #  sampling_ratio=0,
+                #  pool_mode='avg',
+                #  aligned=True,
+                #  with_temporal_pool=True,
+                #  temporal_pool_mode='avg',
+                #  with_global=False
+    out,_ = roi_op(feature_map, rois)
     print('out:', out.size())
+
+    for i in range(out.size(0)):
+        print(out[i], out[i].size())
 
     # tmp_pool_avg = nn.AdaptiveAvgPool3d((1, None, None)) #torch.Size([1, 2048, 1, 8, 8])
     # tmp_pool_max = nn.AdaptiveMaxPool3d((1, None, None))

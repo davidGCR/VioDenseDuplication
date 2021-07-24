@@ -7,6 +7,7 @@ from operator import itemgetter
 import os
 import random
 from operator import itemgetter
+# from MotionSegmentation.segmentation import segment
 from customdatasets.dataset_utils import imread
 from customdatasets.make_dataset import MakeRWF2000
 
@@ -121,16 +122,21 @@ class TubeDataset(data.Dataset):
                        make_function,
                        spatial_transform=None,
                        return_metadata=False,
-                       max_num_tubes=16):
+                       max_num_tubes=16,
+                       train=False):
         self.frames_per_tube = frames_per_tube
         self.min_frames_per_tube = min_frames_per_tube
         self.spatial_transform = spatial_transform
         self.make_function = make_function
-        self.paths, self.labels, self.annotations, _ = self.make_function()
+        self.paths, self.labels, self.annotations = self.make_function()
         self.paths, self.labels, self.annotations = self.filter_data_without_tubelet()
 
         print('paths: {}, labels:{}, annot:{}'.format(len(self.paths), len(self.labels), len(self.annotations)))
-        self.sampler = TubeCrop(tube_len=frames_per_tube, min_tube_len=min_frames_per_tube, central_frame=True, max_num_tubes=max_num_tubes)
+        self.sampler = TubeCrop(tube_len=frames_per_tube, 
+                                min_tube_len=min_frames_per_tube, 
+                                central_frame=True,
+                                max_num_tubes=max_num_tubes,
+                                train=train)
         self.return_metadata = return_metadata
         self.max_num_tubes = max_num_tubes
     
@@ -170,7 +176,8 @@ class TubeDataset(data.Dataset):
         num_tubes = len(segments)
         for seg in segments:
             # frames = list(itemgetter(*seg)(frames_paths))
-            frames = [os.path.join(path,'frame{}.jpg'.format(i+1)) for i in seg]
+            frames = [os.path.join(path,'frame{}.jpg'.format(i+1)) for i in seg] #rwf
+            # frames = [os.path.join(path,'frame{:03}.jpg'.format(i+1)) for i in seg]
             frames_names.append(frames)
             tube_images = [] #one tube-16 frames
             for i in frames:
@@ -188,9 +195,12 @@ class TubeDataset(data.Dataset):
                 # video_images.append(torch.zeros_like(video_images[0]))
                 video_images.append(video_images[len(video_images)-1])
                 # boxes.append(torch.from_numpy(np.array([bbox_id+i, 0,0,223,223])).float().unsqueeze(0))
-                boxes.append(boxes[len(boxes)-1])
-        # for b in boxes:
-        #     print(b)
+                p_box = boxes[len(boxes)-1]
+                # p_box[0,0] = bbox_id+i
+                boxes.append(p_box)
+        for j,b in enumerate(boxes):
+            b[0,0] = j
+            # print(b)
         boxes = torch.stack(boxes, dim=0).squeeze()
         
         if len(boxes.shape)==1:
@@ -204,7 +214,7 @@ class TubeDataset(data.Dataset):
 
 
 class TubeCrop(object):
-    def __init__(self, tube_len=16, min_tube_len=8, central_frame=True, max_num_tubes=4):
+    def __init__(self, tube_len=16, min_tube_len=8, central_frame=True, max_num_tubes=4, train=True):
         """
         Args:
         """
@@ -212,6 +222,7 @@ class TubeCrop(object):
         self.min_tube_len = min_tube_len
         self.central_frame = central_frame
         self.max_num_tubes = max_num_tubes
+        self.train = train
 
     def __call__(self, tubes: list, tube_path: str):
         # assert len(tubes) >= 1, "No tubes in video!!!==>{}".format(tube_path)
@@ -230,12 +241,18 @@ class TubeCrop(object):
 
         idxs = range(len(boxes))
         if self.max_num_tubes != 0 and len(boxes) > self.max_num_tubes:
-            idxs = random.sample(range(len(boxes)), self.max_num_tubes)
-            boxes = list(itemgetter(*idxs)(boxes))
-            # print('=====len: ', len(boxes))
-            # for id,box in enumerate(boxes):
-            #     boxes[id][0,0] = id
-            segments = list(itemgetter(*idxs)(segments))
+            if self.train:
+                idxs = random.sample(range(len(boxes)), self.max_num_tubes)
+                boxes = list(itemgetter(*idxs)(boxes))
+                segments = list(itemgetter(*idxs)(segments))
+            else:
+                n = len(boxes)
+                m = int(n/2)
+                # arr = np.array(boxes)
+                boxes = boxes[m-int(self.max_num_tubes/2) : m+int(self.max_num_tubes/2)]
+                segments = segments[m-int(self.max_num_tubes/2) : m+int(self.max_num_tubes/2)]
+                # boxes = boxes.tolist()
+                # segments = segments.tolist()
         for id,box in enumerate(boxes):
             boxes[id][0,0] = id
 
@@ -289,6 +306,8 @@ def my_collate(batch):
     num_tubes = [item[3] for item in batch if item[3] is not None]
     paths = [item[4] for item in batch if item[4]]
 
+    
+
     # num_tubes = [batch[3][i] for i,item in enumerate(batch) if item[2] is not None]
 
     # print('BATCH filtered: ', len(boxes), len(images), len(labels), len(num_tubes), paths)
@@ -300,6 +319,10 @@ def my_collate(batch):
     # print('images[i]:', type(images[0]), images[0].size())
     # return [torch.stack(boxes, dim=0), torch.stack(images, dim=0)], labels
     boxes = torch.cat(boxes,dim=0)
+    for i in range(boxes.size(0)):
+        boxes[i][0] = i
+        # print('-', i)
+
     images = torch.cat(images,dim=0)
     labels = torch.tensor(labels)
     num_tubes = torch.tensor(num_tubes)

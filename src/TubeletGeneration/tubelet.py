@@ -142,14 +142,14 @@ def get_videos_from_num_tubes(my_list, num_tubes):
             videos.append(dcc['path'])
     return videos
 
-def extract_tubes_from_dataset(dataset_persons_detections_path, folder_out, dataset_root):
+def extract_tubes_from_dataset(dataset_persons_detections_path, folder_out, dataset_root, start_frame, seg_len):
     
     """
         Args:
             dataset_persons_detections_path: Path to folder containing the person detections in JSON format
     """
-    start_frame = 60
-    frames = list(range(start_frame, 85))
+    # start_frame = 60
+    frames = list(range(start_frame, start_frame+seg_len))
     videos_list = os.listdir(dataset_persons_detections_path)
     num_live_paths = []
     for i, video_folder in enumerate(videos_list):
@@ -208,7 +208,7 @@ if __name__=="__main__":
     # plot_image_detections(decodedArray, "/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames")
     
     # dataset_root = '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames'
-    dataset_root = '/media/david/datos/Violence DATA/RWF-2000/frames'
+    # dataset_root = '/media/david/datos/Violence DATA/RWF-2000/frames'
     # split = 'train/Fight'
     # video = 'rn7Qjaj9_1'
     # persons_detections_path = '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/RWF-2000/{}/{}.json'.format(split,video)
@@ -219,7 +219,8 @@ if __name__=="__main__":
     #                         frames,
     #                         None#{'wait': 1000}
     #                         )
-    
+
+
     # tube_2_JSON(output_path=vname+'.json', tube=live_paths)
     # print('Paths ---live_paths[lp][frames_name]=', [lp['frames_name'] for lp in live_paths])
     # print('Paths ---live_paths[lp][frames_name]=', [(len(lp['boxes']), lp['len']) for lp in live_paths])
@@ -230,15 +231,43 @@ if __name__=="__main__":
     # path_in = '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/RWF-2000'
     # path_out = '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/Tubes/RWF-2000'
    
-    path_in = '/media/david/datos/Violence DATA/PersonDetections/RWF-2000'
-    path_out = '/media/david/datos/Violence DATA/ActionTubes/RWF-2000'
+    # path_in = '/media/david/datos/Violence DATA/PersonDetections/RWF-2000'
+    # path_out = '/media/david/datos/Violence DATA/ActionTubes/RWF-2000'
    
-    splits = ['train/Fight', 'train/NonFight', 'val/Fight', 'val/NonFight']
-    for sp in splits:
-        extract_tubes_from_dataset(dataset_persons_detections_path=os.path.join(path_in, sp),
-                                    folder_out=os.path.join(path_out, sp),
-                                    dataset_root=dataset_root)
+    # splits = ['train/Fight', 'train/NonFight', 'val/Fight', 'val/NonFight']
+    # for sp in splits:
+    #     extract_tubes_from_dataset(dataset_persons_detections_path=os.path.join(path_in, sp),
+    #                                 folder_out=os.path.join(path_out, sp),
+    #                                 dataset_root=dataset_root)
    
     # tubes = JSON_2_tube('/media/david/datos/Violence DATA/Tubes/RWF-2000/train/Fight/_6-B11R9FJM_2.json')
     # print(len(tubes))
     # print(tubes[0])
+
+
+    ##Hockey
+    dataset_root = '/media/david/datos/Violence DATA/DATASETS/HockeyFightsDATASET/frames'
+    # split = 'nonviolence'
+    # video = '11'
+    # persons_detections_path = '/media/david/datos/Violence DATA/PersonDetections/hockey/{}/{}.json'.format(split,video)
+    # person_detections = JSON_2_videoDetections(persons_detections_path)
+    # frames = list(range(0,25))
+    # extract_tubes_from_video(dataset_root,
+    #                         person_detections,
+    #                         frames,
+    #                         {'wait': 1000}
+    #                         )
+
+    path_in = '/media/david/datos/Violence DATA/PersonDetections/hockey'
+    path_out = '/media/david/datos/Violence DATA/ActionTubes/hockey'
+    start_frame = 0
+    seg_len=25
+   
+    splits = ['violence', 'nonviolence']
+    for sp in splits:
+        extract_tubes_from_dataset(dataset_persons_detections_path=os.path.join(path_in, sp),
+                                    folder_out=os.path.join(path_out, sp),
+                                    dataset_root=dataset_root,
+                                    start_frame=start_frame,
+                                    seg_len=seg_len)
+

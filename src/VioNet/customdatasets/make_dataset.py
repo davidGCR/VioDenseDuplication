@@ -2,6 +2,8 @@ import os
 import glob
 from operator import itemgetter
 import numpy as np
+import json
+import re
 
 class MakeImageHMDB51():
     def __init__(self, root, annotation_path, fold, train):
@@ -64,6 +66,56 @@ class MakeImageHMDB51():
         # print(labels, len(labels))
         return paths, labels
 
+class MakeHockeyDataset():
+    def __init__(self, root, train, cv_split_annotation_path, path_annotations=None):
+        self.root = root
+        self.train = train
+        self.path_annotations = path_annotations
+        self.cv_split_annotation_path = cv_split_annotation_path
+        # self.split = split
+        # self.F_TAG = "Fight"
+        # self.NF_TAG = "NonFight"
+        self.classes = ["nonviolence","violence"]
+    
+    def split(self):
+        split = "training" if self.train else "validation"
+        return split
+    
+    def load_annotation_data(self):
+        with open(self.cv_split_annotation_path, 'r') as data_file:
+            return json.load(data_file)
+    
+    def get_video_names_and_labels(self, data, split):
+        video_names = []
+        video_labels = []
+        annotations = []
+
+        for key, val in data['database'].items():
+            if val['subset'] == split:
+                label = val['annotations']['label']
+                cl = 'violence' if label=='fi' else 'nonviolence'
+
+                label = 0 if label=='no' else 1
+                v_name = re.findall(r'\d+', key)[0]
+                folder = os.path.join(self.root, cl, v_name)
+                assert os.path.isdir(folder), "Folder:{} does not exist!!!".format(folder)
+                video_names.append(folder)
+                video_labels.append(label)
+                if self.path_annotations:
+                    ann_file = os.path.join(self.path_annotations, cl, v_name+'.json')
+                    assert os.path.isfile(ann_file), "Annotation file:{} does not exist!!!".format(ann_file)
+                    annotations.append(ann_file)
+
+        return video_names, video_labels, annotations
+    
+    def __call__(self):
+        data = self.load_annotation_data()
+        split = self.split()
+        paths, labels, annotations = self.get_video_names_and_labels(data, split)
+        return paths, labels, annotations
+
+        
+
 class MakeRWF2000():
     def __init__(self, root, train, path_annotations=None, path_feat_annotations=None):
         self.root = root
@@ -81,10 +133,6 @@ class MakeRWF2000():
         split = "train" if self.train else "val"
         return split
     
-    # def check_annotation(self, an_path):
-
-
-
     def __call__(self):
         split = self.split()
         paths = []
@@ -103,7 +151,7 @@ class MakeRWF2000():
                         assert os.path.exists(os.path.join(self.path_feat_annotations, split, cl, video_sample.name +'.txt')), "Feature annotation does not exist!!!"
                         feat_annotations.append(os.path.join(self.path_feat_annotations, split, cl, video_sample.name +'.txt'))
         
-        return paths, labels, annotations, feat_annotations
+        return paths, labels, annotations
 
 class MakeUCFCrime2Local():
     def __init__(self, root, annotation_path, bbox_path, train):
@@ -243,9 +291,18 @@ from collections import Counter
 import random
 
 if __name__=="__main__":
-    make_func = MakeRWF2000(root='/media/david/datos/Violence DATA/RWF-2000/frames', 
-                    train=True,
-                    path_annotations='/media/david/datos/Violence DATA/Tubes/RWF-2000')
+    # make_func = MakeRWF2000(root='/media/david/datos/Violence DATA/RWF-2000/frames', 
+    #                 train=True,
+    #                 path_annotations='/media/david/datos/Violence DATA/Tubes/RWF-2000')
+    # paths, labels, annotations = make_func()
+    # print("paths: ", paths[0:10], len(paths))
+    # print("labels: ", labels[0:10], len(labels))
+    # print("annotations: ", annotations[0:10], len(annotations))
+
+    make_func = MakeHockeyDataset(root='/media/david/datos/Violence DATA/DATASETS/HockeyFightsDATASET/frames', 
+                    train=False,
+                    cv_split_annotation_path='/media/david/datos/Violence DATA/VioDB/hockey_jpg1.json',
+                    path_annotations='/media/david/datos/Violence DATA/ActionTubes/hockey')
     paths, labels, annotations = make_func()
     print("paths: ", paths[0:10], len(paths))
     print("labels: ", labels[0:10], len(labels))

@@ -68,7 +68,7 @@ class ViolenceDetector(nn.Module):
                       final_endpoint='Mixed_4e',
                       roi_layer_type='RoIAlign',
                       roi_layer_output=8,
-                      roi_with_temporal_pool=True,
+                      roi_with_temporal_pool=False,
                       roi_spatial_scale=16,
                       fc_input_dim=2048
                       ):
@@ -104,6 +104,9 @@ class ViolenceDetector(nn.Module):
         #x: b,c,t,w,h
         # x = self.backbone(x) #torch.Size([4, 528, 4, 14, 14])
         # x = self.head(x, bbox)
+        # print('i3d in: ', x.size())
+        # print('boxes in: ', bbox)
+
         batch, c, t, h, w = x.size()
         batch = int(batch/4)
         x = self.backbone(x)

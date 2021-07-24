@@ -1,6 +1,8 @@
 
 from os import path
 from PIL import Image, ImageFile
+
+# from VioNet.dataset import make_dataset
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 from torch._C import device
 from torch.utils.tensorboard import SummaryWriter
@@ -10,7 +12,7 @@ import torchvision.transforms as transforms
 import os
 
 #data
-from customdatasets.make_dataset import MakeRWF2000
+from customdatasets.make_dataset import MakeRWF2000, MakeHockeyDataset
 from customdatasets.tube_dataset import TubeDataset, my_collate, my_collate_2, OneVideoTubeDataset, TubeFeaturesDataset
 from torch.utils.data import DataLoader, dataset
 
@@ -122,45 +124,58 @@ def extract_features(confi: Config, output_folder: str):
                                         dir=os.path.join(output_folder, tmp_names[-3], tmp_names[-2]))
             features_writer.dump()
 
+def load_make_dataset(dataset_name, train=True, cv_split=1):
+    if dataset_name == RWF_DATASET:
+        make_dataset = MakeRWF2000(root='/media/david/datos/Violence DATA/RWF-2000/frames',#'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames', 
+                                train=train,
+                                path_annotations='/media/david/datos/Violence DATA/ActionTubes/RWF-2000')#'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/Tubes/RWF-2000')
+    elif dataset_name == HOCKEY_DATASET:
+        make_dataset = MakeHockeyDataset(root='/media/david/datos/Violence DATA/DATASETS/HockeyFightsDATASET/frames', 
+                                        train=train,
+                                        cv_split_annotation_path='/media/david/datos/Violence DATA/VioDB/hockey_jpg{}.json'.format(cv_split),
+                                        path_annotations='/media/david/datos/Violence DATA/ActionTubes/hockey')
+    return make_dataset
+
+
 def main(config: Config):
     device = config.device
     #'/content/DATASETS/RWF-2000/frames'
     #'/content/DATASETS/ActionTubes/RWF-2000'
-    make_dataset = MakeRWF2000(root='/media/david/datos/Violence DATA/RWF-2000/frames',#'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames', 
-                                train=True,
-                                path_annotations='/media/david/datos/Violence DATA/ActionTubes/RWF-2000')#'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/Tubes/RWF-2000')
+
+    make_dataset = load_make_dataset(config.dataset, train=True, cv_split=config.num_cv)
+    
     dataset = TubeDataset(frames_per_tube=16, 
-                            min_frames_per_tube=8, 
+                            min_frames_per_tube=8,
                             make_function=make_dataset,
                             spatial_transform=transforms.Compose([
                                 # transforms.CenterCrop(224),
-                                # transforms.Resize(256),
+                                transforms.Resize(224),
                                 transforms.ToTensor(),
                                 transforms.Normalize([38.756858/255, 3.88248729/255, 40.02898126/255], [110.6366688/255, 103.16065604/255, 96.29023126/255])
                             ]),
-                            max_num_tubes=4)
+                            max_num_tubes=4,
+                            train=True)
     loader = DataLoader(dataset,
                         batch_size=config.train_batch,
                         shuffle=True,
-                        num_workers=1,
+                        num_workers=4,
                         # pin_memory=True,
                         collate_fn=my_collate
                         )
 
     #validation
-    val_make_dataset = MakeRWF2000(root='/media/david/datos/Violence DATA/RWF-2000/frames',#'/content/DATASETS/RWF-2000/frames',#'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames', 
-                                train=False,
-                                path_annotations='/media/david/datos/Violence DATA/ActionTubes/RWF-2000')#'/content/DATASETS/ActionTubes/RWF-2000')#'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/Tubes/RWF-2000')
+    val_make_dataset = load_make_dataset(config.dataset, train=False, cv_split=config.num_cv)
     val_dataset = TubeDataset(frames_per_tube=16, 
                             min_frames_per_tube=8, 
                             make_function=val_make_dataset,
                             spatial_transform=transforms.Compose([
                                 # transforms.CenterCrop(224),
-                                # transforms.Resize(256),
+                                transforms.Resize(224),
                                 transforms.ToTensor(),
                                 transforms.Normalize([38.756858/255, 3.88248729/255, 40.02898126/255], [110.6366688/255, 103.16065604/255, 96.29023126/255])
                             ]),
-                            max_num_tubes=4)
+                            max_num_tubes=4,
+                            train=False)
     val_loader = DataLoader(val_dataset,
                         batch_size=config.val_batch,
                         shuffle=True,
@@ -168,43 +183,21 @@ def main(config: Config):
                         # pin_memory=True,
                         collate_fn=my_collate
                         )
-
-    ################## Head Detector ########################
-    # from models.roi_extractor_3d import SingleRoIExtractor3D
-    # from models.anomaly_detector import AnomalyDetector
-    # roi_op = SingleRoIExtractor3D(roi_layer_type='RoIAlign',
-    #                             featmap_stride=16,
-    #                             output_size=8,    
-    #                             with_temporal_pool=True)
-    # model = AnomalyDetector()
-
-    # from models.violence_detector import RoiHead
-    # head = RoiHead()
-    # head.to(device)
-
+   
     ################## Full Detector ########################
-
     model, params = ViolenceDetector_model(config, device)
-    # torch.backends.cudnn.enabled = False
-    # model.eval()
-    # print(model)
-    # optimizer = torch.optim.Adadelta(params, lr=config.learning_rate, eps=1e-8)
+    exp_config_log = "SpTmpDetector_{}_cv({})_epochs({})_note({})".format(config.dataset,
+                                                                config.num_cv,
+                                                                config.num_epoch,
+                                                                config.additional_info)
+    tsb_path_folder = os.path.join(HOME_UBUNTU, PATH_TENSORBOARD, exp_config_log)
+    chk_path_folder = os.path.join(HOME_UBUNTU, PATH_CHECKPOINT, exp_config_log)
 
-    # criterion = RegularizedLoss(model, custom_objective)
-    
-    ################## Feature Extractor ########################
-    # from models.i3d import InceptionI3d
-    # model = InceptionI3d(2, in_channels=3, final_endpoint='Mixed_4e').to(device)
-    # load_model_path = '/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt'
-    # state_dict = torch.load(load_model_path)
-    # model.load_state_dict(state_dict,  strict=False) 
-    # model.eval()
-    tsb_path = os.path.join(HOME_UBUNTU, PATH_TENSORBOARD, 'sp-detector-'+config.additional_info)
-
-    if not os.path.exists(tsb_path):
-        os.mkdir(tsb_path)
+    for p in [tsb_path_folder, chk_path_folder]:
+        if not os.path.exists(p):
+            os.mkdir(p)
     # print('tensorboard dir:', tsb_path)                                                
-    writer = SummaryWriter(tsb_path)
+    writer = SummaryWriter(tsb_path_folder)
     
     optimizer = torch.optim.Adadelta(params, lr=config.learning_rate, eps=1e-8)
     # optimizer = torch.optim.SGD(params=params,
@@ -217,9 +210,17 @@ def main(config: Config):
                                                            factor=config.factor,
                                                            min_lr=config.min_lr)
     from utils import AverageMeter
-    from epoch import calculate_accuracy_2
+    # from epoch import calculate_accuracy_2
 
-    for epoch in range(config.num_epoch):
+    start_epoch = 0
+    ##Restore training
+    if config.restore_training:
+        model, optimizer, epochs, last_epoch, last_loss = load_checkpoint(model, config.device, optimizer, config.checkpoint_path)
+        start_epoch = last_epoch+1
+        config.num_epoch = epochs
+
+    for epoch in range(start_epoch, config.num_epoch):
+        # epoch = last_epoch+i
         print('training at epoch: {}'.format(epoch))
         model.train()
         losses = AverageMeter()
@@ -229,6 +230,7 @@ def main(config: Config):
             boxes, video_images, labels = boxes.to(device), video_images.to(device), labels.float().to(device)
             # print('video_images: ', video_images.size())
             # print('num_tubes: ', num_tubes)
+            # print('boxes: ', boxes, boxes.size())
 
 
             # zero the parameter gradients
@@ -263,6 +265,7 @@ def main(config: Config):
                     acc=accuracies
                 )
             )
+        train_loss = losses.avg
 
         writer.add_scalar('training loss', losses.avg, epoch)
         writer.add_scalar('training accuracy', accuracies.avg, epoch)
@@ -296,6 +299,10 @@ def main(config: Config):
         writer.add_scalar('validation loss', losses.avg, epoch)
         writer.add_scalar('validation accuracy', accuracies.avg, epoch)
 
+        if (epoch+1)%config.save_every == 0:
+            save_checkpoint(model, config.num_epoch, epoch, optimizer,train_loss, os.path.join(chk_path_folder,"save_at_epoch-"+str(epoch)+".chk"))
+
+
 def get_accuracy(y_prob, y_true):
     assert y_true.ndim == 1 and y_true.size() == y_prob.size()
 
@@ -309,14 +316,19 @@ def get_accuracy(y_prob, y_true):
 if __name__=='__main__':
     config = Config(
         model='',
-        dataset='',
+        dataset=RWF_DATASET,
+        num_cv=1,
         device=get_torch_device(),
-        num_epoch=20,
+        num_epoch=1000,
         learning_rate=0.01,
         train_batch=4,
         val_batch=4,
-        additional_info='changed-acc'
+        save_every=100,
+        additional_info='0'
     )
+    # config.restore_training = True
+    # config.checkpoint_path = '/media/david/datos/Violence DATA/VioNet_pth/SpTmpDetector_hockey_cv(1)_epochs(1000)_note(-3)/save_at_epoch-1.chk'
+
     main(config)
     # extract_features(config, output_folder='/media/david/datos/Violence DATA/i3d-FeatureMaps/rwf')
     # load_features(config)

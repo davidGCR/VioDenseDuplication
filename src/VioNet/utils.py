@@ -50,9 +50,10 @@ def show_batch(img, title=None):
 def get_torch_device():
     return torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-def save_checkpoint(model, epoch, optimizer, loss, path):
+def save_checkpoint(model, epochs, last_epoch, optimizer, loss, path):
     torch.save({
-            'epoch': epoch,
+            'epochs': epochs,
+            'last_epoch': last_epoch,
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
             'loss': loss,
@@ -66,10 +67,12 @@ def load_checkpoint(model, device, optimizer, path):
         checkpoint = torch.load(path)
     model.load_state_dict(checkpoint['model_state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-    epoch = checkpoint['epoch']
+    epochs = checkpoint['epochs']
+    last_epoch = checkpoint['last_epoch']
+
     loss = checkpoint['loss']
 
-    return model, optimizer, epoch, loss
+    return model, optimizer, epochs, last_epoch, loss
 
 if __name__== '__main__':
     device = get_torch_device()
