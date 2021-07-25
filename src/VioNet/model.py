@@ -70,7 +70,9 @@ def ViolenceDetector_model(config, device):
                             roi_with_temporal_pool=True,
                             roi_spatial_scale=16,
                             fc_input_dim=528,
-                            roi_layer_type='RoIAlign').to(device)
+                            roi_layer_type='RoIAlign',
+                            classifier=config.model,
+                            freeze=config.freeze).to(device)
     params = model.parameters()
     return model, params
 

@@ -52,3 +52,6 @@ INTERVAL_CROP = 'interval-crop'
 #MODEL NAMES
 I3D = 'i3d'
 MDIResNet = 'MDIResNet'
+
+REGRESSION = 'regression'
+BINARY = 'binary'

@@ -9,13 +9,16 @@ from models.anomaly_detector import AnomalyDetector
 # from i3d import InceptionI3d
 # from roi_extractor_3d import SingleRoIExtractor3D
 # from anomaly_detector import AnomalyDetector
+REGRESSION = 'regression'
+BINARY = 'binary'
 
 class RoiHead(nn.Module):
     def __init__(self,roi_layer_type='RoIAlign',
                       roi_layer_output=8,
                       roi_with_temporal_pool=True,
                       roi_spatial_scale=16,
-                      fc_input_dim=528):
+                      fc_input_dim=528,
+                      classifier=REGRESSION):
         
         super(RoiHead, self).__init__()
         self.roi_op = SingleRoIExtractor3D(roi_layer_type=roi_layer_type,
@@ -25,42 +28,58 @@ class RoiHead(nn.Module):
 
         self.temporal_pool = nn.AdaptiveAvgPool3d((1, None, None))
         self.spatial_pool = nn.AdaptiveAvgPool3d((None, 1, 1))
-        # self.detector = nn.Sequential(
-        #     nn.Linear(fc_input_dim, 128), #original was 512, 528
-        #     nn.ReLU(),
-        #     nn.Dropout(0.6),
-        #     nn.Linear(128, 32),
-        #     nn.Dropout(0.6),
-        #     nn.Linear(32, 1),
-        #     # nn.Sigmoid()
-        # )
+        
+        self.classifier = classifier
+        if self.classifier == REGRESSION:
+            self.fc1 = nn.Linear(fc_input_dim, 128) #original was 512
+            self.relu1 = nn.ReLU()
+            self.dropout1 = nn.Dropout(0.6)
 
-        self.fc1 = nn.Linear(fc_input_dim, 128) #original was 512
-        self.relu1 = nn.ReLU()
-        self.dropout1 = nn.Dropout(0.6)
+            self.fc2 = nn.Linear(128, 32)
+            self.dropout2 = nn.Dropout(0.6)
 
-        self.fc2 = nn.Linear(128, 32)
-        self.dropout2 = nn.Dropout(0.6)
+            self.fc3 = nn.Linear(32, 1)
 
-        self.fc3 = nn.Linear(32, 1)
-
-        nn.init.xavier_normal_(self.fc1.weight)
-        nn.init.xavier_normal_(self.fc2.weight)
-        nn.init.xavier_normal_(self.fc3.weight)
+            nn.init.xavier_normal_(self.fc1.weight)
+            nn.init.xavier_normal_(self.fc2.weight)
+            nn.init.xavier_normal_(self.fc3.weight)
+        else:
+            self.fc1 = nn.Linear(fc_input_dim, 128)
+            self.relu1 = nn.ReLU()
+            self.dropout1 = nn.Dropout(0.6)
+            self.fc2 = nn.Linear(128, 32)
+            self.dropout2 = nn.Dropout(0.6)
+            self.fc3 = nn.Linear(32, 2)
+            nn.init.xavier_normal_(self.fc1.weight)
+            nn.init.xavier_normal_(self.fc2.weight)
+            nn.init.xavier_normal_(self.fc3.weight)
     
     def forward(self, x, bbox):
         #x: b,c,t,w,h
+        batch, c, t, h, w = x.size()
+
         x, _ = self.roi_op(x, bbox)
         x = self.temporal_pool(x)
         x = self.spatial_pool(x)
         x = x.view(x.size(0),-1)
+
+        # print('before classifier: ', x.size())
         # x = self.detector(x)
-
-        x = self.dropout1(self.relu1(self.fc1(x)))
-        x = self.dropout2(self.fc2(x))
-        x = self.fc3(x)
+        if self.classifier == REGRESSION:
+            x = self.dropout1(self.relu1(self.fc1(x)))
+            x = self.dropout2(self.fc2(x))
+            x = self.fc3(x)
+        else:
+            batch = int(batch/4)
+            x = x.view(batch, 4, -1)
+            # print('before maxpool: ', x.size())
+            x = x.max(dim=1).values
+            # print('after maxpool: ', x.size())
+            x = self.dropout1(self.relu1(self.fc1(x)))
+            x = self.dropout2(self.fc2(x))
+            x = self.fc3(x)
+            
         return x
-
 
 
 class ViolenceDetector(nn.Module):
@@ -70,22 +89,28 @@ class ViolenceDetector(nn.Module):
                       roi_layer_output=8,
                       roi_with_temporal_pool=False,
                       roi_spatial_scale=16,
-                      fc_input_dim=2048
+                      fc_input_dim=2048,
+                      classifier=REGRESSION,
+                      freeze=False
                       ):
         super(ViolenceDetector, self).__init__()
         #Backbone
         self.final_endpoint = final_endpoint
         self.backbone = self.__build_backbone__(backbone_name)
 
-        for param in self.backbone.parameters():
-            param.requires_grad = False
+        if freeze:
+            for param in self.backbone.parameters():
+                param.requires_grad = False
 
         self.head = RoiHead(roi_layer_type=roi_layer_type,
                             roi_layer_output=roi_layer_output,
                             roi_with_temporal_pool=roi_with_temporal_pool,
                             roi_spatial_scale=roi_spatial_scale,
-                            fc_input_dim=fc_input_dim)
-        self.sigmoid = nn.Sigmoid()
+                            fc_input_dim=fc_input_dim,
+                            classifier=classifier)
+        self.classifier = classifier
+        if self.classifier == REGRESSION:
+            self.sigmoid = nn.Sigmoid()
 
 
     def __build_backbone__(self, backbone_name):
@@ -104,7 +129,7 @@ class ViolenceDetector(nn.Module):
         #x: b,c,t,w,h
         # x = self.backbone(x) #torch.Size([4, 528, 4, 14, 14])
         # x = self.head(x, bbox)
-        # print('i3d in: ', x.size())
+        # print('in: ', x.size())
         # print('boxes in: ', bbox)
 
         batch, c, t, h, w = x.size()
@@ -112,10 +137,13 @@ class ViolenceDetector(nn.Module):
         x = self.backbone(x)
         # print('i3d out: ', x.size(), ' bbox: ',bbox.size())
         x = self.head(x, bbox)
-
-        x = x.view(batch,4)
-        x = x.max(dim=1).values
-        x = self.sigmoid(x)
+        # print('out: ', x.size())
+        
+        if self.classifier == REGRESSION:
+            x = x.view(batch,4)
+            x = x.max(dim=1).values
+            x = self.sigmoid(x)
+        
 
         # splits=torch.split(x, num_tubes.numpy().tolist())
         # out = []

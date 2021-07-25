@@ -1,8 +1,8 @@
 from numpy.core.fromnumeric import size
 import torch
 import torch.nn as nn
-from mmcv.ops import RoIAlign, RoIPool
-# from torchvision.ops.roi_align import RoIAlign
+# from mmcv.ops import RoIAlign, RoIPool
+from torchvision.ops.roi_align import RoIAlign
 
 # class SingleRoIExtractor3D(nn.Module):
 #     """Extract RoI features from a single level feature map.
@@ -142,16 +142,16 @@ class SingleRoIExtractor3D(nn.Module):
         if self.roi_layer_type == 'RoIPool':
             self.roi_layer = RoIPool(self.output_size, self.spatial_scale)
         else:
-            self.roi_layer = RoIAlign(
-                self.output_size,
-                self.spatial_scale,
-                sampling_ratio=self.sampling_ratio,
-                pool_mode=self.pool_mode,
-                aligned=self.aligned)
-            # self.roi_layer = RoIAlign(output_size=self.output_size,
-            #                             spatial_scale=self.spatial_scale,
-            #                             sampling_ratio=self.sampling_ratio,
-            #                             aligned=self.aligned)
+            # self.roi_layer = RoIAlign(
+            #     self.output_size,
+            #     self.spatial_scale,
+            #     sampling_ratio=self.sampling_ratio,
+            #     pool_mode=self.pool_mode,
+            #     aligned=self.aligned)
+            self.roi_layer = RoIAlign(output_size=self.output_size,
+                                        spatial_scale=self.spatial_scale,
+                                        sampling_ratio=self.sampling_ratio,
+                                        aligned=self.aligned)
 
         self.global_pool = nn.AdaptiveAvgPool2d(self.output_size)
 

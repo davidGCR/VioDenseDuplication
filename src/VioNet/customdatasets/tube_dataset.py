@@ -123,7 +123,9 @@ class TubeDataset(data.Dataset):
                        spatial_transform=None,
                        return_metadata=False,
                        max_num_tubes=16,
-                       train=False):
+                       train=False,
+                       dataset=''):
+        self.dataset = dataset
         self.frames_per_tube = frames_per_tube
         self.min_frames_per_tube = min_frames_per_tube
         self.spatial_transform = spatial_transform
@@ -176,8 +178,10 @@ class TubeDataset(data.Dataset):
         num_tubes = len(segments)
         for seg in segments:
             # frames = list(itemgetter(*seg)(frames_paths))
-            frames = [os.path.join(path,'frame{}.jpg'.format(i+1)) for i in seg] #rwf
-            # frames = [os.path.join(path,'frame{:03}.jpg'.format(i+1)) for i in seg]
+            if self.dataset == 'rwf-2000':
+                frames = [os.path.join(path,'frame{}.jpg'.format(i+1)) for i in seg] #rwf
+            elif self.dataset == 'hockey':
+                frames = [os.path.join(path,'frame{:03}.jpg'.format(i+1)) for i in seg]
             frames_names.append(frames)
             tube_images = [] #one tube-16 frames
             for i in frames:

@@ -37,6 +37,8 @@ class Config:
             restore_training=False,
             checkpoint_path=None,
             num_segments=0, #0: no fix
+            home_path='',
+            freeze=True
     ):
 
         # VioNet models
@@ -100,4 +102,6 @@ class Config:
         self.num_segments = num_segments
         self.train_sampling_type = train_sampling_type
         self.val_sampling_type = val_sampling_type
+        self.home_path = home_path
+        self.freeze = freeze
 

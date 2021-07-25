@@ -19,7 +19,7 @@ from torch.utils.data import DataLoader, dataset
 from config import Config
 from model import ViolenceDetector_model
 from models.anomaly_detector import custom_objective, RegularizedLoss
-from epoch import train_regressor
+from epoch import calculate_accuracy_2, train_regressor
 from utils import Log, save_checkpoint, load_checkpoint
 from utils import get_torch_device
 from feature_writer2 import FeaturesWriter
@@ -130,10 +130,10 @@ def load_make_dataset(dataset_name, train=True, cv_split=1):
                                 train=train,
                                 path_annotations='/media/david/datos/Violence DATA/ActionTubes/RWF-2000')#'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/Tubes/RWF-2000')
     elif dataset_name == HOCKEY_DATASET:
-        make_dataset = MakeHockeyDataset(root='/media/david/datos/Violence DATA/DATASETS/HockeyFightsDATASET/frames', 
+        make_dataset = MakeHockeyDataset(root='/media/david/datos/Violence DATA/DATASETS/HockeyFightsDATASET/frames', #'/content/DATASETS/HockeyFightsDATASET/frames'
                                         train=train,
-                                        cv_split_annotation_path='/media/david/datos/Violence DATA/VioDB/hockey_jpg{}.json'.format(cv_split),
-                                        path_annotations='/media/david/datos/Violence DATA/ActionTubes/hockey')
+                                        cv_split_annotation_path='/media/david/datos/Violence DATA/VioDB/hockey_jpg{}.json'.format(cv_split), #'/content/DATASETS/VioNetDB-splits/hockey_jpg{}.json'
+                                        path_annotations='/media/david/datos/Violence DATA/ActionTubes/hockey')#'/content/DATASETS/ActionTubes/hockey'
     return make_dataset
 
 
@@ -154,7 +154,8 @@ def main(config: Config):
                                 transforms.Normalize([38.756858/255, 3.88248729/255, 40.02898126/255], [110.6366688/255, 103.16065604/255, 96.29023126/255])
                             ]),
                             max_num_tubes=4,
-                            train=True)
+                            train=True,
+                            dataset=config.dataset)
     loader = DataLoader(dataset,
                         batch_size=config.train_batch,
                         shuffle=True,
@@ -175,7 +176,8 @@ def main(config: Config):
                                 transforms.Normalize([38.756858/255, 3.88248729/255, 40.02898126/255], [110.6366688/255, 103.16065604/255, 96.29023126/255])
                             ]),
                             max_num_tubes=4,
-                            train=False)
+                            train=False,
+                            dataset=config.dataset)
     val_loader = DataLoader(val_dataset,
                         batch_size=config.val_batch,
                         shuffle=True,
@@ -186,12 +188,13 @@ def main(config: Config):
    
     ################## Full Detector ########################
     model, params = ViolenceDetector_model(config, device)
-    exp_config_log = "SpTmpDetector_{}_cv({})_epochs({})_note({})".format(config.dataset,
+    exp_config_log = "SpTmpDetector_{}_model({})_cv({})_epochs({})_note({})".format(config.dataset,
+                                                                config.model,
                                                                 config.num_cv,
                                                                 config.num_epoch,
                                                                 config.additional_info)
-    tsb_path_folder = os.path.join(HOME_UBUNTU, PATH_TENSORBOARD, exp_config_log)
-    chk_path_folder = os.path.join(HOME_UBUNTU, PATH_CHECKPOINT, exp_config_log)
+    tsb_path_folder = os.path.join(config.home_path, PATH_TENSORBOARD, exp_config_log)
+    chk_path_folder = os.path.join(config.home_path, PATH_CHECKPOINT, exp_config_log)
 
     for p in [tsb_path_folder, chk_path_folder]:
         if not os.path.exists(p):
@@ -204,7 +207,13 @@ def main(config: Config):
     #                             lr=config.learning_rate,
     #                             momentum=0.5,
     #                             weight_decay=1e-3)
-    criterion = nn.BCELoss().to(device)
+    
+    if config.model == REGRESSION:
+        # criterion = nn.BCELoss().to(device)
+        criterion = nn.BCEWithLogitsLoss().to(device)
+    elif config.model == BINARY:
+        criterion = nn.CrossEntropyLoss().to(config.device)
+
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,
                                                            verbose=True,
                                                            factor=config.factor,
@@ -227,22 +236,29 @@ def main(config: Config):
         accuracies = AverageMeter()
         for i, data in enumerate(loader):
             boxes, video_images, labels, num_tubes, paths = data
-            boxes, video_images, labels = boxes.to(device), video_images.to(device), labels.float().to(device)
+            boxes, video_images = boxes.to(device), video_images.to(device)
+            # labels = labels.float().to(device)
+            labels = labels.to(device)
+
             # print('video_images: ', video_images.size())
             # print('num_tubes: ', num_tubes)
             # print('boxes: ', boxes, boxes.size())
-
 
             # zero the parameter gradients
             optimizer.zero_grad()
             #predict
             outs = model(video_images, boxes, num_tubes)
             #loss
+            # print('before criterion outs: ', outs, outs.size())
+            # print('before criterion labels: ', labels, labels.size())
             loss = criterion(outs,labels)
             #accuracy
             # preds = np.round(scores.detach().cpu().numpy())
             # acc = (preds == labels.cpu().numpy()).sum() / preds.shape[0]
-            acc = get_accuracy(outs, labels)
+            if config.model == REGRESSION:
+                acc = get_accuracy(outs, labels)
+            else:
+                acc = calculate_accuracy_2(outs,labels)
             # meter
             # print('len(video_images): ', len(video_images), ' video_images.size(0):',video_images.size(0), ' preds.shape[0]:', preds.shape[0])
             losses.update(loss.item(), outs.shape[0])
@@ -278,14 +294,20 @@ def main(config: Config):
         accuracies = AverageMeter()
         for _, data in enumerate(val_loader):
             boxes, video_images, labels, num_tubes, paths = data
-            boxes, video_images, labels = boxes.to(device), video_images.to(device), labels.float().to(device)
+            boxes, video_images = boxes.to(device), video_images.to(device)
+            # labels = labels.float().to(device)
+            labels = labels.to(device)
             # no need to track grad in eval mode
             with torch.no_grad():
                 outputs = model(video_images, boxes, num_tubes)
                 loss = criterion(outputs, labels)
                 # preds = np.round(outputs.detach().cpu().numpy())
                 # acc = (preds == labels.cpu().numpy()).sum() / preds.shape[0]
-                acc = get_accuracy(outputs, labels)
+                
+                if config.model == REGRESSION:
+                    acc = get_accuracy(outputs, labels)
+                else:
+                    acc = calculate_accuracy_2(outputs,labels)
 
             losses.update(loss.item(), outputs.shape[0])
             accuracies.update(acc, outputs.shape[0])
@@ -313,21 +335,24 @@ def get_accuracy(y_prob, y_true):
     # print('(y_true == y_prob):', (y_true == y_prob))
     return (y_true == y_prob).sum().item() / y_true.size(0)
 
+
 if __name__=='__main__':
     config = Config(
-        model='',
+        model=BINARY,
         dataset=RWF_DATASET,
         num_cv=1,
         device=get_torch_device(),
-        num_epoch=1000,
+        num_epoch=200,
         learning_rate=0.01,
         train_batch=4,
         val_batch=4,
-        save_every=100,
-        additional_info='0'
+        save_every=25,
+        freeze=True,
+        additional_info='0',
+        home_path=HOME_UBUNTU
     )
     # config.restore_training = True
-    # config.checkpoint_path = '/media/david/datos/Violence DATA/VioNet_pth/SpTmpDetector_hockey_cv(1)_epochs(1000)_note(-3)/save_at_epoch-1.chk'
+    # config.checkpoint_path = '/media/david/datos/Violence DATA/VioNet_pth/SpTmpDetector_hockey_ddddchs(1000)_note(-3)/save_at_epoch-1.chk'
 
     main(config)
     # extract_features(config, output_folder='/media/david/datos/Violence DATA/i3d-FeatureMaps/rwf')
