@@ -301,6 +301,9 @@ class TubeCrop(object):
             return tube_frames_idxs
     
     def __centered_segments__(self):
+        """
+        the overlap could cause less than 16 frames per tube
+        """
         segment_size = 5
         stride = 1
         overlap = 0.5
@@ -308,7 +311,7 @@ class TubeCrop(object):
         total_len = self.tube_len*(segment_size-overlap_length)
 
         indices = [x for x in range(0, total_len, stride)]
-        indices_segments = [indices[x:x + segment_size] for x in range(0, total_len, segment_size-overlap_length)]
+        indices_segments = [indices[x:x + segment_size] for x in range(0, len(indices), segment_size-overlap_length)]
         indices_segments = [s for s in indices_segments if len(s)==segment_size]
 
         m = 75

@@ -155,7 +155,8 @@ def main(config: Config):
                             ]),
                             max_num_tubes=4,
                             train=True,
-                            dataset=config.dataset)
+                            dataset=config.dataset,
+                            input_type=config.input_type)
     loader = DataLoader(dataset,
                         batch_size=config.train_batch,
                         shuffle=True,
@@ -177,7 +178,8 @@ def main(config: Config):
                             ]),
                             max_num_tubes=4,
                             train=False,
-                            dataset=config.dataset)
+                            dataset=config.dataset,
+                            input_type=config.input_type)
     val_loader = DataLoader(val_dataset,
                         batch_size=config.val_batch,
                         shuffle=True,
@@ -194,8 +196,10 @@ def main(config: Config):
                                                                 config.num_cv,
                                                                 config.num_epoch,
                                                                 config.additional_info)
-    tsb_path_folder = os.path.join(config.home_path, PATH_TENSORBOARD, exp_config_log)
-    chk_path_folder = os.path.join(config.home_path, PATH_CHECKPOINT, exp_config_log)
+    
+    h_p = HOME_DRIVE if config.home_path==HOME_COLAB else config.home_path
+    tsb_path_folder = os.path.join(h_p, PATH_TENSORBOARD, exp_config_log)
+    chk_path_folder = os.path.join(h_p, PATH_CHECKPOINT, exp_config_log)
 
     for p in [tsb_path_folder, chk_path_folder]:
         if not os.path.exists(p):
@@ -267,23 +271,27 @@ def main(config: Config):
             # backward + optimize
             loss.backward()
             optimizer.step()
-            print(
-                'Epoch: [{0}][{1}/{2}]\t'
-                # 'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-                # 'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
-                'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                'Acc {acc.val:.3f} ({acc.avg:.3f})'.format(
-                    epoch,
-                    i + 1,
-                    len(loader),
-                    # batch_time=batch_time,
-                    # data_time=data_time,
-                    loss=losses,
-                    acc=accuracies
-                )
-            )
+            # print(
+            #     'Epoch: [{0}][{1}/{2}]\t'
+            #     # 'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
+            #     # 'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
+            #     'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
+            #     'Acc {acc.val:.3f} ({acc.avg:.3f})'.format(
+            #         epoch,
+            #         i + 1,
+            #         len(loader),
+            #         # batch_time=batch_time,
+            #         # data_time=data_time,
+            #         loss=losses,
+            #         acc=accuracies
+            #     )
+            # )
         train_loss = losses.avg
-
+        print(
+            'Epoch: [{}]\t'
+            'Loss(val): {loss.avg:.4f}\t'
+            'Acc(val): {acc.avg:.3f}'.format(epoch, loss=losses, acc=accuracies)
+        )
         writer.add_scalar('training loss', losses.avg, epoch)
         writer.add_scalar('training accuracy', accuracies.avg, epoch)
         

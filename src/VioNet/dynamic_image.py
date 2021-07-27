@@ -94,9 +94,13 @@ def get_video_frames(video_path):
     return frame_list
 
 if __name__ == '__main__':
-    video_path = '/Users/davidchoqueluqueroman/Documents/CODIGOS/violencedetection2/DATASETS/RWF-2000/frames/train/Fight/_2RYnSFPD_U_0'
+    video_path = '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/HockeyFightsDATASET/frames/violence/20'
     frames_names = os.listdir(video_path)
     frames_names.sort(key=lambda f: int("".join(filter(str.isdigit, f))))
+
+    video_name = video_path.split('/')
+    video_name = video_name[-5]+'-'+video_name[-1]
+    save_folder = '/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/AVSS2019/paper/images/{}.png'.format(video_name)
 
     frames = []
     for i in range(len(frames_names)):
@@ -117,14 +121,16 @@ if __name__ == '__main__':
 
             frames.append(np.array(img.convert('RGB')))
     
-    frames = frames[0:10]
+    frames = frames[0:20]
     #v1
     imgPIL, img = dynamic_image_v1(frames)
+    if save_folder:
+        imgPIL.save(save_folder)
 
     imgPIL.show()
 
     cv2.imshow('v1', img)
-    cv2.waitKey()
+    cv2.waitKey(100)
 
     # print('frames:',type(frames), len(frames), type(frames[0]), frames[0].shape)
 

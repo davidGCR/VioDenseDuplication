@@ -274,3 +274,8 @@ VioDB/vif_jpg/*
 VioDB/rwf_jpg/*
 *.DS_Store
 .env2/
+videos_
+.DS_Store
+VioNet_tensorboard_log
+*.pyc
+*.chk
