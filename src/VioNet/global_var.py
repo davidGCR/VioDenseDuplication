@@ -8,6 +8,7 @@ folders  = dirname.split(os.sep)
 HOME_UBUNTU = "/media/david/datos/Violence DATA/"
 HOME_DRIVE = "/content/drive/My Drive/VIOLENCE DATA"
 HOME_COLAB = "/content/DATASETS"
+HOME_OSX = "/Users/davidchoqueluqueroman/Documents/DATASETS_Local"
 
 FEAT_EXT_RESNEXT = "resnetxt"
 FEAT_EXT_S3D = "s3d"

@@ -10,7 +10,7 @@ from operator import itemgetter
 # from MotionSegmentation.segmentation import segment
 from customdatasets.dataset_utils import imread
 from customdatasets.make_dataset import MakeRWF2000
-
+from transformations.dynamic_image_transformation import DynamicImage
 
 class OneVideoTubeDataset(data.Dataset):
     """
@@ -124,8 +124,10 @@ class TubeDataset(data.Dataset):
                        return_metadata=False,
                        max_num_tubes=16,
                        train=False,
-                       dataset=''):
+                       dataset='',
+                       input_type='rgb'):
         self.dataset = dataset
+        self.input_type = input_type
         self.frames_per_tube = frames_per_tube
         self.min_frames_per_tube = min_frames_per_tube
         self.spatial_transform = spatial_transform
@@ -138,7 +140,8 @@ class TubeDataset(data.Dataset):
                                 min_tube_len=min_frames_per_tube, 
                                 central_frame=True,
                                 max_num_tubes=max_num_tubes,
-                                train=train)
+                                train=train,
+                                input_type=input_type)
         self.return_metadata = return_metadata
         self.max_num_tubes = max_num_tubes
     
@@ -157,6 +160,28 @@ class TubeDataset(data.Dataset):
         labels = [self.labels[i] for i in range(len(self.labels)) if i not in indices_2_remove]
         annotations = [self.annotations[i] for i in range(len(self.annotations)) if i not in indices_2_remove]
         return paths, labels, annotations
+    
+    def load_tube_images(self, path, seg):
+        tube_images = [] #one tube-16 frames
+        if self.input_type=='rgb':
+            if self.dataset == 'rwf-2000':
+                frames = [os.path.join(path,'frame{}.jpg'.format(i+1)) for i in seg] #rwf
+            elif self.dataset == 'hockey':
+                frames = [os.path.join(path,'frame{:03}.jpg'.format(i+1)) for i in seg]
+            for i in frames:
+                img = self.spatial_transform(imread(i)) if self.spatial_transform else imread(i)
+                tube_images.append(img)
+        else:
+            tt = DynamicImage()
+            for shot in seg:
+                if self.dataset == 'rwf-2000':
+                    frames = [os.path.join(path,'frame{}.jpg'.format(i+1)) for i in shot] #rwf
+                elif self.dataset == 'hockey':
+                    frames = [os.path.join(path,'frame{:03}.jpg'.format(i+1)) for i in shot]
+                shot_images = [imread(img_path) for img_path in frames]
+                img = self.spatial_transform(tt(shot_images)) if self.spatial_transform else tt(shot_images)
+                tube_images.append(img)
+        return tube_images
 
     def __len__(self):
         return len(self.paths)
@@ -169,29 +194,20 @@ class TubeDataset(data.Dataset):
 
         if boxes == None or len(boxes) == 0:
             return None, None, None, None, None
-        # if len(boxes)==0:
-        #     return None, None, None, None
-        # print('Loaded Boxes:', len(boxes))
-        # print('segments: ', segments, len(segments))
-        frames_names = []
         video_images = []
         num_tubes = len(segments)
         for seg in segments:
-            # frames = list(itemgetter(*seg)(frames_paths))
-            if self.dataset == 'rwf-2000':
-                frames = [os.path.join(path,'frame{}.jpg'.format(i+1)) for i in seg] #rwf
-            elif self.dataset == 'hockey':
-                frames = [os.path.join(path,'frame{:03}.jpg'.format(i+1)) for i in seg]
-            frames_names.append(frames)
-            tube_images = [] #one tube-16 frames
-            for i in frames:
-                img = self.spatial_transform(imread(i)) if self.spatial_transform else imread(i)
-                tube_images.append(img)
+            # if self.dataset == 'rwf-2000':
+            #     frames = [os.path.join(path,'frame{}.jpg'.format(i+1)) for i in seg] #rwf
+            # elif self.dataset == 'hockey':
+            #     frames = [os.path.join(path,'frame{:03}.jpg'.format(i+1)) for i in seg]
+            # frames_names.append(frames)
+            # tube_images = [] #one tube-16 frames
+            # for i in frames:
+            #     img = self.spatial_transform(imread(i)) if self.spatial_transform else imread(i)
+            #     tube_images.append(img)
+            tube_images = self.load_tube_images(path, seg)
             video_images.append(torch.stack(tube_images, dim=0))
-        # if len(boxes) > self.max_num_tubes:
-        #     idxs = random.sample(range(len(boxes)), self.max_num_tubes)
-        #     boxes = list(itemgetter(*idxs)(boxes))
-        #     video_images = list(itemgetter(*idxs)(video_images))
         
         if len(video_images)<self.max_num_tubes:
             bbox_id = len(video_images)
@@ -218,7 +234,13 @@ class TubeDataset(data.Dataset):
 
 
 class TubeCrop(object):
-    def __init__(self, tube_len=16, min_tube_len=8, central_frame=True, max_num_tubes=4, train=True):
+    def __init__(self, 
+                    tube_len=16, 
+                    min_tube_len=8, 
+                    central_frame=True, 
+                    max_num_tubes=4, 
+                    train=True,
+                    input_type='rgb'):
         """
         Args:
         """
@@ -227,22 +249,21 @@ class TubeCrop(object):
         self.central_frame = central_frame
         self.max_num_tubes = max_num_tubes
         self.train = train
+        self.input_type = input_type
 
     def __call__(self, tubes: list, tube_path: str):
         # assert len(tubes) >= 1, "No tubes in video!!!==>{}".format(tube_path)
-        # if len(tubes) < 1:
-        #     return None, None, None
-        
         segments = []
         boxes = []
         for tube in tubes:
-            frames_idxs = self.__centered_frames__(tube['foundAt'])
+            if self.input_type=='rgb':
+                frames_idxs = self.__centered_frames__(tube['foundAt'])
+            else:
+                frames_idxs = self.__centered_segments__()
             if len(frames_idxs) > 0:
                 bbox = self.__central_bbox__(tube['boxes'], tube['id']+1)
                 boxes.append(bbox)
                 segments.append(frames_idxs)
-        
-
         idxs = range(len(boxes))
         if self.max_num_tubes != 0 and len(boxes) > self.max_num_tubes:
             if self.train:
@@ -278,6 +299,26 @@ class TubeCrop(object):
             last_idx = tube_frames_idxs[len(tube_frames_idxs)-1]
             tube_frames_idxs += (self.tube_len - len(tube_frames_idxs))*[last_idx]
             return tube_frames_idxs
+    
+    def __centered_segments__(self):
+        segment_size = 5
+        stride = 1
+        overlap = 0.5
+        overlap_length = int(overlap*segment_size)
+        total_len = self.tube_len*(segment_size-overlap_length)
+
+        indices = [x for x in range(0, total_len, stride)]
+        indices_segments = [indices[x:x + segment_size] for x in range(0, total_len, segment_size-overlap_length)]
+        indices_segments = [s for s in indices_segments if len(s)==segment_size]
+
+        m = 75
+        frames = list(range(150))
+        frames = frames[m-int(total_len/2) : m+int(total_len/2)]
+        video_segments = []
+        for i, indices_segment in enumerate(indices_segments): #Generate segments using indices
+            segment = np.asarray(frames)[indices_segment].tolist()
+            video_segments.append(segment)
+        return video_segments
 
     def __central_bbox__(self, tube, id):
         width, height = 224, 224

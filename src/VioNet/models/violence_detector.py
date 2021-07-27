@@ -117,7 +117,7 @@ class ViolenceDetector(nn.Module):
         if backbone_name == 'i3d':
             i3d = InceptionI3d(2, in_channels=3, final_endpoint=self.final_endpoint)
             #'/content/drive/My Drive/VIOLENCE DATA/Pretrained_Models/pytorch_i3d/rgb_imagenet.pt'
-            load_model_path = '/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt'#'/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt'
+            load_model_path = '/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/pytorch-i3d/models/rgb_imagenet.pt'#'/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt'#'/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt'
             state_dict = torch.load(load_model_path)
             i3d.load_state_dict(state_dict,  strict=False)
             return i3d

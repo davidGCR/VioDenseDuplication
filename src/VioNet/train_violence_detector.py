@@ -124,11 +124,11 @@ def extract_features(confi: Config, output_folder: str):
                                         dir=os.path.join(output_folder, tmp_names[-3], tmp_names[-2]))
             features_writer.dump()
 
-def load_make_dataset(dataset_name, train=True, cv_split=1):
+def load_make_dataset(dataset_name, train=True, cv_split=1, home_path=''):
     if dataset_name == RWF_DATASET:
-        make_dataset = MakeRWF2000(root='/media/david/datos/Violence DATA/RWF-2000/frames',#'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames', 
+        make_dataset = MakeRWF2000(root=os.path.join(home_path, 'RWF-2000/frames'),#'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames', 
                                 train=train,
-                                path_annotations='/media/david/datos/Violence DATA/ActionTubes/RWF-2000')#'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/Tubes/RWF-2000')
+                                path_annotations=os.path.join(home_path, 'ActionTubes/RWF-2000'))#'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/Tubes/RWF-2000')
     elif dataset_name == HOCKEY_DATASET:
         make_dataset = MakeHockeyDataset(root='/media/david/datos/Violence DATA/DATASETS/HockeyFightsDATASET/frames', #'/content/DATASETS/HockeyFightsDATASET/frames'
                                         train=train,
@@ -142,7 +142,7 @@ def main(config: Config):
     #'/content/DATASETS/RWF-2000/frames'
     #'/content/DATASETS/ActionTubes/RWF-2000'
 
-    make_dataset = load_make_dataset(config.dataset, train=True, cv_split=config.num_cv)
+    make_dataset = load_make_dataset(config.dataset, train=True, cv_split=config.num_cv, home_path=config.home_path)
     
     dataset = TubeDataset(frames_per_tube=16, 
                             min_frames_per_tube=8,
@@ -165,7 +165,7 @@ def main(config: Config):
                         )
 
     #validation
-    val_make_dataset = load_make_dataset(config.dataset, train=False, cv_split=config.num_cv)
+    val_make_dataset = load_make_dataset(config.dataset, train=False, cv_split=config.num_cv, home_path=config.home_path)
     val_dataset = TubeDataset(frames_per_tube=16, 
                             min_frames_per_tube=8, 
                             make_function=val_make_dataset,
@@ -188,8 +188,9 @@ def main(config: Config):
    
     ################## Full Detector ########################
     model, params = ViolenceDetector_model(config, device)
-    exp_config_log = "SpTmpDetector_{}_model({})_cv({})_epochs({})_note({})".format(config.dataset,
+    exp_config_log = "SpTmpDetector_{}_model({})_stream({})_cv({})_epochs({})_note({})".format(config.dataset,
                                                                 config.model,
+                                                                config.input_type,
                                                                 config.num_cv,
                                                                 config.num_epoch,
                                                                 config.additional_info)
@@ -198,7 +199,7 @@ def main(config: Config):
 
     for p in [tsb_path_folder, chk_path_folder]:
         if not os.path.exists(p):
-            os.mkdir(p)
+            os.makedirs(p)
     # print('tensorboard dir:', tsb_path)                                                
     writer = SummaryWriter(tsb_path_folder)
     
@@ -341,6 +342,7 @@ if __name__=='__main__':
         model=BINARY,
         dataset=RWF_DATASET,
         num_cv=1,
+        input_type='rgb',
         device=get_torch_device(),
         num_epoch=200,
         learning_rate=0.01,
@@ -348,8 +350,8 @@ if __name__=='__main__':
         val_batch=4,
         save_every=25,
         freeze=True,
-        additional_info='0',
-        home_path=HOME_UBUNTU
+        additional_info='test',
+        home_path=HOME_OSX
     )
     # config.restore_training = True
     # config.checkpoint_path = '/media/david/datos/Violence DATA/VioNet_pth/SpTmpDetector_hockey_ddddchs(1000)_note(-3)/save_at_epoch-1.chk'
