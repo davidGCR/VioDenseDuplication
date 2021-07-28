@@ -155,8 +155,8 @@ class IncrementalLinking:
                 merge_pred_boxes = self.merge_close_detections(self.video_detections[t]['pred_boxes'], only_merged=True)
                 # segmentor.plot(motion_map, bbox=merge_pred_boxes[0], wait=10000)
                 merge_pred_boxes = segmentor.filter_no_motion_boxes(merge_pred_boxes,
-                                                                                MOTION_MAP,
-                                                                                self.ratio_tr)
+                                                                    MOTION_MAP,
+                                                                    self.ratio_tr)
                 
                 # segmentor.plot_sub_motion_imgs(MOTION_MAP, wait=5000)
                 # segmentor.plot(MOTION_MAP, lbbox=merge_pred_boxes, wait=1000)

@@ -1,7 +1,7 @@
 import numpy as np
 import torch
-from customdatasets.dataset_utils import imread
-# from VioNet.customdatasets.dataset_utils import imread
+# from customdatasets.dataset_utils import imread
+from VioNet.customdatasets.dataset_utils import imread
 from PIL import Image
 
 class DynamicImage():

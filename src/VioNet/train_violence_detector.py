@@ -130,10 +130,10 @@ def load_make_dataset(dataset_name, train=True, cv_split=1, home_path=''):
                                 train=train,
                                 path_annotations=os.path.join(home_path, 'ActionTubes/RWF-2000'))#'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/Tubes/RWF-2000')
     elif dataset_name == HOCKEY_DATASET:
-        make_dataset = MakeHockeyDataset(root='/media/david/datos/Violence DATA/DATASETS/HockeyFightsDATASET/frames', #'/content/DATASETS/HockeyFightsDATASET/frames'
+        make_dataset = MakeHockeyDataset(root=os.path.join(home_path, 'HockeyFightsDATASET/frames'), #'/content/DATASETS/HockeyFightsDATASET/frames'
                                         train=train,
-                                        cv_split_annotation_path='/media/david/datos/Violence DATA/VioDB/hockey_jpg{}.json'.format(cv_split), #'/content/DATASETS/VioNetDB-splits/hockey_jpg{}.json'
-                                        path_annotations='/media/david/datos/Violence DATA/ActionTubes/hockey')#'/content/DATASETS/ActionTubes/hockey'
+                                        cv_split_annotation_path=os.path.join(home_path, 'VioNetDB-splits/hockey_jpg{}.json'.format(cv_split)), #'/content/DATASETS/VioNetDB-splits/hockey_jpg{}.json'
+                                        path_annotations=os.path.join(home_path, 'ActionTubes/hockey'))#'/content/DATASETS/ActionTubes/hockey'
     return make_dataset
 
 
@@ -245,7 +245,7 @@ def main(config: Config):
             # labels = labels.float().to(device)
             labels = labels.to(device)
 
-            # print('video_images: ', video_images.size())
+            print('video_images: ', video_images.size())
             # print('num_tubes: ', num_tubes)
             # print('boxes: ', boxes, boxes.size())
 
@@ -289,8 +289,8 @@ def main(config: Config):
         train_loss = losses.avg
         print(
             'Epoch: [{}]\t'
-            'Loss(val): {loss.avg:.4f}\t'
-            'Acc(val): {acc.avg:.3f}'.format(epoch, loss=losses, acc=accuracies)
+            'Loss(train): {loss.avg:.4f}\t'
+            'Acc(train): {acc.avg:.3f}'.format(epoch, loss=losses, acc=accuracies)
         )
         writer.add_scalar('training loss', losses.avg, epoch)
         writer.add_scalar('training accuracy', accuracies.avg, epoch)
@@ -348,15 +348,15 @@ def get_accuracy(y_prob, y_true):
 if __name__=='__main__':
     config = Config(
         model=BINARY,
-        dataset=RWF_DATASET,
+        dataset=HOCKEY_DATASET,
         num_cv=1,
         input_type='rgb',
         device=get_torch_device(),
-        num_epoch=200,
+        num_epoch=100,
         learning_rate=0.01,
-        train_batch=4,
+        train_batch=1,
         val_batch=4,
-        save_every=25,
+        save_every=5,
         freeze=True,
         additional_info='test',
         home_path=HOME_OSX

@@ -197,15 +197,6 @@ class TubeDataset(data.Dataset):
         video_images = []
         num_tubes = len(segments)
         for seg in segments:
-            # if self.dataset == 'rwf-2000':
-            #     frames = [os.path.join(path,'frame{}.jpg'.format(i+1)) for i in seg] #rwf
-            # elif self.dataset == 'hockey':
-            #     frames = [os.path.join(path,'frame{:03}.jpg'.format(i+1)) for i in seg]
-            # frames_names.append(frames)
-            # tube_images = [] #one tube-16 frames
-            # for i in frames:
-            #     img = self.spatial_transform(imread(i)) if self.spatial_transform else imread(i)
-            #     tube_images.append(img)
             tube_images = self.load_tube_images(path, seg)
             video_images.append(torch.stack(tube_images, dim=0))
         
@@ -257,13 +248,17 @@ class TubeCrop(object):
         boxes = []
         for tube in tubes:
             if self.input_type=='rgb':
+                tmp = tube['foundAt'].copy()
                 frames_idxs = self.__centered_frames__(tube['foundAt'])
+                if len(tmp) < self.tube_len:
+                    print('very short tube: ', tube_path, frames_idxs)
             else:
                 frames_idxs = self.__centered_segments__()
             if len(frames_idxs) > 0:
                 bbox = self.__central_bbox__(tube['boxes'], tube['id']+1)
                 boxes.append(bbox)
                 segments.append(frames_idxs)
+        # print('segments: ', segments,len(segments))
         idxs = range(len(boxes))
         if self.max_num_tubes != 0 and len(boxes) > self.max_num_tubes:
             if self.train:
@@ -295,9 +290,12 @@ class TubeCrop(object):
             arr = np.array(tube_frames_idxs)
             centered_array = arr[m-int(self.tube_len/2) : m+int(self.tube_len/2)]
             return centered_array.tolist()
-        if len(tube_frames_idxs) < self.tube_len:
-            last_idx = tube_frames_idxs[len(tube_frames_idxs)-1]
+        if len(tube_frames_idxs) < self.tube_len: #padding
+
+            last_idx = tube_frames_idxs[-1]
             tube_frames_idxs += (self.tube_len - len(tube_frames_idxs))*[last_idx]
+            # tube_frames_idxs = tube_frames_idxs
+            # print('len(tube_frames_idxs) < self.tube_len: ', tube_frames_idxs)
             return tube_frames_idxs
     
     def __centered_segments__(self):

@@ -17,7 +17,7 @@ class RoiHead(nn.Module):
                       roi_layer_output=8,
                       roi_with_temporal_pool=True,
                       roi_spatial_scale=16,
-                      fc_input_dim=528,
+                      fc_input_dim=528, #832
                       classifier=REGRESSION):
         
         super(RoiHead, self).__init__()
@@ -57,13 +57,16 @@ class RoiHead(nn.Module):
     def forward(self, x, bbox):
         #x: b,c,t,w,h
         batch, c, t, h, w = x.size()
-
+        print('before roipool: ', x.size(), ', bbox: ', bbox.size())
         x, _ = self.roi_op(x, bbox)
+        print('after roipool: ', x.size())
         x = self.temporal_pool(x)
+        print('after temporal_pool: ', x.size())
         x = self.spatial_pool(x)
+        print('after spatial_pool: ', x.size())
         x = x.view(x.size(0),-1)
 
-        # print('before classifier: ', x.size())
+        print('after x.view: ', x.size())
         # x = self.detector(x)
         if self.classifier == REGRESSION:
             x = self.dropout1(self.relu1(self.fc1(x)))
@@ -81,32 +84,28 @@ class RoiHead(nn.Module):
             
         return x
 
+from models.v_d_config import VD_CONFIG
 
 class ViolenceDetector(nn.Module):
-    def __init__(self,backbone_name='i3d',
-                      final_endpoint='Mixed_4e',
-                      roi_layer_type='RoIAlign',
-                      roi_layer_output=8,
-                      roi_with_temporal_pool=False,
-                      roi_spatial_scale=16,
-                      fc_input_dim=2048,
+    def __init__(self,config=VD_CONFIG,
                       classifier=REGRESSION,
                       freeze=False
                       ):
         super(ViolenceDetector, self).__init__()
+        self.config = config
         #Backbone
-        self.final_endpoint = final_endpoint
-        self.backbone = self.__build_backbone__(backbone_name)
-
+        self.final_endpoint = config['final_endpoint']
+        self.backbone = self.__build_backbone__(config['backbone_name'])
+        
         if freeze:
             for param in self.backbone.parameters():
                 param.requires_grad = False
 
-        self.head = RoiHead(roi_layer_type=roi_layer_type,
-                            roi_layer_output=roi_layer_output,
-                            roi_with_temporal_pool=roi_with_temporal_pool,
-                            roi_spatial_scale=roi_spatial_scale,
-                            fc_input_dim=fc_input_dim,
+        self.head = RoiHead(roi_layer_type=config['roi_layer_type'],
+                            roi_layer_output=config['roi_layer_output'],
+                            roi_with_temporal_pool=config['roi_with_temporal_pool'],
+                            roi_spatial_scale=config['roi_spatial_scale'],
+                            fc_input_dim=config['fc_input_dim'],
                             classifier=classifier)
         self.classifier = classifier
         if self.classifier == REGRESSION:
@@ -117,7 +116,7 @@ class ViolenceDetector(nn.Module):
         if backbone_name == 'i3d':
             i3d = InceptionI3d(2, in_channels=3, final_endpoint=self.final_endpoint)
             #'/content/drive/My Drive/VIOLENCE DATA/Pretrained_Models/pytorch_i3d/rgb_imagenet.pt'
-            load_model_path = '/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/pytorch-i3d/models/rgb_imagenet.pt'#'/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt'#'/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt'
+            load_model_path = self.config['pretrained_model']#'/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt'#'/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt'
             state_dict = torch.load(load_model_path)
             i3d.load_state_dict(state_dict,  strict=False)
             return i3d
@@ -129,15 +128,15 @@ class ViolenceDetector(nn.Module):
         #x: b,c,t,w,h
         # x = self.backbone(x) #torch.Size([4, 528, 4, 14, 14])
         # x = self.head(x, bbox)
-        # print('in: ', x.size())
+        print('in: ', x.size())
         # print('boxes in: ', bbox)
 
         batch, c, t, h, w = x.size()
         batch = int(batch/4)
         x = self.backbone(x)
-        # print('i3d out: ', x.size(), ' bbox: ',bbox.size())
+        print('i3d out: ', x.size(), ' bbox: ',bbox.size())
         x = self.head(x, bbox)
-        # print('out: ', x.size())
+        print('head out: ', x.size())
         
         if self.classifier == REGRESSION:
             x = x.view(batch,4)

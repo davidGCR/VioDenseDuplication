@@ -1,15 +1,20 @@
 import os
+import sys
+sys.path.insert(1, '/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/AVSS2019/src')
+# sys.path.insert(1, '/media/david/datos/PAPERS-SOURCE_CODE/VioDenseDuplication/src')
+
 import json
 import numpy as np
 import cv2
 import visual_utils
-from SORT import Sort
+# from SORT import Sort
 from tube_utils import tube_2_JSON, JSON_2_videoDetections, JSON_2_tube
-import sys
-# sys.path.insert(1, '/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/AVSS2019/src')
-sys.path.insert(1, '/media/david/datos/PAPERS-SOURCE_CODE/VioDenseDuplication/src')
-from TubeletGeneration.motion_segmentation import MotionSegmentation
-from TubeletGeneration.incremental_linking import IncrementalLinking
+
+# from TubeletGeneration.motion_segmentation import MotionSegmentation
+# from TubeletGeneration.incremental_linking import IncrementalLinking
+
+from motion_segmentation import MotionSegmentation
+from incremental_linking import IncrementalLinking
 
 from PIL import Image, ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -45,84 +50,84 @@ def plot_image_detections(decodedArray, dataset_path):
             cv2.destroyAllWindows()
             # break
 
-def tracking(decodedArray, 
-            vname,
-            dataset_frames_path="/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames", 
-            video_out_path = '/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/AVSS2019/videos_',
-            plot=True):
+# def tracking(decodedArray, 
+#             vname,
+#             dataset_frames_path="/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames", 
+#             video_out_path = '/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/AVSS2019/videos_',
+#             plot=True):
 
-    mot_tracker = Sort(iou_threshold=0.1)
-    start_tracking = False
-    tracked_objects = None
+#     mot_tracker = Sort(iou_threshold=0.1)
+#     start_tracking = False
+#     tracked_objects = None
 
-    if plot:
-        size = (224,224)
-        result = cv2.VideoWriter('{}/{}.avi'.format(video_out_path,vname), 
-                            cv2.VideoWriter_fourcc('M','J','P','G'),
-                            10, size)
+#     if plot:
+#         size = (224,224)
+#         result = cv2.VideoWriter('{}/{}.avi'.format(video_out_path,vname), 
+#                             cv2.VideoWriter_fourcc('M','J','P','G'),
+#                             10, size)
 
 
-    for i, item in enumerate(decodedArray): #frame by frame
+#     for i, item in enumerate(decodedArray): #frame by frame
         
-        if plot:
-            img_path = os.path.join(dataset_frames_path, item['split'], item['video'], item['fname'])
-            image = cv2.imread(img_path, cv2.IMREAD_COLOR)
+#         if plot:
+#             img_path = os.path.join(dataset_frames_path, item['split'], item['video'], item['fname'])
+#             image = cv2.imread(img_path, cv2.IMREAD_COLOR)
         
-        # print("image shape:", image.shape)
+#         # print("image shape:", image.shape)
 
-        pred_boxes = item["pred_boxes"]
-        pred_tags_name = item['tags']
+#         pred_boxes = item["pred_boxes"]
+#         pred_tags_name = item['tags']
 
-        if not start_tracking:
-            merge_pred_boxes = merge_close_detections(pred_boxes, only_merged=True)
-            start_tracking = True if len(merge_pred_boxes)>0 else False
-        # pred_boxes = merge_pred_boxes
-        # print("pred_boxes: ", pred_boxes.shape)
+#         if not start_tracking:
+#             merge_pred_boxes = merge_close_detections(pred_boxes, only_merged=True)
+#             start_tracking = True if len(merge_pred_boxes)>0 else False
+#         # pred_boxes = merge_pred_boxes
+#         # print("pred_boxes: ", pred_boxes.shape)
         
-        # if merge_pred_boxes is not None:
-            # print("merge_pred_boxes: ", merge_pred_boxes.shape)
+#         # if merge_pred_boxes is not None:
+#             # print("merge_pred_boxes: ", merge_pred_boxes.shape)
         
-        if pred_boxes.shape[0] != 0 and plot:
-            image = visual_utils.draw_boxes(image,
-                                            pred_boxes[:, :4],
-                                            # scores=pred_boxes[:, 4],
-                                            # tags=pred_tags_name,
-                                            line_thick=1, 
-                                            line_color='white')
-        if start_tracking:
-            if tracked_objects is not None: 
-                if pred_boxes.shape[0] == 0:
-                    pred_boxes = np.empty((0,5))
-                    print('tracked_objects(no persons in frame):frame {}'.format(i+1),tracked_objects.shape)
-                else:
-                    pred_boxes = merge_close_detections(pred_boxes, only_merged=False) #merge close bboxes in every frame
-                    pred_boxes = np.stack(pred_boxes)
-                    tracked_objects = mot_tracker.update(pred_boxes)
-                    print('tracked_objects:frame {}'.format(i+1),tracked_objects.shape, ' ids: ', tracked_objects[:,4])
-            else:
-                merge_pred_boxes = np.stack(merge_pred_boxes)
-                tracked_objects = mot_tracker.update(merge_pred_boxes)
-                print('--tracked_objects:frame {}'.format(i+1),tracked_objects.shape, ' ids: ', tracked_objects[:,4])      
-            if plot:
-                image = visual_utils.draw_boxes(image,
-                                                tracked_objects[:, :4],
-                                                ids=tracked_objects[:, 4],
-                                                # tags=["per-"]*tracked_objects.shape[0],
-                                                line_thick=2, 
-                                                line_color='green')
+#         if pred_boxes.shape[0] != 0 and plot:
+#             image = visual_utils.draw_boxes(image,
+#                                             pred_boxes[:, :4],
+#                                             # scores=pred_boxes[:, 4],
+#                                             # tags=pred_tags_name,
+#                                             line_thick=1, 
+#                                             line_color='white')
+#         if start_tracking:
+#             if tracked_objects is not None: 
+#                 if pred_boxes.shape[0] == 0:
+#                     pred_boxes = np.empty((0,5))
+#                     print('tracked_objects(no persons in frame):frame {}'.format(i+1),tracked_objects.shape)
+#                 else:
+#                     pred_boxes = merge_close_detections(pred_boxes, only_merged=False) #merge close bboxes in every frame
+#                     pred_boxes = np.stack(pred_boxes)
+#                     tracked_objects = mot_tracker.update(pred_boxes)
+#                     print('tracked_objects:frame {}'.format(i+1),tracked_objects.shape, ' ids: ', tracked_objects[:,4])
+#             else:
+#                 merge_pred_boxes = np.stack(merge_pred_boxes)
+#                 tracked_objects = mot_tracker.update(merge_pred_boxes)
+#                 print('--tracked_objects:frame {}'.format(i+1),tracked_objects.shape, ' ids: ', tracked_objects[:,4])      
+#             if plot:
+#                 image = visual_utils.draw_boxes(image,
+#                                                 tracked_objects[:, :4],
+#                                                 ids=tracked_objects[:, 4],
+#                                                 # tags=["per-"]*tracked_objects.shape[0],
+#                                                 line_thick=2, 
+#                                                 line_color='green')
 
-        if plot:
-            result.write(image) # save video
-            name = img_path.split('/')[-1].split('.')[-2]
-            cv2.imshow(name, image)
-            key = cv2.waitKey(10)#pauses for 3 seconds before fetching next image
-            if key == 27:#if ESC is pressed, exit loop
-                cv2.destroyAllWindows()
-    if plot:
-        result.release()
-        # cv2.destroyAllWindows()
+#         if plot:
+#             result.write(image) # save video
+#             name = img_path.split('/')[-1].split('.')[-2]
+#             cv2.imshow(name, image)
+#             key = cv2.waitKey(10)#pauses for 3 seconds before fetching next image
+#             if key == 27:#if ESC is pressed, exit loop
+#                 cv2.destroyAllWindows()
+#     if plot:
+#         result.release()
+#         # cv2.destroyAllWindows()
     
-    return tracked_objects
+#     return tracked_objects
 
 
 def CountFrequency(my_list):
@@ -247,27 +252,27 @@ if __name__=="__main__":
 
     ##Hockey
     dataset_root = '/media/david/datos/Violence DATA/DATASETS/HockeyFightsDATASET/frames'
-    # split = 'nonviolence'
-    # video = '11'
-    # persons_detections_path = '/media/david/datos/Violence DATA/PersonDetections/hockey/{}/{}.json'.format(split,video)
-    # person_detections = JSON_2_videoDetections(persons_detections_path)
-    # frames = list(range(0,25))
-    # extract_tubes_from_video(dataset_root,
-    #                         person_detections,
-    #                         frames,
-    #                         {'wait': 1000}
-    #                         )
+    split = 'violence'
+    video = '152'
+    persons_detections_path = '/media/david/datos/Violence DATA/PersonDetections/hockey/{}/{}.json'.format(split,video)
+    person_detections = JSON_2_videoDetections(persons_detections_path)
+    frames = list(range(0,25))
+    extract_tubes_from_video(dataset_root,
+                            person_detections,
+                            frames,
+                            {'wait': 1000}
+                            )
 
-    path_in = '/media/david/datos/Violence DATA/PersonDetections/hockey'
-    path_out = '/media/david/datos/Violence DATA/ActionTubes/hockey'
-    start_frame = 0
-    seg_len=25
+    # path_in = '/media/david/datos/Violence DATA/PersonDetections/hockey'
+    # path_out = '/media/david/datos/Violence DATA/ActionTubes/hockey'
+    # start_frame = 0
+    # seg_len=25
    
-    splits = ['violence', 'nonviolence']
-    for sp in splits:
-        extract_tubes_from_dataset(dataset_persons_detections_path=os.path.join(path_in, sp),
-                                    folder_out=os.path.join(path_out, sp),
-                                    dataset_root=dataset_root,
-                                    start_frame=start_frame,
-                                    seg_len=seg_len)
+    # splits = ['violence', 'nonviolence']
+    # for sp in splits:
+    #     extract_tubes_from_dataset(dataset_persons_detections_path=os.path.join(path_in, sp),
+    #                                 folder_out=os.path.join(path_out, sp),
+    #                                 dataset_root=dataset_root,
+    #                                 start_frame=start_frame,
+    #                                 seg_len=seg_len)
 

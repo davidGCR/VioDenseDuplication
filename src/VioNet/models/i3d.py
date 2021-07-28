@@ -281,7 +281,10 @@ class InceptionI3d(nn.Module):
 
         end_point = 'Mixed_4f'
         self.end_points[end_point] = InceptionModule(112+288+64+64, [256,160,320,32,128,128], name+end_point)
-        if self._final_endpoint == end_point: return
+        # if self._final_endpoint == end_point: return
+        if self._final_endpoint == end_point:
+            self.build()
+            return
 
         end_point = 'MaxPool3d_5a_2x2'
         self.end_points[end_point] = MaxPool3dSamePadding(kernel_size=[2, 2, 2], stride=(2, 2, 2),
@@ -414,13 +417,13 @@ if __name__=="__main__":
     # device = torch.device("cpu")
 
     input = torch.rand(4,3,16,224,224).to(device) #for slowFAst backbone: 3x4x256x320, RWF-frames 224x224, RWF-video 640x360
-    # i3d = InceptionI3d(2, in_channels=3, final_endpoint='Mixed_5c').to(device)
+    i3d = InceptionI3d(2, in_channels=3, final_endpoint='Mixed_4f').to(device)
     # i3d = InceptionI3d(num_classes=2, in_channels=3).to(device)
     # print(i3d)
     # i3d.eval()
 
-    # load_model_path = '/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt'
-    
+    #'/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt'
+    # load_model_path = '/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/pytorch-i3d/models/rgb_imagenet.pt'
     # i3d = nn.DataParallel(i3d)
     # state_dict = torch.load(load_model_path)
     # i3d.load_state_dict(state_dict,  strict=False)
@@ -429,19 +432,19 @@ if __name__=="__main__":
     # i3d.to(device)
     # i3d.logits.output_channels=2
 
-    # summary(i3d, (3, 64, 320, 400))
-    # output = i3d(input)
+    # summary(i3d, (3, 16, 224, 224))
+    output = i3d(input)
     # output = i3d.extract_features(input)
     # output = torch.squeeze(output, dim=2)
     # features = i3d.extract_features(input)
     # features = i3d.extract_features_intermediate(input)
-    # print("output: ", output.size())
+    print("output({}): ".format(i3d._final_endpoint), output.size())
 
     # print("features: ", features.size())
 
-    twoI3D = TwoStreamI3D(num_classes=2, num_features=2048).to(device)
-    output = twoI3D((input, input))
-    print("output: ", output.size())
+    # twoI3D = TwoStreamI3D(num_classes=2, num_features=2048).to(device)
+    # output = twoI3D((input, input))
+    # print("output: ", output.size())
 
 
 

@@ -64,14 +64,8 @@ def MDI_ResNet(config):
     return model, params
 
 def ViolenceDetector_model(config, device):
-    model = ViolenceDetector(backbone_name='i3d',
-                            final_endpoint='Mixed_4e',
-                            roi_layer_output=8,
-                            roi_with_temporal_pool=True,
-                            roi_spatial_scale=16,
-                            fc_input_dim=528,
-                            roi_layer_type='RoIAlign',
-                            classifier=config.model,
+    #with default config
+    model = ViolenceDetector(classifier=config.model,
                             freeze=config.freeze).to(device)
     params = model.parameters()
     return model, params
