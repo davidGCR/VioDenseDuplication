@@ -245,7 +245,7 @@ def main(config: Config):
             # labels = labels.float().to(device)
             labels = labels.to(device)
 
-            print('video_images: ', video_images.size())
+            # print('video_images: ', video_images.size())
             # print('num_tubes: ', num_tubes)
             # print('boxes: ', boxes, boxes.size())
 
@@ -362,7 +362,9 @@ if __name__=='__main__':
         home_path=HOME_OSX
     )
     # config.restore_training = True
-    # config.checkpoint_path = '/media/david/datos/Violence DATA/VioNet_pth/SpTmpDetector_hockey_ddddchs(1000)_note(-3)/save_at_epoch-1.chk'
+    # config.checkpoint_path = os.path.join(HOME_DRIVE,
+    #                                       'VioNet_pth/SpTmpDetector_rwf-2000_model(binary)_stream(dynamic-image)_cv(1)_epochs(100)_note(restorefrom9epoch)',
+    #                                       'save_at_epoch-14.chk')
 
     main(config)
     # extract_features(config, output_folder='/media/david/datos/Violence DATA/i3d-FeatureMaps/rwf')

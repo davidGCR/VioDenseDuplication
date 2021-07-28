@@ -1,6 +1,6 @@
 import os
 import sys
-sys.path.insert(1, '/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/AVSS2019/src')
+sys.path.insert(1, '/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/AVSS2019/src/VioNet')
 # sys.path.insert(1, '/media/david/datos/PAPERS-SOURCE_CODE/VioDenseDuplication/src')
 
 import json
@@ -251,16 +251,16 @@ if __name__=="__main__":
 
 
     ##Hockey
-    dataset_root = '/media/david/datos/Violence DATA/DATASETS/HockeyFightsDATASET/frames'
+    dataset_root = '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/HockeyFightsDATASET/frames'
     split = 'violence'
-    video = '152'
-    persons_detections_path = '/media/david/datos/Violence DATA/PersonDetections/hockey/{}/{}.json'.format(split,video)
+    video = '169'
+    persons_detections_path = '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/hockey/{}/{}.json'.format(split,video)
     person_detections = JSON_2_videoDetections(persons_detections_path)
     frames = list(range(0,25))
     extract_tubes_from_video(dataset_root,
                             person_detections,
                             frames,
-                            {'wait': 1000}
+                            {'wait': 1500}
                             )
 
     # path_in = '/media/david/datos/Violence DATA/PersonDetections/hockey'

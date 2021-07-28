@@ -1,3 +1,6 @@
+import sys
+sys.path.insert(1, '/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/AVSS2019/src/VioNet')
+
 from numpy.core.numeric import indices
 import torch.utils.data as data
 import numpy as np
@@ -135,13 +138,16 @@ class TubeDataset(data.Dataset):
         self.paths, self.labels, self.annotations = self.make_function()
         self.paths, self.labels, self.annotations = self.filter_data_without_tubelet()
 
+        self.max_video_len = 40 if dataset=='hockey' else 150
+
         print('paths: {}, labels:{}, annot:{}'.format(len(self.paths), len(self.labels), len(self.annotations)))
         self.sampler = TubeCrop(tube_len=frames_per_tube, 
                                 min_tube_len=min_frames_per_tube, 
                                 central_frame=True,
                                 max_num_tubes=max_num_tubes,
                                 train=train,
-                                input_type=input_type)
+                                input_type=input_type,
+                                max_video_len=self.max_video_len)
         self.return_metadata = return_metadata
         self.max_num_tubes = max_num_tubes
     
@@ -231,7 +237,8 @@ class TubeCrop(object):
                     central_frame=True, 
                     max_num_tubes=4, 
                     train=True,
-                    input_type='rgb'):
+                    input_type='rgb',
+                    max_video_len=40):
         """
         Args:
         """
@@ -241,6 +248,7 @@ class TubeCrop(object):
         self.max_num_tubes = max_num_tubes
         self.train = train
         self.input_type = input_type
+        self.max_video_len = max_video_len
 
     def __call__(self, tubes: list, tube_path: str):
         # assert len(tubes) >= 1, "No tubes in video!!!==>{}".format(tube_path)
@@ -250,8 +258,8 @@ class TubeCrop(object):
             if self.input_type=='rgb':
                 tmp = tube['foundAt'].copy()
                 frames_idxs = self.__centered_frames__(tube['foundAt'])
-                if len(tmp) < self.tube_len:
-                    print('very short tube: ', tube_path, frames_idxs)
+                # if len(tmp) < self.tube_len:
+                #     print('very short tube: ', tube_path, frames_idxs, 'foundAt: ', tube['foundAt'])
             else:
                 frames_idxs = self.__centered_segments__()
             if len(frames_idxs) > 0:
@@ -292,10 +300,27 @@ class TubeCrop(object):
             return centered_array.tolist()
         if len(tube_frames_idxs) < self.tube_len: #padding
 
-            last_idx = tube_frames_idxs[-1]
-            tube_frames_idxs += (self.tube_len - len(tube_frames_idxs))*[last_idx]
+            # last_idx = tube_frames_idxs[-1]
+            # tube_frames_idxs += (self.tube_len - len(tube_frames_idxs))*[last_idx]
             # tube_frames_idxs = tube_frames_idxs
             # print('len(tube_frames_idxs) < self.tube_len: ', tube_frames_idxs)
+            center_idx = int(len(tube_frames_idxs)/2)
+            
+            # print('center_idx:{}, center_frame:{}'.format(center_idx, tube_frames_idxs[center_idx]))
+            
+            start = tube_frames_idxs[center_idx]-int(self.tube_len/2)
+            end = tube_frames_idxs[center_idx]+int(self.tube_len/2)
+            # print('start: {}, end: {}'.format(start,end))
+            out = list(range(start,end))
+            # if tube_frames_idxs[center_idx]-int(self.tube_len/2) < self.max_video_len:
+            if out[0]<0:
+                most_neg = abs(out[0])
+                out = [i+most_neg for i in out]
+            elif tube_frames_idxs[center_idx]+int(self.tube_len/2) > self.max_video_len:
+                start = tube_frames_idxs[center_idx]-(self.tube_len-(self.max_video_len-tube_frames_idxs[center_idx]))+1
+                end = self.max_video_len+1
+                out = list(range(start,end))
+            tube_frames_idxs = out
             return tube_frames_idxs
     
     def __centered_segments__(self):
@@ -405,22 +430,23 @@ def check_no_tubes(make_function):
 
 
 if __name__=='__main__':
+
     # tmp_crop = TubeCrop()
     # tubes = JSON_2_tube('/media/david/datos/Violence DATA/Tubes/RWF-2000/train/Fight/_6-B11R9FJM_0.json')
     # print('len tubes:', len(tubes), [(d['id'], d['len']) for d in tubes])
     # segments = tmp_crop(tubes)
     # print('segments: ', segments, len(segments))
 
-    make_dataset = MakeRWF2000(root='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames', 
-                                train=True,
-                                path_annotations='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/Tubes/RWF-2000')
-    dataset = TubeDataset(frames_per_tube=16, 
-                            min_frames_per_tube=8, 
-                            make_function=make_dataset,
-                            spatial_transform=transforms.Compose([
-                                transforms.CenterCrop(224),
-                                transforms.ToTensor()
-                            ]))
+    # make_dataset = MakeRWF2000(root='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames', 
+    #                             train=True,
+    #                             path_annotations='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/Tubes/RWF-2000')
+    # dataset = TubeDataset(frames_per_tube=16, 
+    #                         min_frames_per_tube=8, 
+    #                         make_function=make_dataset,
+    #                         spatial_transform=transforms.Compose([
+    #                             transforms.CenterCrop(224),
+    #                             transforms.ToTensor()
+    #                         ]))
     # path, label, annotation,frames_names, boxes, video_images = dataset[213]
     # print('path: ', path)
     # print('label: ', label)
@@ -429,32 +455,26 @@ if __name__=='__main__':
     # print('video_images: ', video_images.size())
     # print('frames_names: ', frames_names)
 
-    # videos_no_tubes = check_no_tubes(make_dataset)
-    # print('videos_no_tubes: ', videos_no_tubes, len(videos_no_tubes))
+    # loader = DataLoader(dataset,
+    #                     batch_size=4,
+    #                     shuffle=True,
+    #                     num_workers=0,
+    #                     pin_memory=True,
+    #                     collate_fn=my_collate)
 
-    # def my_collate(batch):
-    #     print('batch: ', len(batch), len(batch[0]), len(batch[1]), len(batch[2]), len(batch[3]), batch[3][0].size(), batch[3][1].size())
-    #     # batch = filter(lambda img: img[0] is not None, batch)
-    #     boxes = filter(lambda img: img[0] is not None, batch)
-    #     video_images = filter(lambda img: img[1] is not None, batch)
-    #     return data.dataloader.default_collate(list(boxes)), data.dataloader.default_collate(list(video_images)) 
-        # return [list(boxes), list(video_images)]
-    
+    # for i, data in enumerate(loader):
+    #     # path, label, annotation,frames_names, boxes, video_images = data
+    #     boxes, video_images, labels = data
+    #     print('_____ {} ______'.format(i+1))
+    #     # print('path: ', path)
+    #     # print('label: ', label)
+    #     # print('annotation: ', annotation)
+    #     print('boxes: ', type(boxes), len(boxes), '-boxes[0]: ', boxes[0].size())
+    #     print('video_images: ', type(video_images), len(video_images), '-video_images[0]: ', video_images[0].size())
+    #     print('labels: ', type(labels), len(labels), '-labels: ', labels)
 
-    loader = DataLoader(dataset,
-                        batch_size=4,
-                        shuffle=True,
-                        num_workers=0,
-                        pin_memory=True,
-                        collate_fn=my_collate)
-
-    for i, data in enumerate(loader):
-        # path, label, annotation,frames_names, boxes, video_images = data
-        boxes, video_images, labels = data
-        print('_____ {} ______'.format(i+1))
-        # print('path: ', path)
-        # print('label: ', label)
-        # print('annotation: ', annotation)
-        print('boxes: ', type(boxes), len(boxes), '-boxes[0]: ', boxes[0].size())
-        print('video_images: ', type(video_images), len(video_images), '-video_images[0]: ', video_images[0].size())
-        print('labels: ', type(labels), len(labels), '-labels: ', labels)
+    crop = TubeCrop()
+    lp = [15, 16, 17, 18, 19, 20, 21, 22, 23, 24]
+    print('lp len:', len(lp))
+    idxs = crop.__centered_frames__(lp)
+    print('idxs: ', idxs, len(idxs))

@@ -57,16 +57,16 @@ class RoiHead(nn.Module):
     def forward(self, x, bbox):
         #x: b,c,t,w,h
         batch, c, t, h, w = x.size()
-        print('before roipool: ', x.size(), ', bbox: ', bbox.size())
+        # print('before roipool: ', x.size(), ', bbox: ', bbox.size())
         x, _ = self.roi_op(x, bbox)
-        print('after roipool: ', x.size())
+        # print('after roipool: ', x.size())
         x = self.temporal_pool(x)
-        print('after temporal_pool: ', x.size())
+        # print('after temporal_pool: ', x.size())
         x = self.spatial_pool(x)
-        print('after spatial_pool: ', x.size())
+        # print('after spatial_pool: ', x.size())
         x = x.view(x.size(0),-1)
 
-        print('after x.view: ', x.size())
+        # print('after x.view: ', x.size())
         # x = self.detector(x)
         if self.classifier == REGRESSION:
             x = self.dropout1(self.relu1(self.fc1(x)))
@@ -128,15 +128,15 @@ class ViolenceDetector(nn.Module):
         #x: b,c,t,w,h
         # x = self.backbone(x) #torch.Size([4, 528, 4, 14, 14])
         # x = self.head(x, bbox)
-        print('in: ', x.size())
+        # print('in: ', x.size())
         # print('boxes in: ', bbox)
 
         batch, c, t, h, w = x.size()
         batch = int(batch/4)
         x = self.backbone(x)
-        print('i3d out: ', x.size(), ' bbox: ',bbox.size())
+        # print('i3d out: ', x.size(), ' bbox: ',bbox.size())
         x = self.head(x, bbox)
-        print('head out: ', x.size())
+        # print('head out: ', x.size())
         
         if self.classifier == REGRESSION:
             x = x.view(batch,4)

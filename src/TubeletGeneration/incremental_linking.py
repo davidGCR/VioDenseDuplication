@@ -331,7 +331,8 @@ class IncrementalLinking:
             box_tubes = []
             tube_ids = []
             for l in range(lp):
-                # print('---live_paths[lp][foundAt]:', lp)
+                print('frame number: {}, live_path {}, frames in lp: {}'.format(t, live_paths[l]['id'], 
+                                                                    live_paths[l]['foundAt']))
                 foundAt = True if t in live_paths[l]['foundAt'] else False
                 if foundAt:
                     bbox = live_paths[l]['boxes'][-1]

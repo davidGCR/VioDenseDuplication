@@ -1,7 +1,7 @@
 # import sys
 # sys.path.insert(1, '/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/AVSS2019/src')
-import VioNet.transformations.temporal_transforms as ts
-import VioNet.transformations.dynamic_image_transformation as tt
+import transformations.temporal_transforms as ts
+import transformations.dynamic_image_transformation as tt
 import random as rng
 
 import cv2
