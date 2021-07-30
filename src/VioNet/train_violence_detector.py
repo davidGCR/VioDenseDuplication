@@ -348,23 +348,24 @@ def get_accuracy(y_prob, y_true):
 if __name__=='__main__':
     config = Config(
         model=BINARY,
-        dataset=HOCKEY_DATASET,
+        dataset=RWF_DATASET,
         num_cv=1,
         input_type='rgb',
         device=get_torch_device(),
-        num_epoch=100,
+        num_epoch=200,
         learning_rate=0.01,
-        train_batch=1,
-        val_batch=4,
-        save_every=5,
-        freeze=True,
-        additional_info='test',
-        home_path=HOME_OSX
+        train_batch=2,
+        val_batch=2,
+        save_every=2,
+        freeze=False,
+        additional_info='restartedfrom',
+        home_path=HOME_UBUNTU
     )
-    # config.restore_training = True
-    # config.checkpoint_path = os.path.join(HOME_DRIVE,
-    #                                       'VioNet_pth/SpTmpDetector_rwf-2000_model(binary)_stream(dynamic-image)_cv(1)_epochs(100)_note(restorefrom9epoch)',
-    #                                       'save_at_epoch-14.chk')
+    config.restore_training = True
+    config.checkpoint_path = os.path.join(config.home_path,
+                                          PATH_CHECKPOINT,
+                                          'SpTmpDetector_rwf-2000_model(binary)_stream(rgb)_cv(1)_epochs(200)_note(restorefrom97epoch)',
+                                          'save_at_epoch-101.chk')
 
     main(config)
     # extract_features(config, output_folder='/media/david/datos/Violence DATA/i3d-FeatureMaps/rwf')
