@@ -6,6 +6,7 @@ from google.protobuf.reflection import ParseMessage
 
 import torch
 import torch.nn as nn
+from torch.serialization import load
 
 import models.densenet as dn
 
@@ -63,10 +64,19 @@ def MDI_ResNet(config):
     params = model.parameters()
     return model, params
 
-def ViolenceDetector_model(config, device):
+from utils import load_checkpoint
+
+def ViolenceDetector_model(config, device, pretrained_model=None):
     #with default config
     model = ViolenceDetector(classifier=config.model,
                             freeze=config.freeze).to(device)
+    if pretrained_model:
+        # if device == torch.device('cpu'):
+        #     checkpoint = torch.load(config.pretrained_model, map_location=device)    
+        # else:
+        #     checkpoint = torch.load(config.pretrained_model)
+        # model.load_state_dict(checkpoint['model_state_dict'], strict=False)
+        model, _, _, _, _ = load_checkpoint(model, device, None, pretrained_model)
     params = model.parameters()
     return model, params
 

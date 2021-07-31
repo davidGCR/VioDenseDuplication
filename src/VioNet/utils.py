@@ -66,7 +66,8 @@ def load_checkpoint(model, device, optimizer, path):
     else:
         checkpoint = torch.load(path)
     model.load_state_dict(checkpoint['model_state_dict'])
-    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    if optimizer:
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     epochs = checkpoint['epochs']
     last_epoch = checkpoint['last_epoch']
 

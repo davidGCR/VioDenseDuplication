@@ -38,7 +38,8 @@ class Config:
             checkpoint_path=None,
             num_segments=0, #0: no fix
             home_path='',
-            freeze=True
+            freeze=True,
+            optimizer='SGD' #adadelta
     ):
 
         # VioNet models
@@ -72,6 +73,7 @@ class Config:
         self.val_batch = val_batch
 
         # optimizer
+        self.optimizer = optimizer
         self.learning_rate = learning_rate
         self.momentum = momentum
         self.weight_decay = weight_decay
