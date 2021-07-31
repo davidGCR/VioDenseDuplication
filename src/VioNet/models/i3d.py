@@ -343,7 +343,9 @@ class InceptionI3d(nn.Module):
         if self._final_endpoint == 'Logits':
             for end_point in self.VALID_ENDPOINTS: #torch.Size([4, 1024, 2, 7, 7])
                 if end_point in self.end_points:
+
                     x = self._modules[end_point](x) # use _modules to work with dataparallel
+                    print(end_point, ':', x.size())
             # print("Before logits: ", x.size())
             x = self.avg_pool(x) #torch.Size([4, 1024, 1, 1, 1])
             # print("After avg_pool: ", x.size())
@@ -411,14 +413,33 @@ class TwoStreamI3D(nn.Module):
 
 from torchsummary import summary
 
+# ------- i3d --------
+# Conv3d_1a_7x7 : torch.Size([4, 64, 8, 112, 112])
+# MaxPool3d_2a_3x3 : torch.Size([4, 64, 8, 56, 56])
+# Conv3d_2b_1x1 : torch.Size([4, 64, 8, 56, 56])
+# Conv3d_2c_3x3 : torch.Size([4, 192, 8, 56, 56])
+# MaxPool3d_3a_3x3 : torch.Size([4, 192, 8, 28, 28])
+# Mixed_3b : torch.Size([4, 256, 8, 28, 28])
+# Mixed_3c : torch.Size([4, 480, 8, 28, 28])
+# MaxPool3d_4a_3x3 : torch.Size([4, 480, 4, 14, 14])
+# Mixed_4b : torch.Size([4, 512, 4, 14, 14])
+# Mixed_4c : torch.Size([4, 512, 4, 14, 14])
+# Mixed_4d : torch.Size([4, 512, 4, 14, 14])
+# Mixed_4e : torch.Size([4, 528, 4, 14, 14])
+# Mixed_4f : torch.Size([4, 832, 4, 14, 14])
+# MaxPool3d_5a_2x2 : torch.Size([4, 832, 2, 7, 7])
+# Mixed_5b : torch.Size([4, 832, 2, 7, 7])
+# Mixed_5c : torch.Size([4, 1024, 2, 7, 7])
+# output(Logits):  torch.Size([4, 2])
+
 if __name__=="__main__":
     print('------- i3d --------')
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # device = torch.device("cpu")
 
     input = torch.rand(4,3,16,224,224).to(device) #for slowFAst backbone: 3x4x256x320, RWF-frames 224x224, RWF-video 640x360
-    i3d = InceptionI3d(2, in_channels=3, final_endpoint='Mixed_4f').to(device)
-    # i3d = InceptionI3d(num_classes=2, in_channels=3).to(device)
+    # i3d = InceptionI3d(2, in_channels=3, final_endpoint='Mixed_4f').to(device)
+    i3d = InceptionI3d(num_classes=2, in_channels=3).to(device)
     # print(i3d)
     # i3d.eval()
 

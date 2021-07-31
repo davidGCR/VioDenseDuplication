@@ -18,6 +18,7 @@ from models.convlstm import ConvLSTM
 from models.models2D import ResNet, Densenet2D, FusedResNextTempPool, FeatureExtractorResNextTempPool
 from models.anomaly_detector import AnomalyDetector
 from models.i3d import InceptionI3d, TwoStreamI3D
+from models.i3d_roi import InceptionI3d_Roi
 import models.models2D as rn
 from models.violence_detector import ViolenceDetector
 from global_var import *
@@ -38,6 +39,8 @@ def get_model(config, home_path):
         model, params = VioNet_Densenet2D(config)
     elif config.model == 'i3d':
         model, params = VioNet_I3D(config)
+    elif config.model == 'i3d-roi':
+        model, params = VioNet_I3D_Roi(config)
     elif config.model == 'two-i3d':
         model, params = VioNet_TwoStreamI3D(config)
     elif config.model == 'two-i3dv2':
@@ -220,6 +223,21 @@ def VioNet_ConvLSTM(config):
             param.requires_grad = False
     params = model.parameters()
 
+    return model, params
+
+def VioNet_I3D_Roi(config):
+    """
+    Load I3D model
+        config.device
+        config.pretrained_model
+    """
+    model = InceptionI3d_Roi(num_classes=400, in_channels=3).to(config.device)
+    if config.pretrained_model:
+        state_dict = torch.load(config.pretrained_model)
+        model.load_state_dict(state_dict,  strict=False)
+        model.replace_logits(2)
+    model.to(config.device)
+    params = model.parameters()
     return model, params
 
 def VioNet_I3D(config):
