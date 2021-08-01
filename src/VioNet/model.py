@@ -332,7 +332,7 @@ def VioNet_densenet_lean(config, home_path):
 
     return model, params
 
-def VioNet_densenet_lean_roi(config, home_path):
+def VioNet_densenet_lean_roi(config, pretrained):
     device = config.device
     ft_begin_idx = config.ft_begin_idx
     sample_size = config.sample_size[0]
@@ -343,8 +343,20 @@ def VioNet_densenet_lean_roi(config, home_path):
                        sample_duration=sample_duration).to(device)
 
     # state_dict = torch.load(g_path +'/VioNet/'+ 'weights/DenseNetLean_Kinetics.pth')
-    state_dict = torch.load(os.path.join(home_path, VIONET_WEIGHTS, 'DenseNetLean_Kinetics.pth'))
-    model.load_state_dict(state_dict)
+    state_dict = torch.load(pretrained)
+    
+
+    from collections import OrderedDict
+    new_state_dict = OrderedDict()
+    for k, v in state_dict.items():
+        # if k[0:2] == 'fc':
+        #     continue
+        name = k[9:] # remove 'module.' of dataparallel
+        # print(k, '--', name)
+        new_state_dict[name]=v
+
+    
+    model.load_state_dict(new_state_dict, strict=False)
 
     params = dn.get_fine_tuning_params(model, ft_begin_idx)
 

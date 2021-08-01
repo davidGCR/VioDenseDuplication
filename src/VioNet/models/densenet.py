@@ -65,8 +65,6 @@ class _Transition(nn.Sequential):
                       bias=False))
         self.add_module('pool', nn.AvgPool3d(kernel_size=2, stride=2))
 
-from roi_extractor_3d import SingleRoIExtractor3D
-
 class DenseNet(nn.Module):
     """Densenet-BC model class
     Args:

@@ -67,6 +67,7 @@ class DefaultTrasformations:
         self.train = train
     
     def __preprocess__(self):
+        sample_size, norm = None, None
         if self.model_name == 'i3d' or self.model_name=='two-i3d' or self.model_name=='two-i3dv2':
             sample_size = (224,224) if not self.size else self.size
             norm = Normalize([38.756858/255, 3.88248729/255, 40.02898126/255], [110.6366688/255, 103.16065604/255, 96.29023126/255])
@@ -74,6 +75,9 @@ class DefaultTrasformations:
             sample_size = (224,224) if not self.size else self.size
             norm = Normalize([0.485, 0.456, 0.406],[0.229, 0.224, 0.225]) #from pytorch
         elif self.model_name == 'densenet_lean':
+            sample_size = (112,112) if not self.size else self.size
+            norm = Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        elif self.model_name == 'densenet_lean_roi':
             sample_size = (112,112) if not self.size else self.size
             norm = Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
         elif self.model_name == 'MDIResNet':
@@ -88,14 +92,14 @@ class DefaultTrasformations:
                                 # transforms.CenterCrop(224),
                                 transforms.Resize(sample_size),
                                 transforms.ToTensor(),
-                                transforms.Normalize(norm)
+                                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
                             ])
         else:
             return transforms.Compose([
                                 # transforms.CenterCrop(224),
                                 transforms.Resize(sample_size),
                                 transforms.ToTensor(),
-                                transforms.Normalize(norm)
+                                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
                             ])
 
         

@@ -141,7 +141,7 @@ def load_make_dataset(dataset_name, train=True, cv_split=1, home_path=''):
 def main(config: Config):
     device = config.device
     make_dataset = load_make_dataset(config.dataset, train=True, cv_split=config.num_cv, home_path=config.home_path)
-    spatial_t = DefaultTrasformations(model_name=config.model, size=224, train=True)
+    spatial_t = DefaultTrasformations(model_name='densenet_lean_roi', size=224, train=True)
     dataset = TubeDataset(frames_per_tube=16, 
                             min_frames_per_tube=8,
                             make_function=make_dataset,
@@ -161,11 +161,11 @@ def main(config: Config):
 
     #validation
     val_make_dataset = load_make_dataset(config.dataset, train=False, cv_split=config.num_cv, home_path=config.home_path)
-    spatial_t_val = DefaultTrasformations(model_name=config.model, size=224, train=False)
+    spatial_t_val = DefaultTrasformations(model_name='densenet_lean_roi', size=224, train=False)
     val_dataset = TubeDataset(frames_per_tube=16, 
                             min_frames_per_tube=8, 
                             make_function=val_make_dataset,
-                            spatial_transform=spatial_t_val,
+                            spatial_transform=spatial_t_val(),
                             max_num_tubes=4,
                             train=False,
                             dataset=config.dataset,
@@ -182,7 +182,7 @@ def main(config: Config):
     ################## Full Detector ########################
     # model, params = ViolenceDetector_model(config, device, config.pretrained_model)
     # model, params = VioNet_I3D_Roi(config, device, config.pretrained_model)
-    model, params = VioNet_densenet_lean_roi(config, config.home_path)
+    model, params = VioNet_densenet_lean_roi(config, config.pretrained_model)
     exp_config_log = "SpTmpDetector_{}_model({})_stream({})_cv({})_epochs({})_optimizer({})_lr({})_note({})".format(config.dataset,
                                                                 config.model,
                                                                 config.input_type,
@@ -354,14 +354,15 @@ if __name__=='__main__':
         num_epoch=100,
         optimizer='Adadelta',
         learning_rate=0.01,
-        train_batch=2,
-        val_batch=2,
+        train_batch=4,
+        val_batch=4,
         save_every=10,
         freeze=False,
-        additional_info='usingscoredtubesi3droi',
-        home_path=HOME_UBUNTU
+        additional_info='densenet_lean_roi',
+        home_path=HOME_COLAB
     )
-    config.pretrained_model='/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt'
+    config.pretrained_model = "/content/DATASETS/Pretrained_Models/DenseNetLean_Kinetics.pth"
+    # config.pretrained_model='/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt'
     # config.pretrained_model = '/media/david/datos/Violence DATA/VioNet_pth/rwf_trained/save_at_epoch-127.chk'
     # config.restore_training = True
     # config.checkpoint_path = os.path.join(config.home_path,
