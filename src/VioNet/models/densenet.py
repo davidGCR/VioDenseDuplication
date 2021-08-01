@@ -65,6 +65,7 @@ class _Transition(nn.Sequential):
                       bias=False))
         self.add_module('pool', nn.AvgPool3d(kernel_size=2, stride=2))
 
+from roi_extractor_3d import SingleRoIExtractor3D
 
 class DenseNet(nn.Module):
     """Densenet-BC model class
@@ -90,9 +91,8 @@ class DenseNet(nn.Module):
 
         super(DenseNet, self).__init__()
 
-        self.sample_size = sample_size
+        # self.sample_size = sample_size
         self.sample_duration = sample_duration
-
         # First convolution
         self.features = nn.Sequential(
             OrderedDict([
@@ -111,7 +111,7 @@ class DenseNet(nn.Module):
         # Each denseblock
         num_features = num_init_features
         for i, num_layers in enumerate(block_config):
-            print('num_layers:', num_layers)
+            
             block = _DenseBlock(num_layers=num_layers,
                                 num_input_features=num_features,
                                 bn_size=bn_size,
@@ -119,6 +119,7 @@ class DenseNet(nn.Module):
                                 drop_rate=drop_rate)
             self.features.add_module('denseblock%d' % (i + 1), block)
             num_features = num_features + num_layers * growth_rate
+
             if i != len(block_config) - 1:
                 trans = _Transition(num_input_features=num_features,
                                     num_output_features=num_features // 2)
@@ -202,9 +203,10 @@ def densenet121(**kwargs):
 
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    input = torch.rand(1,3,16,112,112).to(device)
+    input = torch.rand(1,3,16,224,224).to(device)
     model = densenet88(num_classes=2,
                        sample_size=112,
                        sample_duration=12).to(device)
+    print(model)
     output = model(input)
     print('out: ',output.size(), output)
