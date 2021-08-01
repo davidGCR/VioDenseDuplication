@@ -9,14 +9,26 @@ import numpy as np
 import os
 
 class MotionSegmentation:
-    def __init__(self, video_detections, dataset_root):
+    def __init__(self, video_detections,
+                        dataset_root,
+                        size=5,
+                        segment_size=5,
+                        stride=1,
+                        overlap=0,
+                        position='start'
+                        ):
         self.video_detections = video_detections
         self.dataset_root = dataset_root
-        self.tmp_sampler = ts.SegmentsCrop(size=5,segment_size=5,stride=1,overlap=0,position='start')
+        self.tmp_sampler = ts.SegmentsCrop(size=size,
+                                            segment_size=segment_size,
+                                            stride=stride,
+                                            overlap=overlap,
+                                            position=position)
         self.tmp_transform = tt.DynamicImage(output_type='ndarray')
         self.binary_thres = 150
         self.img_shape = (224,224)
         self.min_blob_area = 30
+        self.score = 0.5
         # self.processed_img = None
     
     def blob_detection(self, gray_image):
@@ -85,6 +97,7 @@ class MotionSegmentation:
             ratio = self.ratio_motionmap_bbox(motion_map, det_box)
             # print('ratio:', ratio)
             if ratio>=ratio_tr:
+                det_box[4] += self.score
                 results.append(det_box)
         return results
 

@@ -17,6 +17,7 @@ def bbox_iou_numpy(box1, box2):
     : ndarray
         (N, M) shaped array with IoUs
     """
+    # print('box1: ', box1.shape, '--box2: ', box2.shape)
     area = (box2[:, 2] - box2[:, 0]) * (box2[:, 3] - box2[:, 1])
 
     iw = np.minimum(np.expand_dims(box1[:, 2], axis=1), box2[:, 2]) - np.maximum(
@@ -45,7 +46,8 @@ def merge_bboxes(bbox1, bbox2):
     y1 = max(bbox1[1], bbox2[1])
     x2 = max(bbox1[2], bbox2[2])
     y2 = min(bbox1[3], bbox2[3])
-    s = max(bbox1[4], bbox2[4])
+    # s = max(bbox1[4], bbox2[4])
+    s = bbox1[4] + bbox2[4]
     return np.array([x1, y1, x2, y2, s])
     
 class IncrementalLinking:
@@ -152,6 +154,7 @@ class IncrementalLinking:
                     for lp in range(lp_count):
                         live_paths[lp]['lastfound'] += 1
             elif not start_linking: #there are detections
+                # print('self.video_detections[t][pred_boxes]: ', self.video_detections[t]['pred_boxes'])
                 merge_pred_boxes = self.merge_close_detections(self.video_detections[t]['pred_boxes'], only_merged=True)
                 # segmentor.plot(motion_map, bbox=merge_pred_boxes[0], wait=10000)
                 merge_pred_boxes = segmentor.filter_no_motion_boxes(merge_pred_boxes,
@@ -197,7 +200,8 @@ class IncrementalLinking:
                                 'len': 1, ##length of tube
                                 'id': b, #id tube
                                 'foundAt': [t],
-                                'lastfound': 0 #diff between current frame and last frame in path
+                                'lastfound': 0, #diff between current frame and last frame in path
+                                'score': merge_pred_boxes[b,4]
                             }
                         )
                 else:
@@ -218,6 +222,7 @@ class IncrementalLinking:
                                 live_paths[lp]['boxes'].append(merge_pred_boxes[maxInd,:])
                                 live_paths[lp]['foundAt'].append(t)
                                 covered_boxes[maxInd] = 1
+                                live_paths[lp]['score']+=merge_pred_boxes[maxInd,4]
                             else:
                                 live_paths[lp]['lastfound'] += 1
                     ## terminate dead paths
@@ -239,12 +244,14 @@ class IncrementalLinking:
                                         'len': 1, ##length of tube
                                         'id': lp_count, #id tube
                                         'foundAt': [t],
-                                        'lastfound': 0 #diff between current frame and last frame in path
+                                        'lastfound': 0, #diff between current frame and last frame in path
+                                        'score': merge_pred_boxes[b,4]
                                     }
                                 )
                                 lp_count += 1
+            # print('current at {}-frame live paths={}'.format(t,len(live_paths)))
         
-        live_paths = sorted(live_paths, key = lambda i: i['id'])
+        live_paths = sorted(live_paths, key = lambda i: i['score'], reverse=True)
         # print('live_paths before fill: ', len(live_paths))
 
         # for i in range(len(live_paths)):
@@ -330,22 +337,26 @@ class IncrementalLinking:
             lp = self.path_count(live_paths)
             box_tubes = []
             tube_ids = []
+            tube_scores = []
             for l in range(lp):
-                print('frame number: {}, live_path {}, frames in lp: {}'.format(t, live_paths[l]['id'], 
-                                                                    live_paths[l]['foundAt']))
+                # print('frame number: {}, live_path {}, frames in lp: {}'.format(t, live_paths[l]['id'], 
+                #                                                     live_paths[l]['foundAt']))
                 foundAt = True if t in live_paths[l]['foundAt'] else False
                 if foundAt:
                     bbox = live_paths[l]['boxes'][-1]
                     box_tubes.append(bbox)
                     tube_ids.append(live_paths[l]['id'])
+                    tube_scores.append(live_paths[l]['score'])
+            
             print('box_tubes:',len(box_tubes))
             print('tube_ids:',len(tube_ids),tube_ids)
+            print('tube_scores:',len(tube_scores),tube_scores)
             if len(box_tubes)>0:
                 box_tubes = np.array(box_tubes)
                 image = visual_utils.draw_boxes(image,
                                                 box_tubes[:, :4],
                                                 # scores=pred_boxes[:, 4],
-                                                ids=tube_ids,
+                                                ids=tube_scores,
                                                 line_thick=2, 
                                                 line_color='orange')
             
