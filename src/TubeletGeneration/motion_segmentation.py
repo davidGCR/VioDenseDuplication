@@ -28,6 +28,7 @@ class MotionSegmentation:
         self.binary_thres = 150
         self.img_shape = (224,224)
         self.min_blob_area = 30
+        self.score = 0.5
         # self.processed_img = None
     
     def blob_detection(self, gray_image):
@@ -96,6 +97,7 @@ class MotionSegmentation:
             ratio = self.ratio_motionmap_bbox(motion_map, det_box)
             # print('ratio:', ratio)
             if ratio>=ratio_tr:
+                det_box[4] += self.score
                 results.append(det_box)
         return results
 

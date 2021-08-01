@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from i3d import Unit3D, MaxPool3dSamePadding, InceptionModule
-from roi_extractor_3d import SingleRoIExtractor3D
+from models.i3d import Unit3D, MaxPool3dSamePadding, InceptionModule
+from models.roi_extractor_3d import SingleRoIExtractor3D
 
 class InceptionI3d_Roi(nn.Module):
     # Endpoints of the model in order. During construction, all the endpoints up
@@ -188,43 +188,32 @@ class InceptionI3d_Roi(nn.Module):
             self.add_module(k, self.end_points[k])
         
     def forward(self, x, bbox, num_tubes=0):
-        if self._final_endpoint == 'Logits':
-            for end_point in self.VALID_ENDPOINTS: #torch.Size([4, 1024, 2, 7, 7])
-                if end_point in self.end_points:
-                    if end_point == 'MaxPool3d_5a_2x2':
-                        x, _ = self.roi_op(x, bbox)
-                        # print('roi_pool', ':', x.size())
-                        continue
-                    x = self._modules[end_point](x) # use _modules to work with dataparallel
-                    # print(end_point, ':', x.size())
-            # print("Before logits: ", x.size())
-            x = self.avg_pool(x) #torch.Size([4, 1024, 1, 1, 1])
-            # print("After avg_pool: ", x.size())
-            x = self.logits(self.dropout(x)) #torch.Size([4, 2, 1, 1, 1])
-            # print("After logits: ", x.size())
-            
-            if self._spatial_squeeze:
-                logits = x.squeeze(3).squeeze(3)
-            logits = torch.squeeze(logits, dim=2) #added to train [batch, num_classes]
-            # logits is batch X time X classes, which is what we want to work with
-            return logits
-        elif self._final_endpoint == 'Mixed_5c':
-            return self.extract_features(x)
-        else:
-            return self.extract_features_intermediate(x)
-        
+        batch, c, t, h, w = x.size()
+        for end_point in self.VALID_ENDPOINTS: #torch.Size([4, 1024, 2, 7, 7])
+            if end_point in self.end_points:
+                if end_point == 'MaxPool3d_5a_2x2':
+                    x, _ = self.roi_op(x, bbox)
+                    # print('roi_pool', ':', x.size())
+                    continue
+                x = self._modules[end_point](x) # use _modules to work with dataparallel
+                # print(end_point, ':', x.size())
 
-    def extract_features(self, x):
-        for end_point in self.VALID_ENDPOINTS:
-            if end_point in self.end_points:
-                x = self._modules[end_point](x)
-        return self.avg_pool(x)
-    
-    def extract_features_intermediate(self, x):
-        for end_point in self.VALID_ENDPOINTS:
-            if end_point in self.end_points:
-                x = self._modules[end_point](x)
-        return x
+        batch = int(batch/4)
+        x = x.view(batch, 4, 1024, 4, 7 ,7)
+        # print("view: ", x.size())
+        x = x.max(dim=1).values
+        # print("Before logits: ", x.size()) #torch.Size([16, 1024, 4, 7, 7])
+        x = self.avg_pool(x) #torch.Size([4, 1024, 1, 1, 1])
+        # print("After avg_pool: ", x.size())
+        x = self.logits(self.dropout(x)) #torch.Size([4, 2, 1, 1, 1])
+        # print("After logits: ", x.size())
+        
+        if self._spatial_squeeze:
+            logits = x.squeeze(3).squeeze(3)
+        logits = torch.squeeze(logits, dim=2) #added to train [batch, num_classes]
+        # logits is batch X time X classes, which is what we want to work with
+        return logits
+        
 
 if __name__=="__main__":
     print('------- i3d Roi --------')

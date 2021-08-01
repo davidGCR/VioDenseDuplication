@@ -238,7 +238,8 @@ class TubeCrop(object):
                     max_num_tubes=4, 
                     train=True,
                     input_type='rgb',
-                    max_video_len=40):
+                    max_video_len=40,
+                    random=True):
         """
         Args:
         """
@@ -249,6 +250,7 @@ class TubeCrop(object):
         self.train = train
         self.input_type = input_type
         self.max_video_len = max_video_len
+        self.random = random
 
     def __call__(self, tubes: list, tube_path: str):
         # assert len(tubes) >= 1, "No tubes in video!!!==>{}".format(tube_path)
@@ -269,18 +271,23 @@ class TubeCrop(object):
         # print('segments: ', segments,len(segments))
         idxs = range(len(boxes))
         if self.max_num_tubes != 0 and len(boxes) > self.max_num_tubes:
-            if self.train:
-                idxs = random.sample(range(len(boxes)), self.max_num_tubes)
-                boxes = list(itemgetter(*idxs)(boxes))
-                segments = list(itemgetter(*idxs)(segments))
+            if self.random:
+                if self.train:
+                    idxs = random.sample(range(len(boxes)), self.max_num_tubes)
+                    boxes = list(itemgetter(*idxs)(boxes))
+                    segments = list(itemgetter(*idxs)(segments))
+                else:
+                    n = len(boxes)
+                    m = int(n/2)
+                    # arr = np.array(boxes)
+                    boxes = boxes[m-int(self.max_num_tubes/2) : m+int(self.max_num_tubes/2)]
+                    segments = segments[m-int(self.max_num_tubes/2) : m+int(self.max_num_tubes/2)]
+                    # boxes = boxes.tolist()
+                    # segments = segments.tolist()
             else:
-                n = len(boxes)
-                m = int(n/2)
-                # arr = np.array(boxes)
-                boxes = boxes[m-int(self.max_num_tubes/2) : m+int(self.max_num_tubes/2)]
-                segments = segments[m-int(self.max_num_tubes/2) : m+int(self.max_num_tubes/2)]
-                # boxes = boxes.tolist()
-                # segments = segments.tolist()
+                tubes = sorted(tubes, key = lambda i: i['score'], reverse=True)
+                boxes = boxes[0:self.max_num_tubes]
+                segments = segments[0:self.max_num_tubes]
         for id,box in enumerate(boxes):
             boxes[id][0,0] = id
 

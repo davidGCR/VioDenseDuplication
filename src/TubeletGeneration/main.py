@@ -261,24 +261,24 @@ if __name__=="__main__":
     rwf_config = {
         'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames',
         'split': 'val/NonFight',
-        'video': 'PNgE-OKjhgU_0',
+        'video': 'TP6mtOzL_0',
         'p_d_path': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/RWF-2000'
     }
     config = rwf_config
     persons_detections_path = config['p_d_path']+'/{}/{}.json'.format(config['split'],config['video'])
     person_detections = JSON_2_videoDetections(persons_detections_path)
-    frames = list(range(50,75))
+    frames = list(range(0,150))
     extract_tubes_from_video(config['dataset_root'],
                             person_detections,
                             frames,
-                            {'wait': 500}
+                            {'wait': 250}
                             )
 
     ##PROCESS ALL DATASET
     # rwf_config = {
     #     'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames',
     #     'path_in':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/RWF-2000',
-    #     'path_out':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/RWF-2000-150frames',
+    #     'path_out':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/RWF-2000-150frames-scored',
     #     'splits':['train/Fight', 'train/NonFight', 'val/Fight', 'val/NonFight'],
     #     'start_frame':0,
     #     'seg_len': 150
