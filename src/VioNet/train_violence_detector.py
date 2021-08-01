@@ -354,21 +354,21 @@ def get_accuracy(y_prob, y_true):
 if __name__=='__main__':
     config = Config(
         model=BINARY,
-        dataset=HOCKEY_DATASET,
+        dataset=RWF_DATASET,
         num_cv=1,
         input_type='rgb',
         device=get_torch_device(),
         num_epoch=100,
-        optimizer='Adadelta',
+        optimizer='SGD',
         learning_rate=0.01,
-        train_batch=4,
-        val_batch=4,
+        train_batch=2,
+        val_batch=2,
         save_every=10,
-        freeze=True,
-        additional_info='usinrwftrained',
+        freeze=False,
+        additional_info='',
         home_path=HOME_UBUNTU
     )
-    config.pretrained_model = '/media/david/datos/Violence DATA/VioNet_pth/rwf_trained/save_at_epoch-127.chk'
+    # config.pretrained_model = '/media/david/datos/Violence DATA/VioNet_pth/rwf_trained/save_at_epoch-127.chk'
     # config.restore_training = True
     # config.checkpoint_path = os.path.join(config.home_path,
     #                                       PATH_CHECKPOINT,
