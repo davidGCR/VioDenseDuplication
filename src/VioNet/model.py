@@ -225,18 +225,18 @@ def VioNet_ConvLSTM(config):
 
     return model, params
 
-def VioNet_I3D_Roi(config):
+def VioNet_I3D_Roi(config, device, pretrained_model):
     """
     Load I3D model
         config.device
         config.pretrained_model
     """
-    model = InceptionI3d_Roi(num_classes=400, in_channels=3).to(config.device)
-    if config.pretrained_model:
-        state_dict = torch.load(config.pretrained_model)
+    model = InceptionI3d_Roi(num_classes=400, in_channels=3).to(device)
+    if pretrained_model:
+        state_dict = torch.load(pretrained_model)
         model.load_state_dict(state_dict,  strict=False)
         model.replace_logits(2)
-    model.to(config.device)
+    model.to(device)
     params = model.parameters()
     return model, params
 

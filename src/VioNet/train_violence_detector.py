@@ -17,7 +17,7 @@ from customdatasets.tube_dataset import TubeDataset, my_collate, my_collate_2, O
 from torch.utils.data import DataLoader, dataset
 
 from config import Config
-from model import ViolenceDetector_model
+from model import ViolenceDetector_model, VioNet_I3D_Roi
 from models.anomaly_detector import custom_objective, RegularizedLoss
 from epoch import calculate_accuracy_2, train_regressor
 from utils import Log, save_checkpoint, load_checkpoint
@@ -128,7 +128,7 @@ def load_make_dataset(dataset_name, train=True, cv_split=1, home_path=''):
     if dataset_name == RWF_DATASET:
         make_dataset = MakeRWF2000(root=os.path.join(home_path, 'RWF-2000/frames'),#'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames', 
                                 train=train,
-                                path_annotations=os.path.join(home_path, 'ActionTubes/RWF-2000'))#'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/Tubes/RWF-2000')
+                                path_annotations=os.path.join(home_path, 'ActionTubes/RWF-2000-150frames-scored'))#'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/Tubes/RWF-2000')
     elif dataset_name == HOCKEY_DATASET:
         make_dataset = MakeHockeyDataset(root=os.path.join(home_path, 'HockeyFightsDATASET/frames'), #'/content/DATASETS/HockeyFightsDATASET/frames'
                                         train=train,
@@ -156,7 +156,8 @@ def main(config: Config):
                             max_num_tubes=4,
                             train=True,
                             dataset=config.dataset,
-                            input_type=config.input_type)
+                            input_type=config.input_type,
+                            random=False)
     loader = DataLoader(dataset,
                         batch_size=config.train_batch,
                         shuffle=True,
@@ -179,7 +180,8 @@ def main(config: Config):
                             max_num_tubes=4,
                             train=False,
                             dataset=config.dataset,
-                            input_type=config.input_type)
+                            input_type=config.input_type,
+                            random=False)
     val_loader = DataLoader(val_dataset,
                         batch_size=config.val_batch,
                         shuffle=True,
@@ -189,7 +191,8 @@ def main(config: Config):
                         )
    
     ################## Full Detector ########################
-    model, params = ViolenceDetector_model(config, device, config.pretrained_model)
+    # model, params = ViolenceDetector_model(config, device, config.pretrained_model)
+    model, params = VioNet_I3D_Roi(config, device, config.pretrained_model)
     exp_config_log = "SpTmpDetector_{}_model({})_stream({})_cv({})_epochs({})_optimizer({})_lr({})_note({})".format(config.dataset,
                                                                 config.model,
                                                                 config.input_type,
@@ -354,21 +357,22 @@ def get_accuracy(y_prob, y_true):
 if __name__=='__main__':
     config = Config(
         model=BINARY,
-        dataset=HOCKEY_DATASET,
+        dataset=RWF_DATASET,
         num_cv=1,
         input_type='rgb',
         device=get_torch_device(),
         num_epoch=100,
         optimizer='Adadelta',
         learning_rate=0.01,
-        train_batch=4,
-        val_batch=4,
+        train_batch=2,
+        val_batch=2,
         save_every=10,
-        freeze=True,
-        additional_info='usinrwftrained',
+        freeze=False,
+        additional_info='usingscoredtubesi3droi',
         home_path=HOME_UBUNTU
     )
-    config.pretrained_model = '/media/david/datos/Violence DATA/VioNet_pth/rwf_trained/save_at_epoch-127.chk'
+    config.pretrained_model='/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt'
+    # config.pretrained_model = '/media/david/datos/Violence DATA/VioNet_pth/rwf_trained/save_at_epoch-127.chk'
     # config.restore_training = True
     # config.checkpoint_path = os.path.join(config.home_path,
     #                                       PATH_CHECKPOINT,
