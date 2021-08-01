@@ -3,6 +3,7 @@ from  global_var import *
 from utils import get_torch_device
 from transformations.spatial_transforms import Normalize
 from transformations.temporal_transforms import *
+import torchvision.transforms as transforms
 
 device = get_torch_device()
 
@@ -56,6 +57,49 @@ def build_temporal_transformation(config: Config, transf_type: str, split='train
     elif transf_type == INTERVAL_CROP:
         temporal_transform = IntervalCrop(intervals_num=config.sample_duration, interval_len=config.segment_size)
     return temporal_transform
+
+class DefaultTrasformations:
+    def __init__(self, model_name, size=None, mean=None, std=None, train=True):
+        self.model_name = model_name
+        self.size = size
+        self.mean = mean
+        self.std = std
+        self.train = train
+    
+    def __preprocess__(self):
+        if self.model_name == 'i3d' or self.model_name=='two-i3d' or self.model_name=='two-i3dv2':
+            sample_size = (224,224) if not self.size else self.size
+            norm = Normalize([38.756858/255, 3.88248729/255, 40.02898126/255], [110.6366688/255, 103.16065604/255, 96.29023126/255])
+        elif self.model_name == 's3d':
+            sample_size = (224,224) if not self.size else self.size
+            norm = Normalize([0.485, 0.456, 0.406],[0.229, 0.224, 0.225]) #from pytorch
+        elif self.model_name == 'densenet_lean':
+            sample_size = (112,112) if not self.size else self.size
+            norm = Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        elif self.model_name == 'MDIResNet':
+            sample_size = (224,224) if not self.size else self.size
+            norm = dyn_img_transf_parameters()
+        return sample_size, norm
+
+    def __call__(self):
+        sample_size, norm = self.__preprocess__()
+        if self.train:
+            return transforms.Compose([
+                                # transforms.CenterCrop(224),
+                                transforms.Resize(sample_size),
+                                transforms.ToTensor(),
+                                transforms.Normalize(norm)
+                            ])
+        else:
+            return transforms.Compose([
+                                # transforms.CenterCrop(224),
+                                transforms.Resize(sample_size),
+                                transforms.ToTensor(),
+                                transforms.Normalize(norm)
+                            ])
+
+        
+        
 
 def build_transforms_parameters(model_type):
     if model_type == 'i3d' or model_type=='two-i3d' or model_type=='two-i3dv2':

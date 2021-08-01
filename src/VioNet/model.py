@@ -14,6 +14,7 @@ from models.c3d import C3D
 from models.c3d_fe import C3D_FE
 from models.s3d import S3D, S3D_feature_extractor
 from models.densenet import densenet88, densenet121
+from models.dense_net_roi import densenet88_roi
 from models.convlstm import ConvLSTM
 from models.models2D import ResNet, Densenet2D, FusedResNextTempPool, FeatureExtractorResNextTempPool
 from models.anomaly_detector import AnomalyDetector
@@ -33,6 +34,8 @@ def get_model(config, home_path):
         model, params = VioNet_densenet(config, home_path)
     elif config.model == 'densenet_lean':
         model, params = VioNet_densenet_lean(config, home_path)
+    elif config.model == 'densenet_lean_roi':
+        model, params = VioNet_densenet_lean_roi(config, home_path)
     elif config.model == 'resnet50':
         model, params = VioNet_Resnet(config, home_path)
     elif config.model == 'densenet2D':
@@ -318,6 +321,24 @@ def VioNet_densenet_lean(config, home_path):
     sample_duration = config.sample_duration
 
     model = densenet88(num_classes=2,
+                       sample_size=sample_size,
+                       sample_duration=sample_duration).to(device)
+
+    # state_dict = torch.load(g_path +'/VioNet/'+ 'weights/DenseNetLean_Kinetics.pth')
+    state_dict = torch.load(os.path.join(home_path, VIONET_WEIGHTS, 'DenseNetLean_Kinetics.pth'))
+    model.load_state_dict(state_dict)
+
+    params = dn.get_fine_tuning_params(model, ft_begin_idx)
+
+    return model, params
+
+def VioNet_densenet_lean_roi(config, home_path):
+    device = config.device
+    ft_begin_idx = config.ft_begin_idx
+    sample_size = config.sample_size[0]
+    sample_duration = config.sample_duration
+
+    model = densenet88_roi(num_classes=2,
                        sample_size=sample_size,
                        sample_duration=sample_duration).to(device)
 

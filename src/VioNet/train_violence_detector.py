@@ -17,7 +17,7 @@ from customdatasets.tube_dataset import TubeDataset, my_collate, my_collate_2, O
 from torch.utils.data import DataLoader, dataset
 
 from config import Config
-from model import ViolenceDetector_model, VioNet_I3D_Roi
+from model import ViolenceDetector_model, VioNet_I3D_Roi, VioNet_densenet_lean_roi
 from models.anomaly_detector import custom_objective, RegularizedLoss
 from epoch import calculate_accuracy_2, train_regressor
 from utils import Log, save_checkpoint, load_checkpoint
@@ -28,6 +28,7 @@ from torch import nn
 from epoch import train, val
 import numpy as np
 from global_var import *
+from configs_datasets import DefaultTrasformations
 
 def load_features(config: Config):
     device = config.device
@@ -139,20 +140,12 @@ def load_make_dataset(dataset_name, train=True, cv_split=1, home_path=''):
 
 def main(config: Config):
     device = config.device
-    #'/content/DATASETS/RWF-2000/frames'
-    #'/content/DATASETS/ActionTubes/RWF-2000'
-
     make_dataset = load_make_dataset(config.dataset, train=True, cv_split=config.num_cv, home_path=config.home_path)
-    
+    spatial_t = DefaultTrasformations(model_name=config.model, size=224, train=True)
     dataset = TubeDataset(frames_per_tube=16, 
                             min_frames_per_tube=8,
                             make_function=make_dataset,
-                            spatial_transform=transforms.Compose([
-                                # transforms.CenterCrop(224),
-                                transforms.Resize(224),
-                                transforms.ToTensor(),
-                                transforms.Normalize([38.756858/255, 3.88248729/255, 40.02898126/255], [110.6366688/255, 103.16065604/255, 96.29023126/255])
-                            ]),
+                            spatial_transform=spatial_t(),
                             max_num_tubes=4,
                             train=True,
                             dataset=config.dataset,
@@ -168,15 +161,11 @@ def main(config: Config):
 
     #validation
     val_make_dataset = load_make_dataset(config.dataset, train=False, cv_split=config.num_cv, home_path=config.home_path)
+    spatial_t_val = DefaultTrasformations(model_name=config.model, size=224, train=False)
     val_dataset = TubeDataset(frames_per_tube=16, 
                             min_frames_per_tube=8, 
                             make_function=val_make_dataset,
-                            spatial_transform=transforms.Compose([
-                                # transforms.CenterCrop(224),
-                                transforms.Resize(224),
-                                transforms.ToTensor(),
-                                transforms.Normalize([38.756858/255, 3.88248729/255, 40.02898126/255], [110.6366688/255, 103.16065604/255, 96.29023126/255])
-                            ]),
+                            spatial_transform=spatial_t_val,
                             max_num_tubes=4,
                             train=False,
                             dataset=config.dataset,
@@ -192,7 +181,8 @@ def main(config: Config):
    
     ################## Full Detector ########################
     # model, params = ViolenceDetector_model(config, device, config.pretrained_model)
-    model, params = VioNet_I3D_Roi(config, device, config.pretrained_model)
+    # model, params = VioNet_I3D_Roi(config, device, config.pretrained_model)
+    model, params = VioNet_densenet_lean_roi(config, config.home_path)
     exp_config_log = "SpTmpDetector_{}_model({})_stream({})_cv({})_epochs({})_optimizer({})_lr({})_note({})".format(config.dataset,
                                                                 config.model,
                                                                 config.input_type,

@@ -101,12 +101,19 @@ class DenseNet_Roi(nn.Module):
             self.add_module(k, self.endpoints[k])
 
     def forward(self, x, box):
+        batch, c, t, h, w = x.size()
         # features = self.features(x, bbox)
         for end_point in self.endpoints.keys():
-            # if end_point == 'denseblock2':
-            #     x, _ = self.roi_op(x,box)
+            if end_point == 'denseblock2':
+                x, _ = self.roi_op(x,box)
+                print('{}: {}'.format('roi_pool', x.size()))
             x = self._modules[end_point](x)
             print('{}: {}'.format(end_point, x.size()))
+
+        batch = int(batch/4)
+        x = x.view(batch, 4, 1024, 2, 3 ,3)
+        # print("view: ", x.size())
+        x = x.max(dim=1).values
 
         out = F.relu(x, inplace=True)
 
@@ -115,7 +122,7 @@ class DenseNet_Roi(nn.Module):
         out = self.classifier(out)
         return out
 # DenseNet Lean
-def densenet88(**kwargs):
+def densenet88_roi(**kwargs):
     model = DenseNet_Roi(num_init_features=64,
                      growth_rate=32,
                      block_config=(6, 12, 24),
@@ -124,10 +131,12 @@ def densenet88(**kwargs):
 
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    input = torch.rand(1,3,16,224,224).to(device)
-    rois = torch.rand(1, 5).to(device)
-    rois[0] = torch.tensor([0,  62.5481,  49.0223, 122.0747, 203.4146]).to(device)
-    model = densenet88(num_classes=2,
+    input = torch.rand(16,3,16,224,224).to(device)
+    rois = torch.rand(16, 5).to(device)
+    for i in range(input.size(0)):
+        rois[i] = torch.tensor([i,  62.5481,  49.0223, 122.0747, 203.4146]).to(device)
+    
+    model = densenet88_roi  (num_classes=2,
                        sample_size=112,
                        sample_duration=12).to(device)
     # print(model)
