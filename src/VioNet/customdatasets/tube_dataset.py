@@ -260,6 +260,8 @@ class TubeCrop(object):
         # assert len(tubes) >= 1, "No tubes in video!!!==>{}".format(tube_path)
         segments = []
         boxes = []
+        if not self.random:
+            tubes = sorted(tubes, key = lambda i: i['score'], reverse=True)
         for tube in tubes:
             if self.input_type=='rgb':
                 tmp = tube['foundAt'].copy()
@@ -289,7 +291,8 @@ class TubeCrop(object):
                     # boxes = boxes.tolist()
                     # segments = segments.tolist()
             else:
-                tubes = sorted(tubes, key = lambda i: i['score'], reverse=True)
+                # print(tubes)
+                # tubes = sorted(tubes, key = lambda i: i['score'], reverse=True)
                 boxes = boxes[0:self.max_num_tubes]
                 segments = segments[0:self.max_num_tubes]
         for id,box in enumerate(boxes):

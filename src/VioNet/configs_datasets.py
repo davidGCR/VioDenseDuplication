@@ -68,7 +68,7 @@ class DefaultTrasformations:
     
     def __preprocess__(self):
         sample_size, norm = None, None
-        if self.model_name == 'i3d' or self.model_name=='two-i3d' or self.model_name=='two-i3dv2':
+        if self.model_name == 'i3d' or self.model_name=='two-i3d' or self.model_name=='two-i3dv2' or self.model_name=='i3d-roi' or self.model_name=='i3d+roi+fc' or self.model_name=='i3d+roi+i3d':
             sample_size = (224,224) if not self.size else self.size
             norm = Normalize([38.756858/255, 3.88248729/255, 40.02898126/255], [110.6366688/255, 103.16065604/255, 96.29023126/255])
         elif self.model_name == 's3d':
@@ -92,14 +92,16 @@ class DefaultTrasformations:
                                 # transforms.CenterCrop(224),
                                 transforms.Resize(sample_size),
                                 transforms.ToTensor(),
-                                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+                                norm
+                                # transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
                             ])
         else:
             return transforms.Compose([
                                 # transforms.CenterCrop(224),
                                 transforms.Resize(sample_size),
                                 transforms.ToTensor(),
-                                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+                                norm
+                                # transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
                             ])
 
         

@@ -133,7 +133,7 @@ class ViolenceDetector(nn.Module):
         # print('boxes in: ', bbox)
 
         batch, c, t, h, w = x.size()
-        batch = int(batch/4)
+        batch = int(batch/num_tubes)
         x = self.backbone(x)
         # print('i3d out: ', x.size(), ' bbox: ',bbox.size())
         x = self.head(x, bbox)
