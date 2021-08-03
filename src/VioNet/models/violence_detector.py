@@ -43,7 +43,7 @@ class RoiHead(nn.Module):
             nn.init.xavier_normal_(self.fc1.weight)
             nn.init.xavier_normal_(self.fc2.weight)
             nn.init.xavier_normal_(self.fc3.weight)
-        else:
+        elif self.classifier==BINARY:
             self.fc1 = nn.Linear(fc_input_dim, 128)
             self.relu1 = nn.ReLU()
             self.dropout1 = nn.Dropout(0.6)
@@ -72,7 +72,7 @@ class RoiHead(nn.Module):
             x = self.dropout1(self.relu1(self.fc1(x)))
             x = self.dropout2(self.fc2(x))
             x = self.fc3(x)
-        else:
+        elif self.classifier == BINARY:
             batch = int(batch/4)
             x = x.view(batch, 4, -1)
             # print('before maxpool: ', x.size())
@@ -81,6 +81,11 @@ class RoiHead(nn.Module):
             x = self.dropout1(self.relu1(self.fc1(x)))
             x = self.dropout2(self.fc2(x))
             x = self.fc3(x)
+        # else:
+        #     x = self.dropout1(self.relu1(self.fc1(x)))
+        #     x = self.dropout2(self.fc2(x))
+        #     x = self.fc3(x)
+
             
         return x
 
@@ -139,10 +144,10 @@ class ViolenceDetector(nn.Module):
         x = self.head(x, bbox)
         # print('head out: ', x.size())
         
-        if self.classifier == REGRESSION:
-            x = x.view(batch,4)
-            x = x.max(dim=1).values
-            x = self.sigmoid(x)
+        # if self.classifier == REGRESSION:
+        #     x = x.view(batch,4)
+        #     x = x.max(dim=1).values
+        #     x = self.sigmoid(x)
         
 
         # splits=torch.split(x, num_tubes.numpy().tolist())

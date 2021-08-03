@@ -29,6 +29,7 @@ from epoch import train, val
 import numpy as np
 from global_var import *
 from configs_datasets import DefaultTrasformations
+from models.mil_loss import MIL
 
 def load_features(config: Config):
     device = config.device
@@ -125,11 +126,13 @@ def extract_features(confi: Config, output_folder: str):
                                         dir=os.path.join(output_folder, tmp_names[-3], tmp_names[-2]))
             features_writer.dump()
 
-def load_make_dataset(dataset_name, train=True, cv_split=1, home_path=''):
+def load_make_dataset(dataset_name, train=True, cv_split=1, home_path='', category=2):
     if dataset_name == RWF_DATASET:
         make_dataset = MakeRWF2000(root=os.path.join(home_path, 'RWF-2000/frames'),#'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames', 
-                                train=train,
-                                path_annotations=os.path.join(home_path, 'ActionTubes/RWF-2000'))#'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/Tubes/RWF-2000')
+                                    train=train,
+                                    category=category, 
+                                    path_annotations=os.path.join(home_path, 'ActionTubes/RWF-2000'))#'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/Tubes/RWF-2000')
+
     elif dataset_name == HOCKEY_DATASET:
         make_dataset = MakeHockeyDataset(root=os.path.join(home_path, 'HockeyFightsDATASET/frames'), #'/content/DATASETS/HockeyFightsDATASET/frames'
                                         train=train,
@@ -212,17 +215,17 @@ def main(config: Config):
     writer = SummaryWriter(tsb_path_folder)
 
     if config.optimizer == 'Adadelta':
-    
         optimizer = torch.optim.Adadelta(params, lr=config.learning_rate, eps=1e-8)
-    else:
+    elif config.optimizer == 'SGD':
         optimizer = torch.optim.SGD(params=params,
                                     lr=config.learning_rate,
                                     momentum=0.5,
                                     weight_decay=1e-3)
     
     if config.head == REGRESSION:
-        criterion = nn.BCELoss().to(device)
+        # criterion = nn.BCELoss().to(device)
         # criterion = nn.BCEWithLogitsLoss().to(device)
+        criterion = MIL
     elif config.head == BINARY:
         criterion = nn.CrossEntropyLoss().to(config.device)
 
@@ -250,18 +253,18 @@ def main(config: Config):
             boxes, video_images, labels, num_tubes, paths = data
             boxes, video_images = boxes.to(device), video_images.to(device)
             # labels = labels.float().to(device)
-            labels = labels.float().to(device) if config.model == REGRESSION else labels.to(device)
+            labels = labels.float().to(device) if config.head == REGRESSION else labels.to(device)
 
-            # print('video_images: ', video_images.size())
-            # print('num_tubes: ', config.num_tubes)
-            # print('boxes: ', boxes, boxes.size())
+            print('video_images: ', video_images.size())
+            print('num_tubes: ', config.num_tubes)
+            print('boxes: ', boxes, boxes.size())
 
             # zero the parameter gradients
             optimizer.zero_grad()
             #predict
             outs = model(video_images, boxes, config.num_tubes)
             #loss
-            # print('before criterion outs: ', outs, outs.size())
+            print('outs: ', outs.size())
             # print('before criterion labels: ', labels, labels.size())
             
             loss = criterion(outs,labels)
@@ -313,7 +316,7 @@ def main(config: Config):
             boxes, video_images, labels, num_tubes, paths = data
             boxes, video_images = boxes.to(device), video_images.to(device)
             # labels = labels.float().to(device)
-            labels = labels.float().to(device) if config.model == REGRESSION else labels.to(device)
+            labels = labels.float().to(device) if config.head == REGRESSION else labels.to(device)
             # no need to track grad in eval mode
             with torch.no_grad():
                 outputs = model(video_images, boxes, config.num_tubes)
@@ -342,6 +345,197 @@ def main(config: Config):
             save_checkpoint(model, config.num_epoch, epoch, optimizer,train_loss, os.path.join(chk_path_folder,"save_at_epoch-"+str(epoch)+".chk"))
 
 
+def MIL_training(config: Config):
+    device = config.device
+    make_dataset_nonviolence = load_make_dataset(
+        config.dataset, 
+        train=True,
+        cv_split=config.num_cv, 
+        home_path=config.home_path,
+        category=0
+        )
+    make_dataset_violence = load_make_dataset(
+        config.dataset, 
+        train=True,
+        cv_split=config.num_cv, 
+        home_path=config.home_path,
+        category=1
+        )
+    spatial_t = DefaultTrasformations(model_name=config.model, size=224, train=True)
+    dataset_train_nonviolence = TubeDataset(frames_per_tube=16, 
+                            min_frames_per_tube=8,
+                            make_function=make_dataset_nonviolence,
+                            spatial_transform=spatial_t(),
+                            max_num_tubes=config.num_tubes,
+                            train=True,
+                            dataset=config.dataset,
+                            input_type=config.input_type,
+                            random=config.tube_sampling_random)
+    dataset_train_violence = TubeDataset(frames_per_tube=16, 
+                            min_frames_per_tube=8,
+                            make_function=make_dataset_violence,
+                            spatial_transform=spatial_t(),
+                            max_num_tubes=config.num_tubes,
+                            train=True,
+                            dataset=config.dataset,
+                            input_type=config.input_type,
+                            random=config.tube_sampling_random)
+    loader_nonviolence = DataLoader(dataset_train_nonviolence,
+                        batch_size=config.train_batch,
+                        shuffle=True,
+                        num_workers=4,
+                        # pin_memory=True,
+                        collate_fn=my_collate
+                        )
+    loader_violence = DataLoader(dataset_train_violence,
+                        batch_size=config.train_batch,
+                        shuffle=True,
+                        num_workers=4,
+                        # pin_memory=True,
+                        collate_fn=my_collate
+                        )
+
+    #validation
+    
+   
+    ################## Full Detector ########################
+    
+    model, params = ViolenceDetector_model(config, device, config.pretrained_model)
+
+    # exp_config_log = "SpTmpDetector_{}_model({})_head({})_stream({})_cv({})_epochs({})_tubes({})_tub_sampl_rand({})_optimizer({})_lr({})_note({})".format(config.dataset,
+    #                                                             config.model,
+    #                                                             config.head,
+    #                                                             config.input_type,
+    #                                                             config.num_cv,
+    #                                                             config.num_epoch,
+    #                                                             config.num_tubes,
+    #                                                             config.tube_sampling_random,
+    #                                                             config.optimizer,
+    #                                                             config.learning_rate,
+    #                                                             config.additional_info)
+    
+    # h_p = HOME_DRIVE if config.home_path==HOME_COLAB else config.home_path
+    # tsb_path_folder = os.path.join(h_p, PATH_TENSORBOARD, exp_config_log)
+    # chk_path_folder = os.path.join(h_p, PATH_CHECKPOINT, exp_config_log)
+
+    # for p in [tsb_path_folder, chk_path_folder]:
+    #     if not os.path.exists(p):
+    #         os.makedirs(p)                                               
+    # writer = SummaryWriter(tsb_path_folder)
+
+    if config.optimizer == 'Adadelta':
+        optimizer = torch.optim.Adadelta(params, lr=config.learning_rate, eps=1e-8)
+    elif config.optimizer == 'SGD':
+        optimizer = torch.optim.SGD(params=params,
+                                    lr=config.learning_rate,
+                                    momentum=0.5,
+                                    weight_decay=1e-3)
+    elif config.optimizer == 'Adagrad':
+        optimizer = torch.optim.Adagrad(model.parameters(), lr= 0.001, weight_decay=0.0010000000474974513)
+        scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[25, 50])
+    
+    
+    criterion = MIL
+    # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,
+    #                                                        verbose=True,
+    #                                                        factor=config.factor,
+    #                                                        min_lr=config.min_lr)
+    from utils import AverageMeter
+
+    start_epoch = 0
+    ##Restore training
+    if config.restore_training:
+        model, optimizer, epochs, last_epoch, last_loss = load_checkpoint(model, config.device, optimizer, config.checkpoint_path)
+        start_epoch = last_epoch+1
+        # config.num_epoch = epochs
+
+    for epoch in range(start_epoch, config.num_epoch):
+        print('training at epoch: {}'.format(epoch))
+        model.train()
+        losses = AverageMeter()
+        accuracies = AverageMeter()
+        train_loss = 0
+        for i, data in enumerate(zip(loader_violence, loader_nonviolence)):
+            # print('iiiiiiiii :' , i+1)
+            # print('=============== violence batch')
+            boxes, video_images, labels, num_tubes, paths = data[0]
+            boxes, video_images = boxes.to(device), video_images.to(device)
+            labels = labels.float().to(device) if config.head == REGRESSION else labels.to(device)
+
+            # print('video_images: ', video_images.size())
+            # print('num_tubes: ', config.num_tubes)
+            # print('boxes: ', boxes.size())
+
+            # print('labels: ', labels)
+
+            # print('=============== nonviolence batch')
+            boxes, video_images, labels, num_tubes, paths = data[1]
+            boxes, video_images = boxes.to(device), video_images.to(device)
+            labels = labels.float().to(device) if config.head == REGRESSION else labels.to(device)
+
+            # print('video_images: ', video_images.size())
+            # print('num_tubes: ', config.num_tubes)
+            # print('boxes: ', boxes.size())
+
+            # print('labels: ', labels)
+
+            video_images = torch.cat([data[0][1], data[1][1]], dim=0).to(device)
+            boxes = torch.cat([data[0][0], data[1][0]], dim=0).to(device)
+
+            # print('video_images cat: ', video_images.size())
+            # print('boxes cat: ', boxes.size())
+
+            # zero the parameter gradients
+            optimizer.zero_grad()
+            #predict
+            outs = model(video_images, boxes, config.num_tubes)
+            # print('outs: ', outs.size())
+            #loss
+            loss = criterion(outs,config.train_batch)
+            train_loss += loss.item()
+        #     #accuracy
+        #     # preds = np.round(scores.detach().cpu().numpy())
+        #     # acc = (preds == labels.cpu().numpy()).sum() / preds.shape[0]
+        #     if config.head == REGRESSION:
+        #         acc = get_accuracy(outs, labels)
+        #     else:
+        #         acc = calculate_accuracy_2(outs,labels)
+            # meter
+            # print('len(video_images): ', len(video_images), ' video_images.size(0):',video_images.size(0), ' preds.shape[0]:', preds.shape[0])
+            # losses.update(loss.item(), outs.shape[0])
+        #     accuracies.update(acc, outs.shape[0])
+            # backward + optimize
+            loss.backward()
+            optimizer.step()
+        #     # print(
+        #     #     'Epoch: [{0}][{1}/{2}]\t'
+        #     #     # 'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
+        #     #     # 'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
+        #     #     'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
+        #     #     'Acc {acc.val:.3f} ({acc.avg:.3f})'.format(
+        #     #         epoch,
+        #     #         i + 1,
+        #     #         len(loader),
+        #     #         # batch_time=batch_time,
+        #     #         # data_time=data_time,
+        #     #         loss=losses,
+        #     #         acc=accuracies
+        #     #     )
+        #     # )
+        # train_loss = losses.avg
+        print(
+            'Epoch: [{}]\t'
+            'Loss(train): {loss:.4f}\t'.format(epoch, loss=train_loss)
+        )
+        scheduler.step()
+        # writer.add_scalar('training loss', losses.avg, epoch)
+        # writer.add_scalar('training accuracy', accuracies.avg, epoch)
+
+        # # if (epoch+1)%config.save_every == 0:
+        # #     save_checkpoint(model, config.num_epoch, epoch, optimizer,train_loss, os.path.join(chk_path_folder,"save_at_epoch-"+str(epoch)+".chk"))
+
+
+
 def get_accuracy(y_prob, y_true):
     assert y_true.ndim == 1 and y_true.size() == y_prob.size()
 
@@ -355,21 +549,21 @@ def get_accuracy(y_prob, y_true):
 
 if __name__=='__main__':
     config = Config(
-        model='i3d+roi+i3d',#'i3d-roi',i3d+roi+fc
-        head=BINARY,
+        model='i3d+roi+fc',#'i3d-roi',i3d+roi+fc
+        head=REGRESSION,
         dataset=RWF_DATASET,
         num_cv=1,
         input_type='rgb',
         device=get_torch_device(),
-        num_epoch=100,
-        optimizer='Adadelta',
+        num_epoch=1,
+        optimizer='Adagrad',
         learning_rate=0.01,
         train_batch=2,
         val_batch=2,
-        num_tubes=4,
+        num_tubes=8,
         tube_sampling_random=True,
         save_every=10,
-        freeze=False,
+        freeze=True,
         additional_info='25centralframes',
         home_path=HOME_UBUNTU
     )
@@ -382,6 +576,7 @@ if __name__=='__main__':
     #                                       'SpTmpDetector_rwf-2000_model(binary)_stream(rgb)_cv(1)_epochs(200)_note(restorefrom97epoch)',
     #                                       'rwf_trained/save_at_epoch-127.chk')
 
-    main(config)
+    # main(config)
+    MIL_training(config)
     # extract_features(config, output_folder='/media/david/datos/Violence DATA/i3d-FeatureMaps/rwf')
     # load_features(config)

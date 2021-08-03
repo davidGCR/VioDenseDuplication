@@ -74,7 +74,7 @@ from utils import load_checkpoint
 
 def ViolenceDetector_model(config, device, pretrained_model=None):
     #with default config
-    model = ViolenceDetector(classifier=config.model,
+    model = ViolenceDetector(classifier=config.head,
                             freeze=config.freeze).to(device)
     if pretrained_model:
         # if device == torch.device('cpu'):

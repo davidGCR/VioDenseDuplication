@@ -115,9 +115,17 @@ class MakeHockeyDataset():
         return paths, labels, annotations
 
         
+CATEGORY_ALL = 2
+CATEGORY_POS = 1
+CATEGORY_NEG = 0
 
 class MakeRWF2000():
-    def __init__(self, root, train, path_annotations=None, path_feat_annotations=None):
+    def __init__(self, 
+                root,
+                train,
+                category=CATEGORY_ALL,
+                path_annotations=None, 
+                path_feat_annotations=None):
         self.root = root
         self.train = train
         self.path_annotations = path_annotations
@@ -125,6 +133,7 @@ class MakeRWF2000():
         # self.F_TAG = "Fight"
         # self.NF_TAG = "NonFight"
         self.classes = ["NonFight", "Fight"]
+        self.category = category
     
     def classes(self):
         return self.classes
@@ -133,8 +142,7 @@ class MakeRWF2000():
         split = "train" if self.train else "val"
         return split
     
-    def __call__(self):
-        split = self.split()
+    def all_categories(self, split):
         paths = []
         labels = []
         annotations = []
@@ -152,6 +160,56 @@ class MakeRWF2000():
                         feat_annotations.append(os.path.join(self.path_feat_annotations, split, cl, video_sample.name +'.txt'))
         
         return paths, labels, annotations
+    
+    def positive_category(self, split):
+        paths = []
+        labels = []
+        annotations = []
+        feat_annotations = []
+        label = 1
+        label_name = self.classes[label]
+        for video_sample in os.scandir(os.path.join(self.root, split, label_name)):
+            if video_sample.is_dir():
+                paths.append(os.path.join(self.root, split, label_name, video_sample))
+                labels.append(label)
+                if self.path_annotations:
+                    assert os.path.exists(os.path.join(self.path_annotations, split, label_name, video_sample.name +'.json')), "Annotation does not exist!!!"
+                    annotations.append(os.path.join(self.path_annotations, split, label_name, video_sample.name +'.json'))
+                if self.path_feat_annotations:
+                    assert os.path.exists(os.path.join(self.path_feat_annotations, split, label_name, video_sample.name +'.txt')), "Feature annotation does not exist!!!"
+                    feat_annotations.append(os.path.join(self.path_feat_annotations, split, label_name, video_sample.name +'.txt'))
+        
+        return paths, labels, annotations
+    
+    def negative_category(self, split):
+        paths = []
+        labels = []
+        annotations = []
+        feat_annotations = []
+        label = 0
+        label_name = self.classes[label]
+        for video_sample in os.scandir(os.path.join(self.root, split, label_name)):
+            if video_sample.is_dir():
+                paths.append(os.path.join(self.root, split, label_name, video_sample))
+                labels.append(label)
+                if self.path_annotations:
+                    assert os.path.exists(os.path.join(self.path_annotations, split, label_name, video_sample.name +'.json')), "Annotation does not exist!!!"
+                    annotations.append(os.path.join(self.path_annotations, split, label_name, video_sample.name +'.json'))
+                if self.path_feat_annotations:
+                    assert os.path.exists(os.path.join(self.path_feat_annotations, split, label_name, video_sample.name +'.txt')), "Feature annotation does not exist!!!"
+                    feat_annotations.append(os.path.join(self.path_feat_annotations, split, label_name, video_sample.name +'.txt'))
+        
+        return paths, labels, annotations
+    
+    def __call__(self):
+        split = self.split()
+        if self.category == CATEGORY_ALL:
+            return self.all_categories(split)
+        elif self.category == CATEGORY_POS:
+            return self.positive_category(split)
+        elif self.category == CATEGORY_NEG:
+            return self.negative_category(split)
+        
 
 class MakeUCFCrime2Local():
     def __init__(self, root, annotation_path, bbox_path, train):
