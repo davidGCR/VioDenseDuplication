@@ -2,8 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from collections import OrderedDict
-from densenet import _DenseBlock, _Transition
-from roi_extractor_3d import SingleRoIExtractor3D
+from models.densenet import _DenseBlock, _Transition
+from models.roi_extractor_3d import SingleRoIExtractor3D
 
 class DenseNet_Roi(nn.Module):
     """Densenet-BC model class

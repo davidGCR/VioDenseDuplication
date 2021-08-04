@@ -39,7 +39,10 @@ class Config:
             num_segments=0, #0: no fix
             home_path='',
             freeze=True,
-            optimizer='SGD' #adadelta
+            optimizer='SGD', #adadelta
+            num_tubes=4,
+            head='binary',
+            tube_sampling_random=True
     ):
 
         # VioNet models
@@ -106,4 +109,7 @@ class Config:
         self.val_sampling_type = val_sampling_type
         self.home_path = home_path
         self.freeze = freeze
+        self.num_tubes = num_tubes
+        self.head = head
+        self.tube_sampling_random = tube_sampling_random
 

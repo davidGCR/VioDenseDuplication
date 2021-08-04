@@ -30,7 +30,7 @@ class InceptionI3d_Roi(nn.Module):
     )
 
     def __init__(self, num_classes=400, spatial_squeeze=True,
-                 final_endpoint='Logits', name='inception_i3d', in_channels=3, dropout_keep_prob=0.5):
+                 final_endpoint='Logits', name='inception_i3d', in_channels=3, dropout_keep_prob=0.5,):
         """Initializes I3D model instance.
         Args:
           num_classes: The number of outputs in the logit layer (default 400, which
@@ -198,8 +198,8 @@ class InceptionI3d_Roi(nn.Module):
                 x = self._modules[end_point](x) # use _modules to work with dataparallel
                 # print(end_point, ':', x.size())
 
-        batch = int(batch/4)
-        x = x.view(batch, 4, 1024, 4, 7 ,7)
+        batch = int(batch/num_tubes)
+        x = x.view(batch, num_tubes, 1024, 4, 7 ,7)
         # print("view: ", x.size())
         x = x.max(dim=1).values
         # print("Before logits: ", x.size()) #torch.Size([16, 1024, 4, 7, 7])
