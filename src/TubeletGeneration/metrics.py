@@ -56,7 +56,7 @@ if __name__=='__main__':
         lps_split = extract_tubes_from_video(config['dataset_root'],
                                 person_detections,
                                 frames,
-                                # {'wait': 200}
+                                {'wait': 200}
                                 )
         lps += lps_split
     

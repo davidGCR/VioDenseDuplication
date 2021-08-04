@@ -2,6 +2,7 @@ from typing import Dict
 import torch
 from torch import nn
 from models.i3d import InceptionI3d
+from models.3d_resnet_backbone import Backbone3DResNet
 from models.roi_extractor_3d import SingleRoIExtractor3D
 # from mmaction.models import SingleRoIExtractor3D
 
@@ -248,8 +249,7 @@ class ViolenceDetector(nn.Module):
 
 class ViolenceDetectorBinary(nn.Module):
     def __init__(self,
-        config=VD_CONFIG,
-        input_dim=528,    
+        config=VD_CONFIG,  
         freeze=False):
         super(ViolenceDetectorBinary, self).__init__()
         self.config = config
@@ -266,6 +266,7 @@ class ViolenceDetectorBinary(nn.Module):
                             roi_with_temporal_pool=config['roi_with_temporal_pool'],
                             roi_spatial_scale=config['roi_spatial_scale'],
                             )
+        input_dim = config['fc_input_dim']
         self.classifier = nn.Sequential(
             nn.Linear(input_dim, 2),
             # nn.ReLU(),
@@ -277,8 +278,6 @@ class ViolenceDetectorBinary(nn.Module):
             # nn.Sigmoid()
         )
 
-
-
     def __build_backbone__(self, backbone_name):
         if backbone_name == 'i3d':
             i3d = InceptionI3d(2, in_channels=3, final_endpoint=self.final_endpoint)
@@ -288,6 +287,9 @@ class ViolenceDetectorBinary(nn.Module):
                 state_dict = torch.load(load_model_path)
                 i3d.load_state_dict(state_dict,  strict=False)
             return i3d
+        elif backbone_name == '3dresnet':
+            model = Backbone3DResNet()
+            return model
         else:
             return None
 

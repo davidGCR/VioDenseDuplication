@@ -474,8 +474,7 @@ def main_2(config: Config):
         model, params = VioNet_I3D_Roi(config, device, config.pretrained_model)
     elif config.model == 'i3d+roi+binary':
         model = ViolenceDetectorBinary(
-            freeze=config.freeze,
-            input_dim=528).to(device)
+            freeze=config.freeze).to(device)
         params = model.parameters()
 
     exp_config_log = "SpTmpDetector_{}_model({})_head({})_stream({})_cv({})_epochs({})_tubes({})_tub_sampl_rand({})_optimizer({})_lr({})_note({})".format(config.dataset,

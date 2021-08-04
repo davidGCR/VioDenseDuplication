@@ -119,6 +119,17 @@ class IncrementalLinking:
                 # dp_c += 1
         
         return final_live_paths, dead_paths
+    
+    def remove_short_paths(self, live_paths, min_len=5):
+        final_live_paths = []
+        for i in range(len(live_paths)):
+            if len(live_paths[i]['foundAt']) > min_len: #dead paths
+                # print('sspath: ', len(live_paths[i]['foundAt']),type(live_paths[i]))
+                # live_paths[lp]['id'] = lp_c
+                final_live_paths.append(live_paths[i])
+                # lp_c += 1
+        # print('removed---', type(final_live_paths), type(final_live_paths[0]))
+        return final_live_paths
 
     def iou_path_box(self, path, frame_boxes, iou_thresh):
         """
@@ -253,13 +264,15 @@ class IncrementalLinking:
             # print('current at {}-frame live paths={}'.format(t,len(live_paths)))
         
         live_paths = sorted(live_paths, key = lambda i: i['score'], reverse=True)
-        # print('live_paths before fill: ', len(live_paths))
+        print('live_paths before: ', len(live_paths))
 
         # for i in range(len(live_paths)):
         #     lp = live_paths[i]
         #     print('id:{}, foundAt: {}, len: {}, lastfound: {}'.format(lp['id'], lp['foundAt'], lp['len'], lp['lastfound']))
 
         self.fill_gaps(live_paths)
+        live_paths = self.remove_short_paths(live_paths,16)
+        print('live_paths after: ', len(live_paths), type(live_paths[0]))
         
         if len(live_paths)==0:
             motion_boxes = MOTION_MAP['boxes_from_polygons']
@@ -285,6 +298,7 @@ class IncrementalLinking:
                     live_paths[lp]['boxes'].append(motion_boxes[lp])
                     live_paths[lp]['foundAt'].append(t)
                     live_paths[lp]['score']= 0.5
+        
         if plot:
             self.plot_tubes(frames, MOTION_MAP, live_paths, plot['wait'])
         return live_paths
@@ -351,13 +365,13 @@ class IncrementalLinking:
                                                 line_thick=1, 
                                                 line_color='white')
             
-            live_paths = sorted(live_paths, key = lambda i: i['score'], reverse=True)
+            # live_paths = sorted(live_paths, key = lambda i: i['score'], reverse=True)
             # live_paths = live_paths[0:4] if len(live_paths)>4 else live_paths
             lp = self.path_count(live_paths)
             box_tubes = []
             tube_ids = []
             tube_scores = []
-            print('====frame: ', frame, ', t: ', t)
+            # print('====frame: ', frame, ', t: ', t)
             for l in range(lp):
                 # print('frame number: {}, live_path {}, frames in lp: {}'.format(t, live_paths[l]['id'], 
                 #                                                     live_paths[l]['foundAt']))
