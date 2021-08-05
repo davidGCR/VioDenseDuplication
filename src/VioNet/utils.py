@@ -75,6 +75,21 @@ def load_checkpoint(model, device, optimizer, path):
 
     return model, optimizer, epochs, last_epoch, loss
 
+import re
+def atoi(text):
+            return int(text) if text.isdigit() else text
+
+def natural_keys(text):
+    '''
+    alist.sort(key=natural_keys) sorts in human order
+    http://nedbatchelder.com/blog/200712/human_sorting.html
+    (See Toothy's implementation in the comments)
+    '''
+    return [ atoi(c) for c in re.split(r'(\d+)', text) ]
+def natural_sort(l: list):
+    l.sort(key=natural_keys)
+    return l
+
 class colors:
 # '''Colors class:reset all colors with colors.reset; two
 # sub classes fg for foreground

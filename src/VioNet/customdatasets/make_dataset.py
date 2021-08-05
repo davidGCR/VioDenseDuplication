@@ -308,41 +308,130 @@ class MakeUCFCrime2Local():
         
         return paths, labels, annotations, positive_intervals
 
+import cv2
+
+
 class MakeUCFCrime2LocalClips():
-    def __init__(self, root):
-        self.root = root
-        # self.annotation_path = annotation_path
-        # self.bbox_path = bbox_path
+    def __init__(self, root_anomaly, root_normal, path_annotations):
+        self.root_anomaly = root_anomaly
+        self.root_normal = root_normal
+        self.path_annotations = path_annotations
+        self.classes = ['Arrest', 'Assault'] #Robbery,Stealing
     
     def __get_list__(self, path):
         paths = os.listdir(path)
-        # labels = []
         paths = [os.path.join(path,pt) for pt in paths if os.path.isdir(os.path.join(path,pt))]
-
-        # for path in paths:
-        #     label = 0 if "Normal" in path else 1
-        #     labels.append(label)
-        
         return paths
+    
+    def __annotation__(self, folder_path):
+        v_name = os.path.split(folder_path)[1]
+        annotation = [ann_file for ann_file in os.listdir(self.path_annotations) if ann_file.split('.')[0] in v_name.split('(')]
+        annotation = annotation[0]
+        # print('annotation: ',annotation)
+        return os.path.join(self.path_annotations, annotation)
+    
+    def ground_truth_boxes(self, video_folder, ann_path):
+        frames = os.listdir(video_folder)
+        frames_numbers = [int(re.findall(r'\d+', f)[0]) for f in frames]
+        frames_numbers.sort()
+        # print(frames_numbers)
+
+        annotations = []
+        with open(ann_path) as fid:
+            lines = fid.readlines()
+            ss = 1 if lines[0].split()[5] == '0' else 0
+            for line in lines:
+                # v_name = line.split()[0]
+                # print(line.split())
+                ann = line.split()
+                frame_number = int(ann[5]) + ss
+                valid = ann[6]
+                if valid == '0' and frame_number in frames_numbers:
+                    annotations.append(
+                        {
+                            "frame": frame_number,
+                            "xmin": ann[1],
+                            "ymin": ann[2],
+                            "xmax": ann[3],
+                            "ymax": ann[4]
+                        }
+                    )
+        # tmp = [a['frame'] for a in annotations]
+        # print(tmp)
+        
+        return annotations
+    
+    def plot(self, folder_imgs, annotations_dict, live_paths=[]):
+        imgs = os.listdir(folder_imgs)
+        def atoi(text):
+            return int(text) if text.isdigit() else text
+
+        def natural_keys(text):
+            '''
+            alist.sort(key=natural_keys) sorts in human order
+            http://nedbatchelder.com/blog/200712/human_sorting.html
+            (See Toothy's implementation in the comments)
+            '''
+            return [ atoi(c) for c in re.split(r'(\d+)', text) ]
+        
+        imgs.sort(key=natural_keys)
+        # print(type(folder_imgs),type(f_paths[0]))
+        f_paths = [os.path.join(folder_imgs, ff) for ff in imgs]
+        
+        for img_path in f_paths:
+            print(img_path)
+            image = cv2.imread(img_path, cv2.IMREAD_COLOR)
+            f_num = os.path.split(img_path)[1]
+            f_num = int(re.findall(r'\d+', f_num)[0])
+            ann = [ann for ann in annotations_dict if ann['frame']==f_num][0]
+            x1 = ann["xmin"]
+            y1 = ann["ymin"]
+            x2 = ann["xmax"]
+            y2 = ann["ymax"]
+            cv2.rectangle(image,
+                            (int(x1), int(y1)),
+                            (int(x2), int(y2)),
+                            (0,238,238),
+                            1)
+            if len(live_paths)>0:
+                frame = img_path.split('/')[-1]
+                
+                for l in range(len(live_paths)):
+                    
+                    foundAt = True if frame in live_paths[l]['frames_name'] else False
+                    if foundAt:
+                        idx = live_paths[l]['frames_name'].index(frame)
+                        bbox = live_paths[l]['boxes'][idx]
+                        x1 = bbox[0]
+                        y1 = bbox[1]
+                        x2 = bbox[2]
+                        y2 = bbox[3]
+                        cv2.rectangle(image,
+                                    (int(x1), int(y1)),
+                                    (int(x2), int(y2)),
+                                    (255,0,0),
+                                    1)
+            cv2.namedWindow('FRAME'+str(f_num),cv2.WINDOW_NORMAL)
+            cv2.resizeWindow('FRAME'+str(f_num), (600,600))
+            image = cv2.resize(image, (600,600))
+            cv2.imshow('FRAME'+str(f_num), image)
+            key = cv2.waitKey(250)#pauses for 3 seconds before fetching next image
+            if key == 27:#if ESC is pressed, exit loop
+                cv2.destroyAllWindows()
 
     def __call__(self):
-        if isinstance(self.root,tuple):
-            abnormal_paths = self.__get_list__(self.root[0])
-            normal_paths = self.__get_list__(self.root[1])
-            normal_paths = [path for path in normal_paths if "Normal" in path]
-            paths = abnormal_paths + normal_paths
-            # paths = list(set(paths))
-            
-            labels = [1]*len(abnormal_paths) + [0]*len(normal_paths)
-        else:
-            print("No tuple!!!")
-            # paths = self.__get_list__(self.root)
+        abnormal_paths = self.__get_list__(self.root_anomaly)
+        normal_paths = self.__get_list__(self.root_normal)
+        normal_paths = [path for path in normal_paths if "Normal" in path]
+        paths = abnormal_paths + normal_paths
         
-        # labels = []
-        # for path in paths:
-        #     label = 0 if "Normal" in path else 1
-        #     labels.append(label)
-        return paths, labels
+        annotations_anomaly = [self.__annotation__(pt) for pt in abnormal_paths]
+        annotations_normal = [None]*len(normal_paths)
+        annotations = annotations_anomaly + annotations_normal
+        
+        labels = [1]*len(abnormal_paths) + [0]*len(normal_paths)
+        
+        return paths, labels, annotations
         
 
 from collections import Counter
@@ -357,14 +446,14 @@ if __name__=="__main__":
     # print("labels: ", labels[0:10], len(labels))
     # print("annotations: ", annotations[0:10], len(annotations))
 
-    make_func = MakeHockeyDataset(root='/media/david/datos/Violence DATA/DATASETS/HockeyFightsDATASET/frames', 
-                    train=False,
-                    cv_split_annotation_path='/media/david/datos/Violence DATA/VioDB/hockey_jpg1.json',
-                    path_annotations='/media/david/datos/Violence DATA/ActionTubes/hockey')
-    paths, labels, annotations = make_func()
-    print("paths: ", paths[0:10], len(paths))
-    print("labels: ", labels[0:10], len(labels))
-    print("annotations: ", annotations[0:10], len(annotations))
+    # make_func = MakeHockeyDataset(root='/media/david/datos/Violence DATA/DATASETS/HockeyFightsDATASET/frames', 
+    #                 train=False,
+    #                 cv_split_annotation_path='/media/david/datos/Violence DATA/VioDB/hockey_jpg1.json',
+    #                 path_annotations='/media/david/datos/Violence DATA/ActionTubes/hockey')
+    # paths, labels, annotations = make_func()
+    # print("paths: ", paths[0:10], len(paths))
+    # print("labels: ", labels[0:10], len(labels))
+    # print("annotations: ", annotations[0:10], len(annotations))
 
     # m = MakeUCFCrime2Local(root='/Volumes/TOSHIBA EXT/DATASET/AnomalyCRIMEALL/UCFCrime2Local/frames',
     #                         annotation_path='/Volumes/TOSHIBA EXT/DATASET/AnomalyCRIMEALL/UCFCrime2Local/readme',
@@ -377,10 +466,17 @@ if __name__=="__main__":
     # print(annotations[idx][0:10])
     # print(intervals[idx])
 
-    # m = MakeUCFCrime2LocalClips(root=('/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/UCFCrime2LocalClips',
-    #                              '/Volumes/TOSHIBA EXT/DATASET/AnomalyCRIMEALL/UCFCrime2Local/frames'))
-    # paths, labels = m()
+    m = MakeUCFCrime2LocalClips(root_anomaly='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/UCFCrime2LocalClips/anomaly',
+                                root_normal='/Volumes/TOSHIBA EXT/DATASET/AnomalyCRIMEALL/UCFCrime2Local/frames',
+                                path_annotations='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/CrimeViolence2LocalDATASET/Txt annotations-longVideos')
+    paths, labels, annotations = m()
     # idx= random.randint(0, len(paths)-1)
-    # print(Counter(labels))
-    # print(paths[idx])
-    # print(labels[idx])
+    idx=65
+    print(idx)
+    print(Counter(labels))
+    print(paths[idx])
+    print(labels[idx])
+    print(annotations[idx])
+
+    anns = m.ground_truth_boxes(paths[idx],annotations[idx])
+    m.plot(paths[idx], anns)

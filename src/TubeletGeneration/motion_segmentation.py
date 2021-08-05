@@ -11,6 +11,7 @@ import os
 class MotionSegmentation:
     def __init__(self, video_detections,
                         dataset_root,
+                        ratio_box_mmap,
                         size=5,
                         segment_size=5,
                         stride=1,
@@ -28,7 +29,8 @@ class MotionSegmentation:
         self.binary_thres = 150
         self.img_shape = (224,224)
         self.min_blob_area = 30
-        self.score = 0.5
+        self.score = 0
+        self.ratio_box_mmap = ratio_box_mmap
         # self.processed_img = None
     
     def blob_detection(self, gray_image):
@@ -91,13 +93,14 @@ class MotionSegmentation:
         ratio = total_int_area/box_area
         return ratio
 
-    def filter_no_motion_boxes(self, frame_detections, motion_map, ratio_tr=0.5):
+    def filter_no_motion_boxes(self, frame_detections, motion_map):
         results = []
         for det_box in frame_detections:
             ratio = self.ratio_motionmap_bbox(motion_map, det_box)
             # print('ratio:', ratio)
-            if ratio>=ratio_tr:
-                det_box[4] += self.score
+            if ratio>=self.ratio_box_mmap:
+                # det_box[4] += self.score
+                # print('score with motion: ', det_box[4])
                 results.append(det_box)
         return results
 
@@ -181,6 +184,11 @@ class MotionSegmentation:
                 i+=1
         return mask
     
+    def split_video(self, frames):
+        num_splits = 6
+        split_size = 25
+
+
     def __call__(self,frames):
         segments = self.tmp_sampler(frames)
         motion_images = []

@@ -41,7 +41,7 @@ class TubeCrop(object):
             if self.input_type=='rgb':
                 tmp = tube['foundAt'].copy()
                 frames_idxs = self.__centered_frames__(tube['foundAt'])
-                print('frames to load: ', frames_idxs, tube['foundAt'])
+                # print('frames to load: ', frames_idxs, tube['foundAt'])
                 # if len(tmp) < self.tube_len:
                 #     print('very short tube: ', tube_path, frames_idxs, 'foundAt: ', tube['foundAt'])
             else:

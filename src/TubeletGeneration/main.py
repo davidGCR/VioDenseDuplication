@@ -199,6 +199,8 @@ def extract_tubes_from_video(dataset_root, persons_detections, frames, plot=None
 
     live_paths = tube_builder(frames, segmentator, plot)
     print('live_paths: ', len(live_paths))
+    for lp in live_paths:
+        print(lp['score'])
     CountFrequency([{
         'path': '',
         'num': len(live_paths)
@@ -250,29 +252,37 @@ if __name__=="__main__":
     # print(tubes[0])
 
 
-    ##ONE VIDEO test
+    #ONE VIDEO test
     # ucfcrime2local_config = {
     #     'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/UCFCrime2LocalClips',
     #     'split': 'anomaly',
     #     'video': 'Arrest028(2165-2297)',
     #     'p_d_path': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/ucfcrime2local'
     # }
+    # config=ucfcrime2local_config
 
     rwf_config = {
         'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames',
-        'split': 'val/NonFight',
-        'video': 'TP6mtOzL_0',
+        'split': 'val/Fight',
+        'video': 'SDFDSSDF_973',
         'p_d_path': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/RWF-2000'
     }
     config = rwf_config
     persons_detections_path = config['p_d_path']+'/{}/{}.json'.format(config['split'],config['video'])
     person_detections = JSON_2_videoDetections(persons_detections_path)
-    frames = list(range(0,150))
-    extract_tubes_from_video(config['dataset_root'],
-                            person_detections,
-                            frames,
-                            {'wait': 250}
-                            )
+    
+    video_len = 25
+    start = 60
+    split_len = 25
+    s=0
+    for i in range(start,start + video_len, split_len):
+        print('++++++split: ', s+1)
+        frames = list(range(i,i+split_len))
+        extract_tubes_from_video(config['dataset_root'],
+                                person_detections,
+                                frames,
+                                {'wait': 1500}
+                                )
 
     ##PROCESS ALL DATASET
     # rwf_config = {

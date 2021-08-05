@@ -24,13 +24,13 @@ from epoch import calculate_accuracy_2, train_regressor
 from utils import Log, save_checkpoint, load_checkpoint
 from utils import get_torch_device
 from feature_writer2 import FeaturesWriter
-from models.anomaly_detector import custom_objective
 from torch import nn
 from epoch import train, val
 import numpy as np
 from global_var import *
 from configs_datasets import DefaultTrasformations
 from models.mil_loss import MIL
+from models.violence_detector import TwoStreamVD_Binary, ViolenceDetectorRegression
 
 def load_features(config: Config):
     device = config.device
@@ -380,7 +380,46 @@ def main_2(config: Config):
         home_path=config.home_path,
         category=1
         )
-    spatial_t = DefaultTrasformations(model_name=config.model, size=224, train=True)
+
+    # sample_size = 224
+    # mean = [0.45, 0.45, 0.45]
+    # std = [0.225, 0.225, 0.225]
+    # crop_size = 256
+    # num_frames = 8
+    # sampling_rate = 8
+    # frames_per_second = 30
+    # transforms.Compose([
+    #                     # transforms.CenterCrop(224),
+    #                     transforms.Resize(sample_size),
+    #                     transforms.ToTensor(),
+    #                     transforms.Normalize(mean, std)
+    #                 ])
+
+    data_transforms = {
+                        'train':None,
+                        'val': None
+                        }
+    keyframe = False
+    if config.model == 'TwoStreamVD_Binary':
+        input_size = 224
+        keyframe = True
+        data_transforms = {
+                        'train': transforms.Compose([
+                            transforms.RandomResizedCrop(input_size),
+                            transforms.RandomHorizontalFlip(),
+                            transforms.ToTensor(),
+                            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+                        ]),
+                        'val': transforms.Compose([
+                            transforms.Resize(input_size),
+                            # transforms.CenterCrop(input_size),
+                            transforms.ToTensor(),
+                            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+                        ]),
+                    }
+    print('keyframe: ', keyframe)
+    
+    spatial_t = DefaultTrasformations(model_name='i3d', size=224, train=True)
     dataset_train_nonviolence = TubeDataset(frames_per_tube=16, 
                             min_frames_per_tube=8,
                             make_function=make_dataset_nonviolence,
@@ -389,7 +428,9 @@ def main_2(config: Config):
                             train=True,
                             dataset=config.dataset,
                             input_type=config.input_type,
-                            random=config.tube_sampling_random)
+                            random=config.tube_sampling_random,
+                            keyframe=keyframe,
+                            spatial_transform_2=data_transforms['train'])
     dataset_train_violence = TubeDataset(frames_per_tube=16, 
                             min_frames_per_tube=8,
                             make_function=make_dataset_violence,
@@ -398,7 +439,9 @@ def main_2(config: Config):
                             train=True,
                             dataset=config.dataset,
                             input_type=config.input_type,
-                            random=config.tube_sampling_random)
+                            random=config.tube_sampling_random,
+                            keyframe=keyframe,
+                            spatial_transform_2=data_transforms['train'])
     loader_train_nonviolence = DataLoader(dataset_train_nonviolence,
                         batch_size=config.train_batch,
                         shuffle=True,
@@ -437,7 +480,9 @@ def main_2(config: Config):
                             train=False,
                             dataset=config.dataset,
                             input_type=config.input_type,
-                            random=config.tube_sampling_random)
+                            random=config.tube_sampling_random,
+                            keyframe=keyframe,
+                            spatial_transform_2=data_transforms['val'])
     dataset_val_violence = TubeDataset(frames_per_tube=16, 
                             min_frames_per_tube=8,
                             make_function=val_make_dataset_violence,
@@ -446,7 +491,9 @@ def main_2(config: Config):
                             train=False,
                             dataset=config.dataset,
                             input_type=config.input_type,
-                            random=config.tube_sampling_random)
+                            random=config.tube_sampling_random,
+                            keyframe=keyframe,
+                            spatial_transform_2=data_transforms['val'])
     loader_val_nonviolence = DataLoader(dataset_val_nonviolence,
                         batch_size=config.train_batch,
                         shuffle=True,
@@ -474,8 +521,10 @@ def main_2(config: Config):
         model, params = VioNet_I3D_Roi(config, device, config.pretrained_model)
     elif config.model == 'i3d+roi+binary':
         model = ViolenceDetectorBinary(
-            freeze=config.freeze,
-            input_dim=528).to(device)
+            freeze=config.freeze).to(device)
+        params = model.parameters()
+    elif config.model == 'TwoStreamVD_Binary':
+        model = TwoStreamVD_Binary().to(device)
         params = model.parameters()
 
     exp_config_log = "SpTmpDetector_{}_model({})_head({})_stream({})_cv({})_epochs({})_tubes({})_tub_sampl_rand({})_optimizer({})_lr({})_note({})".format(config.dataset,
@@ -538,6 +587,11 @@ def main_2(config: Config):
             video_images = torch.cat([data[0][1], data[1][1]], dim=0).to(device)
             boxes = torch.cat([data[0][0], data[1][0]], dim=0).to(device)
             labels = torch.cat([data[0][2], data[1][2]], dim=0).to(device)
+            # print('data: ', len(data))
+            # print('data[0]: ', len(data[0]))
+            # print('data[1]: ', len(data[1]))
+            keyframes = torch.cat([data[0][5], data[1][5]], dim=0).to(device)
+            
             # print('video_images: ', video_images.size())
             # print('num_tubes: ', config.num_tubes)
             # print('boxes: ', boxes.size())
@@ -546,7 +600,7 @@ def main_2(config: Config):
             # zero the parameter gradients
             optimizer.zero_grad()
             #predict
-            outs = _model(video_images, boxes, config.num_tubes)
+            outs = _model(video_images, keyframes, boxes, config.num_tubes)
             # print('outs: ', outs, outs.size())
             #loss
             loss = _criterion(outs,labels)
@@ -583,9 +637,10 @@ def main_2(config: Config):
             video_images = torch.cat([data[0][1], data[1][1]], dim=0).to(device)
             boxes = torch.cat([data[0][0], data[1][0]], dim=0).to(device)
             labels = torch.cat([data[0][2], data[1][2]], dim=0).to(device)
+            keyframes = torch.cat([data[0][5], data[1][5]], dim=0).to(device)
             # no need to track grad in eval mode
             with torch.no_grad():
-                outputs = _model(video_images, boxes, config.num_tubes)
+                outputs = _model(video_images, keyframes, boxes, config.num_tubes)
                 loss = _criterion(outputs, labels)
                 
                 if config.head == REGRESSION:
@@ -676,7 +731,7 @@ def MIL_training(config: Config):
    
     ################## Full Detector ########################
     
-    model, params = ViolenceDetector_model(config, device, config.pretrained_model)
+    model, params = ViolenceDetectorRegression(freeze=config.freeze).to(device)
 
     exp_config_log = "SpTmpDetector_{}_model({})_head({})_stream({})_cv({})_epochs({})_tubes({})_tub_sampl_rand({})_optimizer({})_lr({})_note({})".format(config.dataset,
                                                                 config.model,
@@ -803,7 +858,7 @@ def get_accuracy(y_prob, y_true):
 
 if __name__=='__main__':
     config = Config(
-        model='i3d+roi+binary',#'i3d-roi',i3d+roi+fc
+        model='TwoStreamVD_Binary',#'i3d-roi',i3d+roi+fc
         head=BINARY,
         dataset=RWF_DATASET,
         num_cv=1,
@@ -812,14 +867,14 @@ if __name__=='__main__':
         num_epoch=100,
         optimizer='SGD',
         learning_rate=0.001, #0.001 for adagrad
-        train_batch=1,
-        val_batch=8,
+        train_batch=2,
+        val_batch=2,
         num_tubes=4,
         tube_sampling_random=True,
         save_every=10,
         freeze=True,
-        additional_info='usingbalanceddatasets3',
-        home_path=HOME_UBUNTU
+        additional_info='usingbalanceddatasets',
+        home_path=HOME_COLAB
     )
     # config.pretrained_model = "/content/DATASETS/Pretrained_Models/DenseNetLean_Kinetics.pth"
     # config.pretrained_model='/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt'
