@@ -188,8 +188,9 @@ class TubeDataset(data.Dataset):
         annotation = self.annotations[index]
         boxes, segments, idxs = self.sampler(JSON_2_tube(annotation), annotation)
 
-        if boxes == None or len(boxes) == 0:
-            return None, None, None, None, None
+        # if boxes == None or len(boxes) == 0:
+            # print('here none')
+            # return None, None, None, None, None
         video_images = []
         num_tubes = len(segments)
         for seg in segments:
@@ -197,7 +198,7 @@ class TubeDataset(data.Dataset):
             tube_images = self.load_tube_images(path, seg)
             video_images.append(torch.stack(tube_images, dim=0))
         
-        key_frame = None
+        key_frames = []
         if self.keyframe:
             for seg in segments:
                 i = seg[int(len(seg)/2)]
@@ -205,7 +206,8 @@ class TubeDataset(data.Dataset):
                     img_path = os.path.join(path,'frame{}.jpg'.format(i+1)) #rwf
                 elif self.dataset == 'hockey':
                     img_path = os.path.join(path,'frame{:03}.jpg'.format(i+1))
-                key_frame = self.spatial_transform_2(imread(i)) if self.spatial_transform_2 else imread(i)
+                key_frame = self.spatial_transform_2(imread(img_path)) if self.spatial_transform_2 else imread(img_path)
+                key_frames.append(key_frame)
 
         
         if len(video_images)<self.max_num_tubes:
@@ -217,6 +219,8 @@ class TubeDataset(data.Dataset):
                 p_box = boxes[len(boxes)-1]
                 # p_box[0,0] = bbox_id+i
                 boxes.append(p_box)
+                if self.keyframe:
+                    key_frames.append(key_frames[-1])
         for j,b in enumerate(boxes):
             b[0,0] = j
             # print(b)
@@ -229,8 +233,13 @@ class TubeDataset(data.Dataset):
         video_images = torch.stack(video_images, dim=0).permute(0,2,1,3,4)
         # return path, label, annotation, frames_names, boxes, video_images
         if self.keyframe:
-            return boxes, video_images, label, num_tubes, path, key_frame
-        return boxes, video_images, label, num_tubes, path
+            
+            key_frames = torch.stack(key_frames, dim=0)
+            # print('key_frames: ', key_frames.size())
+            # print('video_images: ', video_images.size())
+            return boxes, video_images, label, num_tubes, path, key_frames
+        else:
+            return boxes, video_images, label, num_tubes, path
 
 
 
@@ -254,6 +263,7 @@ def my_collate(batch):
     labels = [item[2] for item in batch if item[2] is not None]
     num_tubes = [item[3] for item in batch if item[3] is not None]
     paths = [item[4] for item in batch if item[4]]
+    key_frames = [item[5] for item in batch if item[5] is not None]
 
     
 
@@ -275,8 +285,9 @@ def my_collate(batch):
     images = torch.cat(images,dim=0)
     labels = torch.tensor(labels)
     num_tubes = torch.tensor(num_tubes)
+    key_frames = torch.cat(key_frames,dim=0)
 
-    return boxes, images, labels, num_tubes, paths#torch.stack(labels, dim=0)
+    return boxes, images, labels, num_tubes, paths, key_frames#torch.stack(labels, dim=0)
 
 import json
 from torch.utils.data import DataLoader

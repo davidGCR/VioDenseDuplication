@@ -21,7 +21,7 @@ from models.anomaly_detector import AnomalyDetector
 from models.i3d import InceptionI3d, TwoStreamI3D
 from models.i3d_roi import InceptionI3d_Roi
 import models.models2D as rn
-from models.violence_detector import ViolenceDetector
+# from models.violence_detector import ViolenceDetector
 from global_var import *
 
 # g_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -72,19 +72,19 @@ def MDI_ResNet(config):
 
 from utils import load_checkpoint
 
-def ViolenceDetector_model(config, device, pretrained_model=None):
-    #with default config
-    model = ViolenceDetector(classifier=config.head,
-                            freeze=config.freeze).to(device)
-    if pretrained_model:
-        # if device == torch.device('cpu'):
-        #     checkpoint = torch.load(config.pretrained_model, map_location=device)    
-        # else:
-        #     checkpoint = torch.load(config.pretrained_model)
-        # model.load_state_dict(checkpoint['model_state_dict'], strict=False)
-        model, _, _, _, _ = load_checkpoint(model, device, None, pretrained_model)
-    params = model.parameters()
-    return model, params
+# def ViolenceDetector_model(config, device, pretrained_model=None):
+#     #with default config
+#     model = ViolenceDetector(classifier=config.head,
+#                             freeze=config.freeze).to(device)
+#     if pretrained_model:
+#         # if device == torch.device('cpu'):
+#         #     checkpoint = torch.load(config.pretrained_model, map_location=device)    
+#         # else:
+#         #     checkpoint = torch.load(config.pretrained_model)
+#         # model.load_state_dict(checkpoint['model_state_dict'], strict=False)
+#         model, _, _, _, _ = load_checkpoint(model, device, None, pretrained_model)
+#     params = model.parameters()
+#     return model, params
 
 
 def Feature_Extractor_C3D(device, pretrained_model):
