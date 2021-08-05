@@ -812,7 +812,7 @@ if __name__=='__main__':
         num_epoch=100,
         optimizer='SGD',
         learning_rate=0.001, #0.001 for adagrad
-        train_batch=8,
+        train_batch=1,
         val_batch=8,
         num_tubes=4,
         tube_sampling_random=True,

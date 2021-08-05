@@ -156,7 +156,7 @@ class TubeDataset(data.Dataset):
         tube_images = [] #one tube-16 frames
         if self.input_type=='rgb':
             if self.dataset == 'rwf-2000':
-                # print(seg)
+                
                 frames = [os.path.join(path,'frame{}.jpg'.format(i+1)) for i in seg] #rwf
             elif self.dataset == 'hockey':
                 frames = [os.path.join(path,'frame{:03}.jpg'.format(i+1)) for i in seg]
@@ -189,7 +189,7 @@ class TubeDataset(data.Dataset):
         video_images = []
         num_tubes = len(segments)
         for seg in segments:
-            # print('seg:',seg)
+            
             tube_images = self.load_tube_images(path, seg)
             video_images.append(torch.stack(tube_images, dim=0))
         

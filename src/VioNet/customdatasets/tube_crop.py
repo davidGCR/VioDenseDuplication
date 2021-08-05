@@ -3,6 +3,7 @@ import numpy as np
 import torch
 import random
 
+
 class TubeCrop(object):
     def __init__(self, 
                     tube_len=16, 
@@ -31,6 +32,11 @@ class TubeCrop(object):
         boxes = []
         if not self.random:
             tubes = sorted(tubes, key = lambda i: i['score'], reverse=True)
+        # long_tubes = []
+        # for tube in tubes:
+        #     if len(tube['foundAt'])>5:
+        #         long_tubes.append(tube)
+        # tubes = long_tubes
         for tube in tubes:
             if self.input_type=='rgb':
                 tmp = tube['foundAt'].copy()
