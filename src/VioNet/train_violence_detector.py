@@ -24,13 +24,13 @@ from epoch import calculate_accuracy_2, train_regressor
 from utils import Log, save_checkpoint, load_checkpoint
 from utils import get_torch_device
 from feature_writer2 import FeaturesWriter
-from models.anomaly_detector import custom_objective
 from torch import nn
 from epoch import train, val
 import numpy as np
 from global_var import *
 from configs_datasets import DefaultTrasformations
 from models.mil_loss import MIL
+from models.violence_detector import TwoStreamVD_Binary
 
 def load_features(config: Config):
     device = config.device
@@ -380,6 +380,44 @@ def main_2(config: Config):
         home_path=config.home_path,
         category=1
         )
+
+    # sample_size = 224
+    # mean = [0.45, 0.45, 0.45]
+    # std = [0.225, 0.225, 0.225]
+    # crop_size = 256
+    # num_frames = 8
+    # sampling_rate = 8
+    # frames_per_second = 30
+    # transforms.Compose([
+    #                     # transforms.CenterCrop(224),
+    #                     transforms.Resize(sample_size),
+    #                     transforms.ToTensor(),
+    #                     transforms.Normalize(mean, std)
+    #                 ])
+
+    data_transforms = {
+                        'train':None,
+                        'val': None
+                        }
+    keyframe = False
+    if config.model == 'TwoStreamVD_Binary':
+        input_size = 224
+        keyframe = True
+        data_transforms = {
+                        'train': transforms.Compose([
+                            transforms.RandomResizedCrop(input_size),
+                            transforms.RandomHorizontalFlip(),
+                            transforms.ToTensor(),
+                            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+                        ]),
+                        'val': transforms.Compose([
+                            transforms.Resize(input_size),
+                            # transforms.CenterCrop(input_size),
+                            transforms.ToTensor(),
+                            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+                        ]),
+                    }
+    
     spatial_t = DefaultTrasformations(model_name=config.model, size=224, train=True)
     dataset_train_nonviolence = TubeDataset(frames_per_tube=16, 
                             min_frames_per_tube=8,
@@ -389,7 +427,9 @@ def main_2(config: Config):
                             train=True,
                             dataset=config.dataset,
                             input_type=config.input_type,
-                            random=config.tube_sampling_random)
+                            random=config.tube_sampling_random,
+                            keyframe=keyframe,
+                            spatial_transform_2=data_transforms['train'])
     dataset_train_violence = TubeDataset(frames_per_tube=16, 
                             min_frames_per_tube=8,
                             make_function=make_dataset_violence,
@@ -398,7 +438,9 @@ def main_2(config: Config):
                             train=True,
                             dataset=config.dataset,
                             input_type=config.input_type,
-                            random=config.tube_sampling_random)
+                            random=config.tube_sampling_random,
+                            keyframe=keyframe,
+                            spatial_transform_2=data_transforms['train'])
     loader_train_nonviolence = DataLoader(dataset_train_nonviolence,
                         batch_size=config.train_batch,
                         shuffle=True,
@@ -437,7 +479,9 @@ def main_2(config: Config):
                             train=False,
                             dataset=config.dataset,
                             input_type=config.input_type,
-                            random=config.tube_sampling_random)
+                            random=config.tube_sampling_random,
+                            keyframe=keyframe,
+                            spatial_transform_2=data_transforms['val'])
     dataset_val_violence = TubeDataset(frames_per_tube=16, 
                             min_frames_per_tube=8,
                             make_function=val_make_dataset_violence,
@@ -446,7 +490,9 @@ def main_2(config: Config):
                             train=False,
                             dataset=config.dataset,
                             input_type=config.input_type,
-                            random=config.tube_sampling_random)
+                            random=config.tube_sampling_random,
+                            keyframe=keyframe,
+                            spatial_transform_2=data_transforms['val'])
     loader_val_nonviolence = DataLoader(dataset_val_nonviolence,
                         batch_size=config.train_batch,
                         shuffle=True,
@@ -475,6 +521,9 @@ def main_2(config: Config):
     elif config.model == 'i3d+roi+binary':
         model = ViolenceDetectorBinary(
             freeze=config.freeze).to(device)
+        params = model.parameters()
+    elif config.model == 'TwoStreamVD_Binary':
+        model = TwoStreamVD_Binary().to(device)
         params = model.parameters()
 
     exp_config_log = "SpTmpDetector_{}_model({})_head({})_stream({})_cv({})_epochs({})_tubes({})_tub_sampl_rand({})_optimizer({})_lr({})_note({})".format(config.dataset,
@@ -537,6 +586,8 @@ def main_2(config: Config):
             video_images = torch.cat([data[0][1], data[1][1]], dim=0).to(device)
             boxes = torch.cat([data[0][0], data[1][0]], dim=0).to(device)
             labels = torch.cat([data[0][2], data[1][2]], dim=0).to(device)
+            
+            keyframes = torch.cat([data[0][5], data[1][5]], dim=0).to(device)
             # print('video_images: ', video_images.size())
             # print('num_tubes: ', config.num_tubes)
             # print('boxes: ', boxes.size())
@@ -582,6 +633,7 @@ def main_2(config: Config):
             video_images = torch.cat([data[0][1], data[1][1]], dim=0).to(device)
             boxes = torch.cat([data[0][0], data[1][0]], dim=0).to(device)
             labels = torch.cat([data[0][2], data[1][2]], dim=0).to(device)
+            keyframes = torch.cat([data[0][5], data[1][5]], dim=0).to(device)
             # no need to track grad in eval mode
             with torch.no_grad():
                 outputs = _model(video_images, boxes, config.num_tubes)

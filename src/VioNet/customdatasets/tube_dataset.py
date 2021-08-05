@@ -128,7 +128,9 @@ class TubeDataset(data.Dataset):
                        train=False,
                        dataset='',
                        input_type='rgb',
-                       random=True):
+                       random=True,
+                       keyframe=False,
+                       spatial_transform_2=None):
         self.dataset = dataset
         self.input_type = input_type
         self.frames_per_tube = frames_per_tube
@@ -139,6 +141,8 @@ class TubeDataset(data.Dataset):
         self.paths, self.labels, self.annotations = filter_data_without_tubelet(self.paths, self.labels, self.annotations)
 
         self.max_video_len = 40 if dataset=='hockey' else 149
+        self.keyframe = keyframe
+        self.spatial_transform_2 = spatial_transform_2
 
         print('paths: {}, labels:{}, annot:{}'.format(len(self.paths), len(self.labels), len(self.annotations)))
         self.sampler = TubeCrop(tube_len=frames_per_tube, 
@@ -193,6 +197,17 @@ class TubeDataset(data.Dataset):
             tube_images = self.load_tube_images(path, seg)
             video_images.append(torch.stack(tube_images, dim=0))
         
+        key_frame = None
+        if self.keyframe:
+            for seg in segments:
+                i = seg[int(len(seg)/2)]
+                if self.dataset == 'rwf-2000':
+                    img_path = os.path.join(path,'frame{}.jpg'.format(i+1)) #rwf
+                elif self.dataset == 'hockey':
+                    img_path = os.path.join(path,'frame{:03}.jpg'.format(i+1))
+                key_frame = self.spatial_transform_2(imread(i)) if self.spatial_transform_2 else imread(i)
+
+        
         if len(video_images)<self.max_num_tubes:
             bbox_id = len(video_images)
             for i in range(self.max_num_tubes-len(video_images)):
@@ -213,6 +228,8 @@ class TubeDataset(data.Dataset):
 
         video_images = torch.stack(video_images, dim=0).permute(0,2,1,3,4)
         # return path, label, annotation, frames_names, boxes, video_images
+        if self.keyframe:
+            return boxes, video_images, label, num_tubes, path, key_frame
         return boxes, video_images, label, num_tubes, path
 
 

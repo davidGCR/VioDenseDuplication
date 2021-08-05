@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from models.i3d import InceptionI3d
 
 class Identity(nn.Module):
   def __init__(self):
@@ -20,3 +21,18 @@ class Backbone3DResNet(nn.Module):
     x = self.backbone(x)
     # x = self.roi_layer(x, bbox)
     return x
+
+class BackboneI3D(nn.Module):
+  def __init__(self, final_endpoint, pretrained):
+    super().__init__()
+    self.backbone = InceptionI3d(2, in_channels=3, final_endpoint=final_endpoint)
+    load_model_path = pretrained
+    state_dict = torch.load(load_model_path)
+    self.backbone.load_state_dict(state_dict,  strict=False)
+  
+  def forward(self, x):
+    x = self.backbone(x)
+    return x
+    
+
+

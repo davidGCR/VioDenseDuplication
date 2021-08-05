@@ -1,13 +1,16 @@
-from typing import Dict
+import sys
+sys.path.insert(1, '/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/AVSS2019/src/VioNet')
 import torch
 from torch import nn
 from models.i3d import InceptionI3d
-from models.3d_resnet_backbone import Backbone3DResNet
+from models._3d_backbones import Backbone3DResNet, BackboneI3D
+from models._2d_backbones import Backbone2DResNet
 from models.roi_extractor_3d import SingleRoIExtractor3D
 # from mmaction.models import SingleRoIExtractor3D
 
 from models.anomaly_detector import AnomalyDetector
 from torch.nn import functional as F
+from models.v_d_config import *
 # from i3d import InceptionI3d
 # from roi_extractor_3d import SingleRoIExtractor3D
 # from anomaly_detector import AnomalyDetector
@@ -178,7 +181,7 @@ class RoiPoolLayer(nn.Module):
         x = x.view(x.size(0),-1)
         return x
 
-from models.v_d_config import VD_CONFIG
+
 
 class ViolenceDetector(nn.Module):
     def __init__(self,config=VD_CONFIG,
@@ -295,12 +298,6 @@ class ViolenceDetectorBinary(nn.Module):
 
     
     def forward(self, x, bbox, num_tubes=0):
-        #x: b,c,t,w,h
-        # x = self.backbone(x) #torch.Size([4, 528, 4, 14, 14])
-        # x = self.head(x, bbox)
-        # print('in: ', x.size())
-        # print('boxes in: ', bbox)
-
         batch, c, t, h, w = x.size()
         batch = int(batch/num_tubes)
         x = self.backbone(x)
@@ -312,27 +309,101 @@ class ViolenceDetectorBinary(nn.Module):
             
         # print('i3d out: ', x.size(), ' bbox: ',bbox.size())
         x = self.classifier(x)
+        return x
+
+from torchvision.ops.roi_align import RoIAlign
+
+class TwoStreamVD_Binary(nn.Module):
+    def __init__(self, config=TWO_STREAM_CONFIG,
+                        freeze=False):
+        super(TwoStreamVD_Binary, self).__init__()
+        self._3d_stream = BackboneI3D(
+            config['final_endpoint'], 
+            config['pretrained_backbone_model'])
         
+        self._2d_stream = Backbone2DResNet(
+            config['2d_backbone'],
+            config['base_out_layer'],
+            num_trainable_layers=config['num_trainable_layers'])
+        
+        self.roi_pool_3d = RoiPoolLayer(
+            roi_layer_type=config['roi_layer_type'],
+            roi_layer_output=config['roi_layer_output'],
+            roi_with_temporal_pool=config['roi_with_temporal_pool'],
+            roi_spatial_scale=config['roi_spatial_scale'])
+        
+        self.roi_pool_2d = RoIAlign(output_size=config['roi_layer_output'],
+                                    spatial_scale=config['roi_spatial_scale'],
+                                    sampling_ratio=0,
+                                    aligned=True
+                                    )
+        self.avg_pool_2d = nn.AdaptiveAvgPool2d((1,1))
+        self.classifier = nn.Sequential(
+            nn.Linear(config['fc_input_dim'], 2),
+            # nn.ReLU(),
+            # nn.Dropout(0.6),
+            # nn.Linear(128, 32),
+            # nn.ReLU(),
+            # nn.Dropout(0.6),
+            # nn.Linear(32, 2),
+            # nn.Sigmoid()
+        )
+        
+    def forward(self, x1, x2, bbox, num_tubes=0):
+        batch, c, t, h, w = x1.size()
+        batch = int(batch/num_tubes)
+
+        x_3d = self._3d_stream(x1) #torch.Size([2, 528, 4, 14, 14])
+        x_2d = self._2d_stream(x2) #torch.Size([2, 1024, 14, 14])
+
+       
+        # print('output_3dbackbone: ', x_3d.size())
+        # print('output_2dbackbone: ', x_2d.size())
+
+        x_3d = self.roi_pool_3d(x_3d,bbox)#torch.Size([8, 528])
+        print('3d after roipool: ', x_3d.size())
+
+        x_2d = self.roi_pool_2d(x_2d,bbox)
+        print('2d after roipool: ', x_2d.size())
+
+        x_2d = self.avg_pool_2d(x_2d)
+        x_2d = torch.squeeze(x_2d)
+
+        x = torch.cat((x_3d,x_2d), dim=1)
+
+        x = x.view(batch, 4, -1)
+        x = x.max(dim=1).values
+
+        x=self.classifier(x)
+
         return x
 
 
 
 
+if __name__=='__main__':
+    
+    print('------- ViolenceDetector --------')
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    model = TwoStreamVD_Binary().to(device)
+    batch = 2
+    tubes = 4
+    input_1 = torch.rand(batch*tubes,3,16,224,224).to(device)
 
-# if __name__=='__main__':
-#     print('------- ViolenceDetector --------')
-#     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-#     # device = torch.device("cpu")
-#     model = ViolenceDetector(detector_input_dim=528).to(device)
-#     # print(model)
-    
-#     tubes_num = 4
-#     input = torch.rand(tubes_num,3,16,224,224).to(device)
-    
-#     tubes = JSON_2_tube('/media/david/datos/Violence DATA/Tubes/RWF-2000/train/Fight/_6-B11R9FJM_2.json')
-#     bbox = get_central_bbox(tubes[0]).to(device)
-    
-#     print('central bbox:', bbox.size(), bbox)
+    input_2 = torch.rand(batch*tubes,3,224,224).to(device)
 
-#     output = model(input, bbox)
-#     print('output: ', output.size())
+    rois = torch.rand(batch*tubes, 5).to(device)
+    rois[0] = torch.tensor([0,  62.5481,  49.0223, 122.0747, 203.4146]).to(device)#torch.tensor([1, 14, 16, 66, 70]).to(device)
+    rois[1] = torch.tensor([1, 34, 14, 85, 77]).to(device)
+    rois[2] = torch.tensor([1, 34, 14, 85, 77]).to(device)
+    rois[3] = torch.tensor([1, 34, 14, 85, 77]).to(device)
+    rois[4] = torch.tensor([1, 34, 14, 85, 77]).to(device)
+    rois[5] = torch.tensor([1, 34, 14, 85, 77]).to(device)
+    rois[6] = torch.tensor([1, 34, 14, 85, 77]).to(device)
+    rois[7] = torch.tensor([1, 34, 14, 85, 77]).to(device)
+
+    output = model(input_1, input_2, rois, tubes)
+    print('output: ', output.size())
+    # print('output_1: ', output_1.size())
+
+    # print('output_2: ', output_2.size())

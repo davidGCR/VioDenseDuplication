@@ -14,6 +14,7 @@ class IntResNet(ResNet):
         
         self._layers = []
         for l in list(self._modules.keys()):
+            # print(l)
             self._layers.append(l)
             if l == output_layer:
                 break
@@ -28,7 +29,7 @@ class IntResNet(ResNet):
     def forward(self, x):
         return self._forward_impl(x)
 
-class NewModel(nn.Module):
+class Backbone2DResNet(nn.Module):
     # base_model : The model we want to get the output from
     # base_out_layer : The layer we want to get output from
     # num_trainable_layer : Number of layers we want to finetune (counted from the top)
@@ -113,12 +114,18 @@ class NewModel(nn.Module):
         return x
 
 from torchsummary import summary
+from torchvision import models
 
 if __name__ ==  '__main__':
-    # model = NewModel('resnet50','layer4',num_trainable_layers = 2)
+    model = Backbone2DResNet('resnet50','layer4',num_trainable_layers=3)
+    print(model)
     # summary(model,input_size=(3, 224, 224))
-    from torchvision import models
-    model_ft = models.resnet50(pretrained=True)
-    summary(model_ft,input_size=(3, 224, 224))
-    print(model_ft)
+    
+    # model_ft = models.resnet50(pretrained=True)
+    # summary(model_ft,input_size=(3, 224, 224))
+    # print(model_ft)
+
+    input = torch.rand(4,3,224,224)
+    output=model(input)
+    print('out: ', output.size())
     
