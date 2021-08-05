@@ -30,7 +30,7 @@ import numpy as np
 from global_var import *
 from configs_datasets import DefaultTrasformations
 from models.mil_loss import MIL
-from models.violence_detector import TwoStreamVD_Binary, ViolenceDetectorRegression
+from models.violence_detector import *
 
 def load_features(config: Config):
     device = config.device
@@ -400,7 +400,11 @@ def main_2(config: Config):
                         'val': None
                         }
     keyframe = False
-    if config.model == 'TwoStreamVD_Binary':
+    models_2d_ = [
+        'TwoStreamVD_Binary',
+        'TwoStreamVD_Binary_CFam'
+    ]
+    if config.model in models_2d_:
         input_size = 224
         keyframe = True
         data_transforms = {
@@ -417,7 +421,7 @@ def main_2(config: Config):
                             transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
                         ]),
                     }
-    print('keyframe: ', keyframe)
+    # print('keyframe: ', keyframe)
     
     spatial_t = DefaultTrasformations(model_name='i3d', size=224, train=True)
     dataset_train_nonviolence = TubeDataset(frames_per_tube=16, 
@@ -515,8 +519,6 @@ def main_2(config: Config):
     from models.violence_detector import ViolenceDetectorBinary
     if config.model == 'densenet_lean_roi':
         model, params = VioNet_densenet_lean_roi(config, config.pretrained_model)
-    elif config.model == 'i3d+roi+fc':
-        model, params = ViolenceDetector_model(config, device, config.pretrained_model)
     elif config.model == 'i3d+roi+i3d':
         model, params = VioNet_I3D_Roi(config, device, config.pretrained_model)
     elif config.model == 'i3d+roi+binary':
@@ -525,6 +527,9 @@ def main_2(config: Config):
         params = model.parameters()
     elif config.model == 'TwoStreamVD_Binary':
         model = TwoStreamVD_Binary().to(device)
+        params = model.parameters()
+    elif config.model == 'TwoStreamVD_Binary_CFam':
+        model = TwoStreamVD_Binary_CFam().to(device)
         params = model.parameters()
 
     exp_config_log = "SpTmpDetector_{}_model({})_head({})_stream({})_cv({})_epochs({})_tubes({})_tub_sampl_rand({})_optimizer({})_lr({})_note({})".format(config.dataset,
@@ -858,14 +863,14 @@ def get_accuracy(y_prob, y_true):
 
 if __name__=='__main__':
     config = Config(
-        model='ViolenceDetectorRegression',#'TwoStreamVD_Binary',#'i3d-roi',i3d+roi+fc
-        head=REGRESSION,
+        model='TwoStreamVD_Binary_CFam',#'TwoStreamVD_Binary',#'i3d-roi',i3d+roi+fc
+        head=BINARY,
         dataset=RWF_DATASET,
         num_cv=1,
         input_type='rgb',
         device=get_torch_device(),
         num_epoch=100,
-        optimizer='Adagrad',
+        optimizer='SGD',
         learning_rate=0.001, #0.001 for adagrad
         train_batch=2,
         val_batch=2,
@@ -873,7 +878,7 @@ if __name__=='__main__':
         tube_sampling_random=True,
         save_every=10,
         freeze=True,
-        additional_info='usil-milloss',
+        additional_info='',
         home_path=HOME_UBUNTU
     )
     # config.pretrained_model = "/content/DATASETS/Pretrained_Models/DenseNetLean_Kinetics.pth"
@@ -886,7 +891,7 @@ if __name__=='__main__':
     #                                       'rwf_trained/save_at_epoch-127.chk')
 
     # main(config)
-    # main_2(config)
-    MIL_training(config)
+    main_2(config)
+    # MIL_training(config)
     # extract_features(config, output_folder='/media/david/datos/Violence DATA/i3d-FeatureMaps/rwf')
     # load_features(config)
