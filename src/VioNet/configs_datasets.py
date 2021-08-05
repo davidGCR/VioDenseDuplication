@@ -83,6 +83,11 @@ class DefaultTrasformations:
         elif self.model_name == 'MDIResNet':
             sample_size = (224,224) if not self.size else self.size
             norm = dyn_img_transf_parameters()
+        else:
+            print('Loading default spatial transformations')
+            sample_size = (224,224) if not self.size else self.size
+            norm = Normalize([38.756858/255, 3.88248729/255, 40.02898126/255], [110.6366688/255, 103.16065604/255, 96.29023126/255])
+
         return sample_size, norm
 
     def __call__(self):

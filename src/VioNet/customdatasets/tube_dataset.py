@@ -263,7 +263,8 @@ def my_collate(batch):
     labels = [item[2] for item in batch if item[2] is not None]
     num_tubes = [item[3] for item in batch if item[3] is not None]
     paths = [item[4] for item in batch if item[4]]
-    key_frames = [item[5] for item in batch if item[5] is not None]
+    if len(batch[0]) == 6:
+        key_frames = [item[5] for item in batch if item[5] is not None]
 
     
 
@@ -285,10 +286,12 @@ def my_collate(batch):
     images = torch.cat(images,dim=0)
     labels = torch.tensor(labels)
     num_tubes = torch.tensor(num_tubes)
-    key_frames = torch.cat(key_frames,dim=0)
+    if len(batch[0]) == 6:
+        key_frames = torch.cat(key_frames,dim=0)
 
-    return boxes, images, labels, num_tubes, paths, key_frames#torch.stack(labels, dim=0)
-
+        return boxes, images, labels, num_tubes, paths, key_frames#torch.stack(labels, dim=0)
+    return boxes, images, labels, num_tubes, paths
+    
 import json
 from torch.utils.data import DataLoader
 from torchvision import transforms

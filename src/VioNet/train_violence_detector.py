@@ -18,7 +18,7 @@ from customdatasets.tube_dataset import TubeDataset, my_collate, my_collate_2, O
 from torch.utils.data import DataLoader, dataset
 
 from config import Config
-from model import ViolenceDetector_model, VioNet_I3D_Roi, VioNet_densenet_lean_roi
+from model import VioNet_I3D_Roi, VioNet_densenet_lean_roi
 from models.anomaly_detector import custom_objective, RegularizedLoss
 from epoch import calculate_accuracy_2, train_regressor
 from utils import Log, save_checkpoint, load_checkpoint
@@ -730,9 +730,9 @@ def MIL_training(config: Config):
     
    
     ################## Full Detector ########################
-    
-    model, params = ViolenceDetectorRegression(freeze=config.freeze).to(device)
-
+    if config.model == 'ViolenceDetectorRegression':
+        model = ViolenceDetectorRegression(freeze=config.freeze).to(device)
+        params = model.parameters()
     exp_config_log = "SpTmpDetector_{}_model({})_head({})_stream({})_cv({})_epochs({})_tubes({})_tub_sampl_rand({})_optimizer({})_lr({})_note({})".format(config.dataset,
                                                                 config.model,
                                                                 config.head,
@@ -858,14 +858,14 @@ def get_accuracy(y_prob, y_true):
 
 if __name__=='__main__':
     config = Config(
-        model='TwoStreamVD_Binary',#'i3d-roi',i3d+roi+fc
-        head=BINARY,
+        model='ViolenceDetectorRegression',#'TwoStreamVD_Binary',#'i3d-roi',i3d+roi+fc
+        head=REGRESSION,
         dataset=RWF_DATASET,
         num_cv=1,
         input_type='rgb',
         device=get_torch_device(),
         num_epoch=100,
-        optimizer='SGD',
+        optimizer='Adagrad',
         learning_rate=0.001, #0.001 for adagrad
         train_batch=2,
         val_batch=2,
@@ -873,8 +873,8 @@ if __name__=='__main__':
         tube_sampling_random=True,
         save_every=10,
         freeze=True,
-        additional_info='usingbalanceddatasets',
-        home_path=HOME_COLAB
+        additional_info='usil-milloss',
+        home_path=HOME_UBUNTU
     )
     # config.pretrained_model = "/content/DATASETS/Pretrained_Models/DenseNetLean_Kinetics.pth"
     # config.pretrained_model='/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt'
@@ -886,7 +886,7 @@ if __name__=='__main__':
     #                                       'rwf_trained/save_at_epoch-127.chk')
 
     # main(config)
-    main_2(config)
-    # MIL_training(config)
+    # main_2(config)
+    MIL_training(config)
     # extract_features(config, output_folder='/media/david/datos/Violence DATA/i3d-FeatureMaps/rwf')
     # load_features(config)
