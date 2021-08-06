@@ -766,7 +766,7 @@ def MIL_training(config: Config):
    
     ################## Full Detector ########################
     if config.model == 'ViolenceDetectorRegression':
-        model = ViolenceDetectorRegression(freeze=config.freeze).to(device)
+        model = ViolenceDetectorRegression(freeze=config.freeze, aggregate=True).to(device)
         params = model.parameters()
     elif config.model == 'TwoStreamVDRegression':
         model = TwoStreamVDRegression(freeze=config.freeze).to(device)
@@ -811,8 +811,10 @@ def MIL_training(config: Config):
         optimizer = torch.optim.Adagrad(params, lr= config.learning_rate, weight_decay=0.0010000000474974513)
         scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[25, 50])
     
-    
-    criterion = MIL
+    if config.criterion == 'BCE':
+        criterion = nn.BCELoss().to(device)
+    elif config.criterion=='MIL':
+        criterion = MIL
     
     from utils import AverageMeter
 
@@ -869,7 +871,11 @@ def MIL_training(config: Config):
                 outs = model(video_images, boxes, config.num_tubes)
             # print('outs: ', outs.size())
             #loss
-            loss = criterion(outs,config.train_batch)
+            if config.criterion == 'BCE':
+                labels = torch.cat([data[0][2], data[1][2]], dim=0).float().to(device)
+                loss = criterion(outs,labels)
+            elif config.criterion == 'MIL':
+                loss = criterion(outs,config.train_batch)
             train_loss += loss.item()
             # backward + optimize
             loss.backward()
@@ -911,6 +917,7 @@ if __name__=='__main__':
         input_type='rgb',
         device=get_torch_device(),
         num_epoch=100,
+        criterion='BCE',
         optimizer='Adadelta',
         learning_rate=0.00001, #0.001 for adagrad
         train_batch=2,

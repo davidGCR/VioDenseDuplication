@@ -108,10 +108,12 @@ class RoiPoolLayer(nn.Module):
 
 class ViolenceDetectorRegression(nn.Module):
     def __init__(self,config=VD_CONFIG,
-                      freeze=False
+                      freeze=False,
+                      aggregate=False
                       ):
         super(ViolenceDetectorRegression, self).__init__()
         self.config = config
+        self.aggregate = aggregate
         #Backbone
         self.final_endpoint = config['final_endpoint']
         self.backbone = BackboneI3D(
@@ -134,6 +136,16 @@ class ViolenceDetectorRegression(nn.Module):
         # print('i3d out: ', x.size(), ' bbox: ',bbox.size())
         x = self.roi_layer(x, bbox)
         x = self.fc(x)
+        if self.aggregate:
+            batch_size = int(batch/num_tubes)
+            x = x.view(batch, num_tubes)
+            x = x.max(dim=1).values
+            # for i in range(batch_size):
+            #     x_abnorm = x[i, :num_tubes]
+            #     x_norm  = x[i, num_tubes:]
+            #     x_abnorm = torch.max(x_abnorm) # anomaly
+            #     x_norm = torch.max(x_norm) # normal
+                
         return x
 
 class TwoStreamVDRegression(nn.Module):
@@ -396,7 +408,8 @@ if __name__=='__main__':
     print('------- ViolenceDetector --------')
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     # model = TwoStreamVD_Binary().to(device)
-    model = TwoStreamVD_Binary_CFam().to(device)
+    # model = TwoStreamVD_Binary_CFam().to(device)
+    model = ViolenceDetectorRegression(aggregate=True).to(device)
     batch = 2
     tubes = 4
     input_1 = torch.rand(batch*tubes,3,16,224,224).to(device)
@@ -413,7 +426,8 @@ if __name__=='__main__':
     rois[6] = torch.tensor([1, 34, 14, 85, 77]).to(device)
     rois[7] = torch.tensor([1, 34, 14, 85, 77]).to(device)
 
-    output = model(input_1, input_2, rois, tubes)
+    # output = model(input_1, input_2, rois, tubes)
+    output = model(input_1, rois, tubes)
     print('output: ', output.size())
     
     # regressor = ViolenceDetectorRegression().to(device)

@@ -43,7 +43,8 @@ class Config:
             num_tubes=4,
             head='binary',
             tube_sampling_random=True,
-            num_workers=4
+            num_workers=4,
+            criterion='MIL'
     ):
 
         # VioNet models
@@ -114,4 +115,5 @@ class Config:
         self.head = head
         self.tube_sampling_random = tube_sampling_random
         self.num_workers = num_workers
+        self.criterion = criterion
 
