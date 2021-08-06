@@ -49,7 +49,7 @@ TWO_STREAM_REGRESSION_CONFIG = {
     'roi_with_temporal_pool':True,
     'roi_spatial_scale':16,
     'roi_layer_type':'RoIAlign',
-    'pretrained_backbone_model': '/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/pytorch-i3d/models/rgb_imagenet.pt',
+    'pretrained_backbone_model': '/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt',
     '2d_backbone': 'resnet50',
     'base_out_layer': 'layer3',
     'num_trainable_layers': 0,

@@ -2,6 +2,7 @@
 from os import path
 from pickle import FALSE
 from PIL import Image, ImageFile
+from torch.nn import parameter
 
 # from VioNet.dataset import make_dataset
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -767,6 +768,9 @@ def MIL_training(config: Config):
     if config.model == 'ViolenceDetectorRegression':
         model = ViolenceDetectorRegression(freeze=config.freeze).to(device)
         params = model.parameters()
+    elif config.model == 'TwoStreamVDRegression':
+        model = TwoStreamVDRegression(freeze=config.freeze).to(device)
+        params = model.parameters()
     exp_config_log = "SpTmpDetector_{}_model({})_head({})_stream({})_cv({})_epochs({})_tubes({})_tub_sampl_rand({})_optimizer({})_lr({})_note({})".format(config.dataset,
                                                                 config.model,
                                                                 config.head,
@@ -804,7 +808,7 @@ def MIL_training(config: Config):
                                                            factor=config.factor,
                                                            min_lr=config.min_lr)
     elif config.optimizer == 'Adagrad':
-        optimizer = torch.optim.Adagrad(model.parameters(), lr= config.learning_rate, weight_decay=0.0010000000474974513)
+        optimizer = torch.optim.Adagrad(params, lr= config.learning_rate, weight_decay=0.0010000000474974513)
         scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[25, 50])
     
     
@@ -828,9 +832,9 @@ def MIL_training(config: Config):
         for i, data in enumerate(zip(loader_violence, loader_nonviolence)):
             # print('iiiiiiiii :' , i+1)
             # print('=============== violence batch')
-            boxes, video_images, labels, num_tubes, paths = data[0]
-            boxes, video_images = boxes.to(device), video_images.to(device)
-            labels = labels.float().to(device) if config.head == REGRESSION else labels.to(device)
+            # boxes, video_images, labels, num_tubes, paths = data[0]
+            # boxes, video_images = boxes.to(device), video_images.to(device)
+            # labels = labels.float().to(device) if config.head == REGRESSION else labels.to(device)
 
             # print('video_images: ', video_images.size())
             # print('num_tubes: ', config.num_tubes)
@@ -839,9 +843,9 @@ def MIL_training(config: Config):
             # print('labels: ', labels)
 
             # print('=============== nonviolence batch')
-            boxes, video_images, labels, num_tubes, paths = data[1]
-            boxes, video_images = boxes.to(device), video_images.to(device)
-            labels = labels.float().to(device) if config.head == REGRESSION else labels.to(device)
+            # boxes, video_images, labels, num_tubes, paths = data[1]
+            # boxes, video_images = boxes.to(device), video_images.to(device)
+            # labels = labels.float().to(device) if config.head == REGRESSION else labels.to(device)
 
             # print('video_images: ', video_images.size())
             # print('num_tubes: ', config.num_tubes)
@@ -851,7 +855,8 @@ def MIL_training(config: Config):
 
             video_images = torch.cat([data[0][1], data[1][1]], dim=0).to(device)
             boxes = torch.cat([data[0][0], data[1][0]], dim=0).to(device)
-            keyframes = torch.cat([data[0][5], data[1][5]], dim=0).to(device)
+            if config.model == 'TwoStreamVDRegression':
+                keyframes = torch.cat([data[0][5], data[1][5]], dim=0).to(device)
             # print('video_images cat: ', video_images.size())
             # print('boxes cat: ', boxes.size())
 
@@ -874,7 +879,11 @@ def MIL_training(config: Config):
             'Epoch: [{}]\t'
             'Loss(train): {loss:.4f}\t'.format(epoch, loss=train_loss)
         )
-        scheduler.step(train_loss)
+        
+        if config.optimizer == 'Adagrad':
+            scheduler.step()
+        else:
+            scheduler.step(train_loss)
         writer.add_scalar('training loss', train_loss, epoch)
 
         if (epoch+1)%config.save_every == 0:
@@ -895,15 +904,15 @@ def get_accuracy(y_prob, y_true):
 
 if __name__=='__main__':
     config = Config(
-        model='TwoStreamVDRegression',#'TwoStreamVD_Binary',#'i3d-roi',i3d+roi+fc
-        head=BINARY,
+        model='ViolenceDetectorRegression',#'TwoStreamVD_Binary',#'i3d-roi',i3d+roi+fc
+        head=REGRESSION,
         dataset=RWF_DATASET,
         num_cv=1,
         input_type='rgb',
         device=get_torch_device(),
         num_epoch=100,
-        optimizer='SGD',
-        learning_rate=0.001, #0.001 for adagrad
+        optimizer='Adadelta',
+        learning_rate=0.00001, #0.001 for adagrad
         train_batch=2,
         val_batch=2,
         num_tubes=4,
@@ -924,7 +933,7 @@ if __name__=='__main__':
     #                                       'rwf_trained/save_at_epoch-127.chk')
 
     # main(config)
-    main_2(config)
-    # MIL_training(config)
+    # main_2(config)
+    MIL_training(config)
     # extract_features(config, output_folder='/media/david/datos/Violence DATA/i3d-FeatureMaps/rwf')
     # load_features(config)

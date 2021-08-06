@@ -99,8 +99,8 @@ class RoiPoolLayer(nn.Module):
         # print('after temporal_pool: ', x.size())
 
         if self.with_spatial_pool:
-            x = self.spatial_pool(x)
-            print('after spatial_pool: ', x.size())
+            x = self.spatial_pool(x) #torch.Size([16, 528, 1, 1, 1]
+            # print('after spatial_pool: ', x.size())
             x = x.view(x.size(0),-1)
         return x
 
@@ -143,7 +143,8 @@ class TwoStreamVDRegression(nn.Module):
         super(TwoStreamVDRegression, self).__init__()
         self._3d_stream = BackboneI3D(
             config['final_endpoint'], 
-            config['pretrained_backbone_model'])
+            config['pretrained_backbone_model'],
+            freeze)
         
         self._2d_stream = Backbone2DResNet(
             config['2d_backbone'],
@@ -155,7 +156,7 @@ class TwoStreamVDRegression(nn.Module):
             roi_layer_output=config['roi_layer_output'],
             roi_with_temporal_pool=config['roi_with_temporal_pool'],
             roi_spatial_scale=config['roi_spatial_scale'],
-            with_spatial_pool=False)
+            with_spatial_pool=True)
         
         self.roi_pool_2d = RoIAlign(output_size=config['roi_layer_output'],
                                     spatial_scale=config['roi_spatial_scale'],
