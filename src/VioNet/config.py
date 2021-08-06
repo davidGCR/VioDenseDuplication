@@ -42,7 +42,8 @@ class Config:
             optimizer='SGD', #adadelta
             num_tubes=4,
             head='binary',
-            tube_sampling_random=True
+            tube_sampling_random=True,
+            num_workers=4
     ):
 
         # VioNet models
@@ -112,4 +113,5 @@ class Config:
         self.num_tubes = num_tubes
         self.head = head
         self.tube_sampling_random = tube_sampling_random
+        self.num_workers = num_workers
 

@@ -1,5 +1,6 @@
 import torch
 import torch.nn.functional as F
+import torch.nn as nn
 
 def MIL(y_pred, batch_size, is_transformer=0, num_instances=4):
     loss = torch.tensor(0.).cuda()
@@ -35,3 +36,25 @@ def MIL(y_pred, batch_size, is_transformer=0, num_instances=4):
     loss = (loss+sparsity)/batch_size
 
     return loss
+
+def MIL_BCE(y_pred, batch_size, is_transformer=0, num_instances=4, device=None):
+    loss = torch.tensor(0.).to(device)
+    if is_transformer==0:
+        y_pred = y_pred.view(batch_size, -1)
+        # print('y_pred: ', y_pred.size())
+    else:
+        y_pred = torch.sigmoid(y_pred)
+
+    for i in range(batch_size):
+        y_anomaly = y_pred[i, :num_instances]
+        y_normal  = y_pred[i, num_instances:]
+
+        y_anomaly_max = torch.max(y_anomaly) # anomaly
+        y_anomaly_min = torch.min(y_anomaly)
+
+        y_normal_max = torch.max(y_normal) # normal
+        y_normal_min = torch.min(y_normal)
+        # loss +=
+    
+
+    return None

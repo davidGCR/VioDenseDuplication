@@ -11,6 +11,7 @@ from models.roi_extractor_3d import SingleRoIExtractor3D
 from models.anomaly_detector import AnomalyDetector
 from torch.nn import functional as F
 from models.v_d_config import *
+from models.cfam import CFAMBlock 
 # from i3d import InceptionI3d
 # from roi_extractor_3d import SingleRoIExtractor3D
 # from anomaly_detector import AnomalyDetector
@@ -132,6 +133,55 @@ class ViolenceDetectorRegression(nn.Module):
         x = self.backbone(x)
         # print('i3d out: ', x.size(), ' bbox: ',bbox.size())
         x = self.roi_layer(x, bbox)
+        x = self.fc(x)
+        return x
+
+class TwoStreamVDRegression(nn.Module):
+    def __init__(self,config=TWO_STREAM_REGRESSION_CONFIG,
+                      freeze=False
+                      ):
+        super(TwoStreamVDRegression, self).__init__()
+        self._3d_stream = BackboneI3D(
+            config['final_endpoint'], 
+            config['pretrained_backbone_model'])
+        
+        self._2d_stream = Backbone2DResNet(
+            config['2d_backbone'],
+            config['base_out_layer'],
+            num_trainable_layers=config['num_trainable_layers'])
+        
+        self.roi_pool_3d = RoiPoolLayer(
+            roi_layer_type=config['roi_layer_type'],
+            roi_layer_output=config['roi_layer_output'],
+            roi_with_temporal_pool=config['roi_with_temporal_pool'],
+            roi_spatial_scale=config['roi_spatial_scale'],
+            with_spatial_pool=False)
+        
+        self.roi_pool_2d = RoIAlign(output_size=config['roi_layer_output'],
+                                    spatial_scale=config['roi_spatial_scale'],
+                                    sampling_ratio=0,
+                                    aligned=True
+                                    )
+        self.avg_pool_2d = nn.AdaptiveAvgPool2d((1,1))
+        self.fc = Learner(input_dim=config['fc_input_dim'])
+    
+    def forward(self, x1, x2, bbox, num_tubes=0):
+        batch, c, t, h, w = x1.size()
+        batch = int(batch/num_tubes)
+
+        x_3d = self._3d_stream(x1) #torch.Size([2, 528, 4, 14, 14])
+        x_2d = self._2d_stream(x2) #torch.Size([2, 1024, 14, 14])
+
+        x_3d = self.roi_pool_3d(x_3d,bbox)#torch.Size([8, 528])
+        # print('3d after roipool: ', x_3d.size())
+
+        x_2d = self.roi_pool_2d(x_2d,bbox)
+        # print('2d after roipool: ', x_2d.size())
+
+        x_2d = self.avg_pool_2d(x_2d)
+        x_2d = torch.squeeze(x_2d)
+
+        x = torch.cat((x_3d,x_2d), dim=1)
         x = self.fc(x)
         return x
 
@@ -263,7 +313,7 @@ class TwoStreamVD_Binary(nn.Module):
         x=self.classifier(x)
 
         return x
-from cfam import CFAMBlock 
+
 class TwoStreamVD_Binary_CFam(nn.Module):
     def __init__(self, config=TWO_STREAM_CFAM_CONFIG,
                         freeze=False):
@@ -325,9 +375,14 @@ class TwoStreamVD_Binary_CFam(nn.Module):
         x = torch.cat((x_3d,x_2d), dim=1) #torch.Size([8, 1552, 8, 8])
         x = self.CFAMBlock(x) #torch.Size([8, 145, 8, 8])
 
-        x = x.view(batch, 4, -1)
+        # x = x.view(batch, 4, -1)
+        x = x.view(batch, 4, 145, 8, 8)
+        # x = self.avg_pool_2d(x)
         x = x.max(dim=1).values #torch.Size([2, 9280])
-
+        # print('after max pool: ', x.size())
+        x = self.avg_pool_2d(x)
+        # print('after avgpool 2d: ', x.size())
+        x = torch.squeeze(x)
         x=self.classifier(x)
 
         return x

@@ -189,8 +189,6 @@ def main(config: Config):
     from models.violence_detector import ViolenceDetectorBinary
     if config.model == 'densenet_lean_roi':
         model, params = VioNet_densenet_lean_roi(config, config.pretrained_model)
-    elif config.model == 'i3d+roi+fc':
-        model, params = ViolenceDetector_model(config, device, config.pretrained_model)
     elif config.model == 'i3d+roi+i3d':
         model, params = VioNet_I3D_Roi(config, device, config.pretrained_model)
     elif config.model == 'i3d+roi+binary':
@@ -449,14 +447,14 @@ def main_2(config: Config):
     loader_train_nonviolence = DataLoader(dataset_train_nonviolence,
                         batch_size=config.train_batch,
                         shuffle=True,
-                        num_workers=4,
+                        num_workers=config.num_workers,
                         # pin_memory=True,
                         collate_fn=my_collate
                         )
     loader_train_violence = DataLoader(dataset_train_violence,
                         batch_size=config.train_batch,
                         shuffle=True,
-                        num_workers=4,
+                        num_workers=config.num_workers,
                         # pin_memory=True,
                         collate_fn=my_collate
                         )
@@ -501,14 +499,14 @@ def main_2(config: Config):
     loader_val_nonviolence = DataLoader(dataset_val_nonviolence,
                         batch_size=config.train_batch,
                         shuffle=True,
-                        num_workers=4,
+                        num_workers=config.num_workers,
                         # pin_memory=True,
                         collate_fn=my_collate
                         )
     loader_val_violence = DataLoader(dataset_val_violence,
                         batch_size=config.train_batch,
                         shuffle=True,
-                        num_workers=4,
+                        num_workers=config.num_workers,
                         # pin_memory=True,
                         collate_fn=my_collate
                         )
@@ -697,6 +695,33 @@ def MIL_training(config: Config):
         home_path=config.home_path,
         category=1
         )
+    data_transforms = {
+                        'train':None,
+                        'val': None
+                        }
+    keyframe = False
+    models_2d_ = [
+        'TwoStreamVD_Binary',
+        'TwoStreamVD_Binary_CFam',
+        'TwoStreamVDRegression'
+    ]
+    if config.model in models_2d_:
+        input_size = 224
+        keyframe = True
+        data_transforms = {
+                        'train': transforms.Compose([
+                            transforms.RandomResizedCrop(input_size),
+                            transforms.RandomHorizontalFlip(),
+                            transforms.ToTensor(),
+                            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+                        ]),
+                        'val': transforms.Compose([
+                            transforms.Resize(input_size),
+                            # transforms.CenterCrop(input_size),
+                            transforms.ToTensor(),
+                            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+                        ]),
+                    }
     spatial_t = DefaultTrasformations(model_name=config.model, size=224, train=True)
     dataset_train_nonviolence = TubeDataset(frames_per_tube=16, 
                             min_frames_per_tube=8,
@@ -706,7 +731,9 @@ def MIL_training(config: Config):
                             train=True,
                             dataset=config.dataset,
                             input_type=config.input_type,
-                            random=config.tube_sampling_random)
+                            random=config.tube_sampling_random,
+                            keyframe=keyframe,
+                            spatial_transform_2=data_transforms['train'])
     dataset_train_violence = TubeDataset(frames_per_tube=16, 
                             min_frames_per_tube=8,
                             make_function=make_dataset_violence,
@@ -715,18 +742,20 @@ def MIL_training(config: Config):
                             train=True,
                             dataset=config.dataset,
                             input_type=config.input_type,
-                            random=config.tube_sampling_random)
+                            random=config.tube_sampling_random,
+                            keyframe=keyframe,
+                            spatial_transform_2=data_transforms['train'])
     loader_nonviolence = DataLoader(dataset_train_nonviolence,
                         batch_size=config.train_batch,
                         shuffle=True,
-                        num_workers=4,
+                        num_workers=config.num_workers,
                         # pin_memory=True,
                         collate_fn=my_collate
                         )
     loader_violence = DataLoader(dataset_train_violence,
                         batch_size=config.train_batch,
                         shuffle=True,
-                        num_workers=4,
+                        num_workers=config.num_workers,
                         # pin_memory=True,
                         collate_fn=my_collate
                         )
@@ -822,14 +851,17 @@ def MIL_training(config: Config):
 
             video_images = torch.cat([data[0][1], data[1][1]], dim=0).to(device)
             boxes = torch.cat([data[0][0], data[1][0]], dim=0).to(device)
-
+            keyframes = torch.cat([data[0][5], data[1][5]], dim=0).to(device)
             # print('video_images cat: ', video_images.size())
             # print('boxes cat: ', boxes.size())
 
             # zero the parameter gradients
             optimizer.zero_grad()
             #predict
-            outs = model(video_images, boxes, config.num_tubes)
+            if config.model == 'TwoStreamVDRegression':
+                outs = model(video_images, keyframes, boxes, config.num_tubes)
+            else:
+                outs = model(video_images, boxes, config.num_tubes)
             # print('outs: ', outs.size())
             #loss
             loss = criterion(outs,config.train_batch)
@@ -863,7 +895,7 @@ def get_accuracy(y_prob, y_true):
 
 if __name__=='__main__':
     config = Config(
-        model='TwoStreamVD_Binary_CFam',#'TwoStreamVD_Binary',#'i3d-roi',i3d+roi+fc
+        model='TwoStreamVDRegression',#'TwoStreamVD_Binary',#'i3d-roi',i3d+roi+fc
         head=BINARY,
         dataset=RWF_DATASET,
         num_cv=1,
@@ -879,7 +911,8 @@ if __name__=='__main__':
         save_every=10,
         freeze=True,
         additional_info='',
-        home_path=HOME_UBUNTU
+        home_path=HOME_UBUNTU,
+        num_workers=4
     )
     # config.pretrained_model = "/content/DATASETS/Pretrained_Models/DenseNetLean_Kinetics.pth"
     # config.pretrained_model='/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt'

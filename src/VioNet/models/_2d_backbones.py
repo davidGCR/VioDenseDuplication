@@ -117,7 +117,7 @@ from torchsummary import summary
 from torchvision import models
 
 if __name__ ==  '__main__':
-    model = Backbone2DResNet('resnet50','layer4',num_trainable_layers=3)
+    model = Backbone2DResNet('resnet50','layer4',num_trainable_layers=0)
     print(model)
     # summary(model,input_size=(3, 224, 224))
     
