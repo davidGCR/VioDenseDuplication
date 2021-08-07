@@ -80,6 +80,7 @@ def train_regressor(
     return losses.avg, optimizer.param_groups[0]['lr']
 
 
+
 def train(
     epoch, 
     data_loader, 
@@ -202,6 +203,78 @@ def val(epoch, data_loader, model, criterion, device, val_log=None):
 
     return losses.avg, accuracies.avg
 
+
+def train_3dcnn_2dcnn(loader, _epoch, _model, _criterion, _optimizer, device):
+    print('training at epoch: {}'.format(_epoch))
+    _model.train()
+    losses = AverageMeter()
+    accuracies = AverageMeter()
+    for i, data in enumerate(loader):
+        images, labels, keyframes = data
+        images =images.to(device)
+        labels = labels.to(device)
+        keyframes = keyframes.to(device)
+        # print('data: ', len(data))
+        # print('data[0]: ', len(data[0]))
+        # print('data[1]: ', len(data[1])) 
+        # print('video_images: ', video_images.size())
+        # print('num_tubes: ', config.num_tubes)
+        # print('boxes: ', boxes.size())
+        # print('labels: ', labels, labels.size())
+
+        # zero the parameter gradients
+        _optimizer.zero_grad()
+        #predict
+        outs = _model(images, keyframes)
+        # print('outs: ', outs, outs.size())
+        #loss
+        loss = _criterion(outs,labels)
+        #accuracy
+        acc = calculate_accuracy_2(outs,labels)
+        # meter
+        # print('len(video_images): ', len(video_images), ' video_images.size(0):',video_images.size(0), ' preds.shape[0]:', preds.shape[0])
+        losses.update(loss.item(), outs.shape[0])
+        accuracies.update(acc, outs.shape[0])
+        # backward + optimize
+        loss.backward()
+        _optimizer.step()
+    train_loss = losses.avg
+    train_acc = accuracies.avg
+    print(
+        'Epoch: [{}]\t'
+        'Loss(train): {loss.avg:.4f}\t'
+        'Acc(train): {acc.avg:.3f}'.format(_epoch, loss=losses, acc=accuracies)
+    )
+    return train_loss, train_acc
+
+
+def val_3dcnn_2dcnn(loader, _epoch, _model, _criterion, device):
+    print('validation at epoch: {}'.format(_epoch))
+    # set model to evaluate mode
+    _model.eval()
+    # meters
+    losses = AverageMeter()
+    accuracies = AverageMeter()
+    for i, data in enumerate(loader):
+        images, labels, keyframes = data
+        images =images.to(device)
+        labels = labels.to(device)
+        keyframes = keyframes.to(device)
+        # no need to track grad in eval mode
+        with torch.no_grad():
+            outputs = _model(images, keyframes)
+            loss = _criterion(outputs, labels)
+            acc = calculate_accuracy_2(outputs,labels)
+        losses.update(loss.item(), outputs.shape[0])
+        accuracies.update(acc, outputs.shape[0])
+    val_loss = losses.avg
+    val_acc = accuracies.avg
+    print(
+        'Epoch: [{}]\t'
+        'Loss(val): {loss:.4f}\t'
+        'Acc(val): {acc:.3f}'.format(_epoch, loss=val_loss, acc=val_acc)
+    )
+    return val_loss, val_acc
 
 def test():
     pass

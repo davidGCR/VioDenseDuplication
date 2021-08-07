@@ -1,3 +1,4 @@
+from caffe2.python.workspace import CreateBlob
 from  config import Config
 from  global_var import *
 from utils import get_torch_device
@@ -238,6 +239,36 @@ def rwf_MDIResNet_config():
     config.overlap = 0
     config.train_sampling_type = 'random'
     config.val_sampling_type = 'middle'
+
+    config.train_batch = 8
+    config.val_batch = 8
+    config.learning_rate = 1e-3
+
+    config.additional_info = ''
+    return config
+
+
+def rwf_twostream_config():
+    """
+    Sample 16 rgb
+    """
+    config = Config(
+        'TwoStreamVD_Binary_CFam',  # c3d, convlstm, densenet, densenet_lean, resnet50, densenet2D
+        RWF_DATASET,
+        device=device,
+        num_epoch=50,
+        acc_baseline=0.87,
+    )
+
+    config.input_type = 'rgb' #rgb, dynamic-images
+    config.train_temporal_transform = STANDAR_CROP
+    config.val_temporal_transform = CENTER_CROP
+    config.sample_duration = 1 #number of segments
+    config.segment_size = 16 #len of segments
+    config.stride = 1
+    config.overlap = 0
+    # config.train_sampling_type = 'random'
+    # config.val_sampling_type = 'middle'
 
     config.train_batch = 8
     config.val_batch = 8
