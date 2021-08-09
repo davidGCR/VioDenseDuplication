@@ -1,6 +1,7 @@
 # '/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/pytorch-i3d/models/rgb_imagenet.pt'
 # '/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt
 #'/content/drive/My Drive/VIOLENCE DATA/Pretrained_Models/pytorch_i3d/rgb_imagenet.pt'
+# '/content/DATASETS/Pretrained_Models/rgb_imagenet.pt'
 VD_CONFIG = {
     'backbone_name':'3dresnet', #i3d, 3dresnet
     'final_endpoint':'Mixed_4e', #Mixed_4e, so far, only for i3d
@@ -29,7 +30,7 @@ TWO_STREAM_CONFIG = {
 
 TWO_STREAM_CFAM_CONFIG = {
     'backbone_name':'i3d', #i3d, 3dresnet
-    'final_endpoint':'Mixed_5b', #Mixed_4e, so far, only for i3d
+    'final_endpoint':'Mixed_4e', #Mixed_4e, so far, only for i3d
     'with_roipool': True,
     'roi_layer_output':8,
     'roi_with_temporal_pool':True,

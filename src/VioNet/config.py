@@ -43,6 +43,7 @@ class Config:
             num_tubes=4,
             head='binary',
             tube_sampling_random=True,
+            frames_per_tube=16,
             num_workers=4,
             criterion='MIL'
     ):
@@ -116,4 +117,23 @@ class Config:
         self.tube_sampling_random = tube_sampling_random
         self.num_workers = num_workers
         self.criterion = criterion
+        self.frames_per_tube = frames_per_tube
+        self.log = self.log_name()
+    
+    def log_name(self):
+        log = "Model({})_head({})_stream({})_cv({})_epochs({})_num_tubes({})_framesXtube({})_tub_sampl_rand({})_optimizer({})_lr({})_note({})".format(
+            self.dataset,
+            self.model,
+            self.head,
+            self.input_type,
+            self.num_cv,
+            self.num_epoch,
+            self.num_tubes,
+            self.frames_per_tube,
+            self.tube_sampling_random,
+            self.optimizer,
+            self.learning_rate,
+            self.additional_info
+        )
+        return log
 

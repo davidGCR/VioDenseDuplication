@@ -423,7 +423,7 @@ def main_2(config: Config):
     # print('keyframe: ', keyframe)
     
     spatial_t = DefaultTrasformations(model_name='i3d', size=224, train=True)
-    dataset_train_nonviolence = TubeDataset(frames_per_tube=16, 
+    dataset_train_nonviolence = TubeDataset(frames_per_tube=config.frames_per_tube, 
                             min_frames_per_tube=8,
                             make_function=make_dataset_nonviolence,
                             spatial_transform=spatial_t(),
@@ -434,7 +434,7 @@ def main_2(config: Config):
                             random=config.tube_sampling_random,
                             keyframe=keyframe,
                             spatial_transform_2=data_transforms['train'])
-    dataset_train_violence = TubeDataset(frames_per_tube=16, 
+    dataset_train_violence = TubeDataset(frames_per_tube=config.frames_per_tube, 
                             min_frames_per_tube=8,
                             make_function=make_dataset_violence,
                             spatial_transform=spatial_t(),
@@ -475,7 +475,7 @@ def main_2(config: Config):
         home_path=config.home_path,
         category=1
         )
-    dataset_val_nonviolence = TubeDataset(frames_per_tube=16, 
+    dataset_val_nonviolence = TubeDataset(frames_per_tube=config.frames_per_tube, 
                             min_frames_per_tube=8,
                             make_function=val_make_dataset_nonviolence,
                             spatial_transform=spatial_t(),
@@ -486,7 +486,7 @@ def main_2(config: Config):
                             random=config.tube_sampling_random,
                             keyframe=keyframe,
                             spatial_transform_2=data_transforms['val'])
-    dataset_val_violence = TubeDataset(frames_per_tube=16, 
+    dataset_val_violence = TubeDataset(frames_per_tube=config.frames_per_tube, 
                             min_frames_per_tube=8,
                             make_function=val_make_dataset_violence,
                             spatial_transform=spatial_t(),
@@ -531,17 +531,7 @@ def main_2(config: Config):
         model = TwoStreamVD_Binary_CFam().to(device)
         params = model.parameters()
 
-    exp_config_log = "SpTmpDetector_{}_model({})_head({})_stream({})_cv({})_epochs({})_tubes({})_tub_sampl_rand({})_optimizer({})_lr({})_note({})".format(config.dataset,
-                                                                config.model,
-                                                                config.head,
-                                                                config.input_type,
-                                                                config.num_cv,
-                                                                config.num_epoch,
-                                                                config.num_tubes,
-                                                                config.tube_sampling_random,
-                                                                config.optimizer,
-                                                                config.learning_rate,
-                                                                config.additional_info)
+    exp_config_log = config.log
     
     h_p = HOME_DRIVE if config.home_path==HOME_COLAB else config.home_path
     tsb_path_folder = os.path.join(h_p, PATH_TENSORBOARD, exp_config_log)
@@ -910,20 +900,21 @@ def get_accuracy(y_prob, y_true):
 
 if __name__=='__main__':
     config = Config(
-        model='ViolenceDetectorRegression',#'TwoStreamVD_Binary',#'i3d-roi',i3d+roi+fc
-        head=REGRESSION,
+        model='TwoStreamVD_Binary_CFam',#'TwoStreamVD_Binary',#'i3d-roi',i3d+roi+fc
+        head=BINARY,
         dataset=RWF_DATASET,
         num_cv=1,
         input_type='rgb',
         device=get_torch_device(),
         num_epoch=100,
         criterion='BCE',
-        optimizer='Adadelta',
-        learning_rate=0.00001, #0.001 for adagrad
+        optimizer='SGD',
+        learning_rate=0.0001, #0.001 for adagrad
         train_batch=2,
         val_batch=2,
         num_tubes=4,
         tube_sampling_random=True,
+        frames_per_tube=8, 
         save_every=10,
         freeze=True,
         additional_info='',
@@ -940,7 +931,7 @@ if __name__=='__main__':
     #                                       'rwf_trained/save_at_epoch-127.chk')
 
     # main(config)
-    # main_2(config)
-    MIL_training(config)
+    main_2(config)
+    # MIL_training(config)
     # extract_features(config, output_folder='/media/david/datos/Violence DATA/i3d-FeatureMaps/rwf')
     # load_features(config)

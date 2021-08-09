@@ -331,6 +331,7 @@ class TwoStreamVD_Binary_CFam(nn.Module):
     def __init__(self, config=TWO_STREAM_CFAM_CONFIG):
         super(TwoStreamVD_Binary_CFam, self).__init__()
         self.with_roipool = config['with_roipool']
+        # if config['backbone']
         self._3d_stream = BackboneI3D(
             config['final_endpoint'], 
             config['pretrained_backbone_model'],
@@ -356,7 +357,7 @@ class TwoStreamVD_Binary_CFam(nn.Module):
                                         )
         else:
             self.temporal_pool = nn.AdaptiveAvgPool3d((1, None, None))
-        in_channels = 832+1024#528+1024
+        in_channels = 528+1024#528+1024
         out_channels = 1024                       
         self.CFAMBlock = CFAMBlock(in_channels, out_channels)
         self.avg_pool_2d = nn.AdaptiveAvgPool2d((1,1))
@@ -377,15 +378,15 @@ class TwoStreamVD_Binary_CFam(nn.Module):
         x_3d = self._3d_stream(x1) #torch.Size([2, 528, 4, 14, 14])
         x_2d = self._2d_stream(x2) #torch.Size([2, 1024, 14, 14])
 
-        # print('output_3dbackbone: ', x_3d.size())
-        # print('output_2dbackbone: ', x_2d.size())
+        print('output_3dbackbone: ', x_3d.size())
+        print('output_2dbackbone: ', x_2d.size())
         if self.with_roipool:
             batch = int(batch/num_tubes)
             x_3d = self.roi_pool_3d(x_3d,bbox)#torch.Size([8, 528])
             x_3d = torch.squeeze(x_3d)
-            # print('3d after roipool: ', x_3d.size())
+            print('3d after roipool: ', x_3d.size())
             x_2d = self.roi_pool_2d(x_2d,bbox)
-            # print('2d after roipool: ', x_2d.size())
+            print('2d after roipool: ', x_2d.size())
         else:
             x_3d = self.temporal_pool(x_3d)
             x_3d = torch.squeeze(x_3d)
@@ -439,7 +440,7 @@ if __name__=='__main__':
     # model = ViolenceDetectorRegression(aggregate=True).to(device)
     batch = 2
     tubes = 2
-    input_1 = torch.rand(batch*tubes,3,16,224,224).to(device)
+    input_1 = torch.rand(batch*tubes,3,8,224,224).to(device)
     input_2 = torch.rand(batch*tubes,3,224,224).to(device)
 
     rois = torch.rand(batch*tubes, 5).to(device)
