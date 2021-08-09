@@ -343,63 +343,64 @@ class IncrementalLinking:
             frame = self.video_detections[t]['fname']
             img_path = os.path.join(self.dataset_root, split, video, frame)
             image = cv2.imread(img_path, cv2.IMREAD_COLOR)
-            #draw motion blobs
-            countours = motion_map['contours']
-            boxes_from_polygons = motion_map['boxes_from_polygons']
-            polygons = motion_map['polygons']
-            for i in range(len(countours)):
-                # cv2.drawContours(image, countours, i,(255,0,0), 2)
-                cv2.drawContours(image, [polygons[i]], 0, (147,20,255), 1)
-                cv2.rectangle(image,
-                            (int(boxes_from_polygons[i][0]), int(boxes_from_polygons[i][1])),
-                            (int(boxes_from_polygons[i][0]+boxes_from_polygons[i][2]), int(boxes_from_polygons[i][1]+boxes_from_polygons[i][3])),
-                            (0,238,238),
-                            1)
-
+            # #draw motion blobs
+            # countours = motion_map['contours']
+            # boxes_from_polygons = motion_map['boxes_from_polygons']
+            # polygons = motion_map['polygons']
+            # for i in range(len(countours)):
+            #     # cv2.drawContours(image, countours, i,(255,0,0), 2)
+            #     cv2.drawContours(image, [polygons[i]], 0, (147,20,255), 1)
+            #     cv2.rectangle(image,
+            #                 (int(boxes_from_polygons[i][0]), int(boxes_from_polygons[i][1])),
+            #                 (int(boxes_from_polygons[i][0]+boxes_from_polygons[i][2]), int(boxes_from_polygons[i][1]+boxes_from_polygons[i][3])),
+            #                 (0,238,238),
+            #                 1)
+            
+            #Persons
             pred_boxes = self.video_detections[t]['pred_boxes'] #real bbox
             if pred_boxes.shape[0] != 0:
                 image = visual_utils.draw_boxes(image,
                                                 pred_boxes[:, :4],
-                                                scores=pred_boxes[:, 4],
+                                                # scores=pred_boxes[:, 4],
                                                 # tags=pred_tags_name,
                                                 line_thick=1, 
                                                 line_color='white')
             
-            # live_paths = sorted(live_paths, key = lambda i: i['score'], reverse=True)
-            # live_paths = live_paths[0:4] if len(live_paths)>4 else live_paths
-            lp = self.path_count(live_paths)
-            box_tubes = []
-            tube_ids = []
-            tube_scores = []
-            # print('====frame: ', frame, ', t: ', t)
-            for l in range(lp):
-                # print('frame number: {}, live_path {}, frames in lp: {}'.format(t, live_paths[l]['id'], 
-                #                                                     live_paths[l]['foundAt']))
-                # foundAt = True if t in live_paths[l]['foundAt'] else False
-                foundAt = True if frame in live_paths[l]['frames_name'] else False
-                if foundAt:
-                    # bbox = live_paths[l]['boxes'][-1]
-                    idx = live_paths[l]['frames_name'].index(frame)
-                    bbox = live_paths[l]['boxes'][idx]
-                    # print('foundAt box: ',bbox, live_paths[l]['len'])
-                    # print('foundAt all box: ',bbox, live_paths[l]['boxes'])
-                    box_tubes.append(bbox)
-                    tube_ids.append(live_paths[l]['id'])
-                    tube_scores.append(live_paths[l]['score'])
+            # # live_paths = sorted(live_paths, key = lambda i: i['score'], reverse=True)
+            # # live_paths = live_paths[0:4] if len(live_paths)>4 else live_paths
+            # lp = self.path_count(live_paths)
+            # box_tubes = []
+            # tube_ids = []
+            # tube_scores = []
+            # # print('====frame: ', frame, ', t: ', t)
+            # for l in range(lp):
+            #     # print('frame number: {}, live_path {}, frames in lp: {}'.format(t, live_paths[l]['id'], 
+            #     #                                                     live_paths[l]['foundAt']))
+            #     # foundAt = True if t in live_paths[l]['foundAt'] else False
+            #     foundAt = True if frame in live_paths[l]['frames_name'] else False
+            #     if foundAt:
+            #         # bbox = live_paths[l]['boxes'][-1]
+            #         idx = live_paths[l]['frames_name'].index(frame)
+            #         bbox = live_paths[l]['boxes'][idx]
+            #         # print('foundAt box: ',bbox, live_paths[l]['len'])
+            #         # print('foundAt all box: ',bbox, live_paths[l]['boxes'])
+            #         box_tubes.append(bbox)
+            #         tube_ids.append(live_paths[l]['id'])
+            #         tube_scores.append(live_paths[l]['score'])
             
             
-            # print('box_tubes:',len(box_tubes))
-            # print('tube_ids:',len(tube_ids),tube_ids)
-            # print('tube_scores:',len(tube_scores),tube_scores)
-            # print('====================')
-            if len(box_tubes)>0:
-                box_tubes = np.array(box_tubes)
-                image = visual_utils.draw_boxes(image,
-                                                box_tubes[:, :4],
-                                                # scores=tube_scores,
-                                                ids=tube_ids,
-                                                line_thick=1, 
-                                                line_color='red')
+            # # print('box_tubes:',len(box_tubes))
+            # # print('tube_ids:',len(tube_ids),tube_ids)
+            # # print('tube_scores:',len(tube_scores),tube_scores)
+            # # print('====================')
+            # if len(box_tubes)>0:
+            #     box_tubes = np.array(box_tubes)
+            #     image = visual_utils.draw_boxes(image,
+            #                                     box_tubes[:, :4],
+            #                                     # scores=tube_scores,
+            #                                     ids=tube_ids,
+            #                                     line_thick=1, 
+            #                                     line_color='red')
             cv2.namedWindow('FRAME'+str(t+1),cv2.WINDOW_NORMAL)
             cv2.resizeWindow('FRAME'+str(t+1), (600,600))
             image = cv2.resize(image, (600,600))

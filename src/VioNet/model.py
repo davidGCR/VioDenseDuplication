@@ -54,7 +54,7 @@ def get_model(config, home_path):
     elif config.model == 'MDIResNet':
         model, params = MDI_ResNet(config)
     elif config.model == 'TwoStreamVD_Binary_CFam':
-        model = TwoStreamVD_Binary_CFam(with_roipool=False).to(config.device)
+        model = TwoStreamVD_Binary_CFam().to(config.device)
         params = model.parameters()
     else:
         model, params = VioNet_densenet_lean(config, home_path)

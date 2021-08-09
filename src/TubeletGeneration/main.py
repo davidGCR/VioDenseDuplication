@@ -191,7 +191,12 @@ def extract_tubes_from_dataset(dataset_persons_detections_path, folder_out, data
 
 def extract_tubes_from_video(dataset_root, persons_detections, frames, plot=None):
     segmentator = MotionSegmentation(video_detections=persons_detections,
-                                        dataset_root=dataset_root)
+                                        dataset_root=dataset_root,
+                                        ratio_box_mmap=0.3,
+                                        size=5,
+                                        segment_size=5,
+                                        stride=1,
+                                        overlap=0)
     tube_builder = IncrementalLinking(video_detections=persons_detections,
                                         iou_thresh=0.3,
                                         jumpgap=5,
@@ -263,8 +268,8 @@ if __name__=="__main__":
 
     rwf_config = {
         'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames',
-        'split': 'val/Fight',
-        'video': 'SDFDSSDF_973',
+        'split': 'train/Fight',
+        'video': '_2RYnSFPD_U_0',
         'p_d_path': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/RWF-2000'
     }
     config = rwf_config

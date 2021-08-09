@@ -72,7 +72,8 @@ def main(config, home_path):
                               batch_size=train_batch,
                               shuffle=True,
                               num_workers=0,
-                              pin_memory=True)
+                            #   pin_memory=True
+                              )
 
     # val set
     crop_method = GroupScaleCenterCrop(size=sample_size)
@@ -104,7 +105,8 @@ def main(config, home_path):
                             batch_size=config.val_batch,
                             shuffle=False,
                             num_workers=4,
-                            pin_memory=True)
+                            # pin_memory=True
+                            )
 
     exp_config_log = "SpTmpDetector_{}_model({})_head({})_stream({})_cv({})_epochs({})_tubes({})_tub_sampl_rand({})_optimizer({})_lr({})_note({})".format(config.dataset,
                                                                 config.model,
@@ -148,7 +150,7 @@ def main(config, home_path):
         # train_loss, train_acc, lr = train(i, train_loader, model, criterion, optimizer, config.device, batch_log, epoch_log)
         # val_loss, val_acc = val(i, val_loader, model, criterion, config.device, val_log)
         train_loss, train_acc = train_3dcnn_2dcnn(train_loader, i+1, model, criterion, optimizer, config.device)
-        val_loss, val_acc = train_3dcnn_2dcnn(train_loader, i+1, model, criterion, optimizer, config.device)
+        val_loss, val_acc = val_3dcnn_2dcnn(val_loader, i+1, model, criterion, config.device)
         epoch = i+1
         writer.add_scalar('training loss', train_loss, epoch)
         writer.add_scalar('training accuracy', train_acc, epoch)

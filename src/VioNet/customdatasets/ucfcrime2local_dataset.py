@@ -17,7 +17,9 @@ class UCFCrime2LocalDataset(data.Dataset):
         path_annotations,
         abnormal,
         persons_detections_path,
-        transform=None):
+        transform=None,
+        clip_len=25,
+        clip_temporal_stride=1):
         # self.dataset_root = '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/UCFCrime2LocalClips',
         # self.split = 'anomaly',
         # self.video = 'Arrest036(2917-3426)',
@@ -34,6 +36,8 @@ class UCFCrime2LocalDataset(data.Dataset):
         # self.tubes = extract_tubes_from_video(
         #     self.dataset_root,
         # )
+        self.clip_temporal_stride = clip_temporal_stride
+        self.clip_len = clip_len
         self.root = root
         self.path_annotations = path_annotations
         self.abnormal = abnormal
@@ -45,13 +49,16 @@ class UCFCrime2LocalDataset(data.Dataset):
     def __len__(self):
         return len(self.paths)
     
-    def get_video_segment(self, video_folder):
+    def get_video_clips(self, video_folder):
         _frames = os.listdir(video_folder)
         _frames = [f for f in _frames if '.jpg' in f]
         num_frames = len(_frames)
-        return 0
+        indices = [x for x in range(0, num_frames, self.clip_temporal_stride)]
+        indices_segments = [indices[x:x + self.clip_len] for x in range(0, len(indices), self.clip_len)]
 
-    def generate_tube_proposals(self, path):
+        return indices_segments
+
+    def generate_tube_proposals(self, path, frames):
         tmp = path.split('/')
         split = tmp[-2]
         video = tmp[-1]

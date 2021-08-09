@@ -111,10 +111,16 @@ class DefaultTrasformations:
                             ])
 
         
-        
+i3d_based_models = [
+    'TwoStreamVD_Binary_CFam',
+    'TwoStreamVD_Binary',
+    'i3d',
+    'two-i3d',
+    'two-i3dv2'
+]
 
 def build_transforms_parameters(model_type):
-    if model_type == 'i3d' or model_type=='two-i3d' or model_type=='two-i3dv2':
+    if model_type in i3d_based_models:
         sample_size = (224,224)
         norm = Normalize([38.756858/255, 3.88248729/255, 40.02898126/255], [110.6366688/255, 103.16065604/255, 96.29023126/255])
     elif model_type == 's3d':
@@ -267,6 +273,8 @@ def rwf_twostream_config():
     config.segment_size = 16 #len of segments
     config.stride = 1
     config.overlap = 0
+
+    
     # config.train_sampling_type = 'random'
     # config.val_sampling_type = 'middle'
 
