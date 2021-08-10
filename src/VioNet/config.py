@@ -45,7 +45,8 @@ class Config:
             tube_sampling_random=True,
             frames_per_tube=16,
             num_workers=4,
-            criterion='MIL'
+            criterion='MIL',
+            model_config=None
     ):
 
         # VioNet models
@@ -118,10 +119,11 @@ class Config:
         self.num_workers = num_workers
         self.criterion = criterion
         self.frames_per_tube = frames_per_tube
+        self.model_config = model_config
         self.log = self.log_name()
     
     def log_name(self):
-        log = "Model({})_head({})_stream({})_cv({})_epochs({})_num_tubes({})_framesXtube({})_tub_sampl_rand({})_optimizer({})_lr({})_note({})".format(
+        log = "{}_model({})_head({})_stream({})_cv({})_epochs({})_num_tubes({})_framesXtube({})_tub_sampl_rand({})_optimizer({})_lr({})_note({})".format(
             self.dataset,
             self.model,
             self.head,

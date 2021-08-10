@@ -1,4 +1,4 @@
-from caffe2.python.workspace import CreateBlob
+# from caffe2.python.workspace import CreateBlob
 from  config import Config
 from  global_var import *
 from utils import get_torch_device

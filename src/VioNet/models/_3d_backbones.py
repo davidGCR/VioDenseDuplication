@@ -1,6 +1,6 @@
 import os
 import sys
-sys.path.insert(1, '/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/AVSS2019/src/VioNEt')
+sys.path.insert(1, '/media/david/datos/PAPERS-SOURCE_CODE/VioDenseDuplication/src/VioNet')
 import torch
 import torch.nn as nn
 from models.i3d import InceptionI3d
@@ -42,8 +42,8 @@ class BackboneI3D(nn.Module):
     return x
 
 if __name__=='__main__':
-  # backbone = Backbone3DResNet()
-  backbone = BackboneI3D(final_endpoint='Mixed_4e', pretrained='/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/pytorch-i3d/models/rgb_imagenet.pt')
+  backbone = Backbone3DResNet()
+  # backbone = BackboneI3D(final_endpoint='Mixed_4e', pretrained=None)
   input = torch.rand(4,3,8,224,224)
   output=backbone(input)
   print('out: ', output.size())

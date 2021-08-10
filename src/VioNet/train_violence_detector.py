@@ -528,7 +528,7 @@ def main_2(config: Config):
         model = TwoStreamVD_Binary().to(device)
         params = model.parameters()
     elif config.model == 'TwoStreamVD_Binary_CFam':
-        model = TwoStreamVD_Binary_CFam().to(device)
+        model = TwoStreamVD_Binary_CFam(config.model_config).to(device)
         params = model.parameters()
 
     exp_config_log = config.log
@@ -870,10 +870,13 @@ def get_accuracy(y_prob, y_true):
     # print('(y_true == y_prob):', (y_true == y_prob))
     return (y_true == y_prob).sum().item() / y_true.size(0)
 
+import add_path
+from models.v_d_config import *
 
 if __name__=='__main__':
     config = Config(
         model='TwoStreamVD_Binary_CFam',#'TwoStreamVD_Binary',#'i3d-roi',i3d+roi+fc
+        model_config=TWO_STREAM_CFAM_SLOWRESNET_CONFIG,
         head=BINARY,
         dataset=RWF_DATASET,
         num_cv=1,
@@ -881,15 +884,15 @@ if __name__=='__main__':
         device=get_torch_device(),
         num_epoch=100,
         criterion='BCE',
-        optimizer='SGD',
-        learning_rate=0.0001, #0.001 for adagrad
+        optimizer='Adadelta',
+        learning_rate=0.001, #0.001 for adagrad
         train_batch=2,
         val_batch=2,
         num_tubes=4,
         tube_sampling_random=True,
         frames_per_tube=8, 
         save_every=10,
-        freeze=True,
+        freeze=False,
         additional_info='',
         home_path=HOME_UBUNTU,
         num_workers=4

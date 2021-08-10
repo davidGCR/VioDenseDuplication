@@ -1,5 +1,6 @@
 import sys
-sys.path.insert(1, '/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/AVSS2019/src/VioNet')
+# sys.path.insert(1, '/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/AVSS2019/src/VioNet')
+sys.path.insert(1, '/media/david/datos/PAPERS-SOURCE_CODE/VioDenseDuplication/src/VioNet')
 import torch
 from torch import nn
 from models.i3d import InceptionI3d
@@ -331,11 +332,8 @@ class TwoStreamVD_Binary_CFam(nn.Module):
     def __init__(self, config=TWO_STREAM_CFAM_CONFIG):
         super(TwoStreamVD_Binary_CFam, self).__init__()
         self.with_roipool = config['with_roipool']
-        # if config['backbone']
-        self._3d_stream = BackboneI3D(
-            config['final_endpoint'], 
-            config['pretrained_backbone_model'],
-            freeze=config['freeze_3d'])
+        self.config = config
+        self._3d_stream = self.build_3d_backbone()
         
         self._2d_stream = Backbone2DResNet(
             config['2d_backbone'],
@@ -357,7 +355,7 @@ class TwoStreamVD_Binary_CFam(nn.Module):
                                         )
         else:
             self.temporal_pool = nn.AdaptiveAvgPool3d((1, None, None))
-        in_channels = 528+1024#528+1024
+        in_channels = config['CFAMBlock_in_channels']
         out_channels = config['CFAMBlock_out_channels']                       
         self.CFAMBlock = CFAMBlock(in_channels, out_channels)
         self.avg_pool_2d = nn.AdaptiveAvgPool2d((1,1))
@@ -372,6 +370,17 @@ class TwoStreamVD_Binary_CFam(nn.Module):
             # nn.Linear(32, 2),
             # nn.Sigmoid()
         )
+    
+    def build_3d_backbone(self):
+        if self.config['backbone_name'] == 'i3d':
+            backbone = BackboneI3D(
+                self.config['final_endpoint'], 
+                self.config['pretrained_backbone_model'],
+                freeze=self.config['freeze_3d'])
+        elif self.config['backbone_name'] == '3dresnet':
+            backbone = Backbone3DResNet()
+        return backbone
+
         
     def forward(self, x1, x2, bbox=None, num_tubes=0):
         batch, c, t, h, w = x1.size()
@@ -405,7 +414,7 @@ class TwoStreamVD_Binary_CFam(nn.Module):
             
             #++++op 2
             x = x.view(batch, num_tubes, -1)
-            print('after view: ', x.size())
+            # print('after view: ', x.size())
             x = x.max(dim=1).values #torch.Size([2, 9280])
             x = torch.squeeze(x)
             x=self.classifier(x)
@@ -437,7 +446,7 @@ if __name__=='__main__':
     print('------- ViolenceDetector --------')
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     # model = TwoStreamVD_Binary().to(device)
-    model = TwoStreamVD_Binary_CFam().to(device)
+    model = TwoStreamVD_Binary_CFam(config=TWO_STREAM_CFAM_SLOWRESNET_CONFIG).to(device)
     # model = ViolenceDetectorRegression(aggregate=True).to(device)
     batch = 2
     tubes = 2
