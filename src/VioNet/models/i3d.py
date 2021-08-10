@@ -293,10 +293,10 @@ class InceptionI3d(nn.Module):
 
         end_point = 'Mixed_5b'
         self.end_points[end_point] = InceptionModule(256+320+128+128, [256,160,320,32,128,128], name+end_point)
-        if self._final_endpoint == end_point: return
-        # if self._final_endpoint == end_point:
-        #     self.build()
-        #     return
+        # if self._final_endpoint == end_point: return
+        if self._final_endpoint == end_point:
+            self.build()
+            return
 
         self.avg_pool = nn.AvgPool3d(kernel_size=[2, 7, 7],
                                      stride=(1, 1, 1))
@@ -438,8 +438,8 @@ if __name__=="__main__":
     # device = torch.device("cpu")
 
     input = torch.rand(4,3,16,224,224).to(device) #for slowFAst backbone: 3x4x256x320, RWF-frames 224x224, RWF-video 640x360
-    # i3d = InceptionI3d(2, in_channels=3, final_endpoint='Mixed_4f').to(device)
-    i3d = InceptionI3d(num_classes=2, in_channels=3).to(device)
+    i3d = InceptionI3d(2, in_channels=3, final_endpoint='Mixed_4e').to(device)
+    # i3d = InceptionI3d(num_classes=2, in_channels=3).to(device)
     # print(i3d)
     # i3d.eval()
 

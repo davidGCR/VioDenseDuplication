@@ -1,3 +1,6 @@
+import os
+import sys
+sys.path.insert(1, '/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/AVSS2019/src/VioNEt')
 import torch
 import torch.nn as nn
 from models.i3d import InceptionI3d
@@ -23,12 +26,13 @@ class Backbone3DResNet(nn.Module):
     return x
 
 class BackboneI3D(nn.Module):
-  def __init__(self, final_endpoint, pretrained, freeze=False):
+  def __init__(self, final_endpoint, pretrained=None, freeze=False):
     super().__init__()
     self.backbone = InceptionI3d(2, in_channels=3, final_endpoint=final_endpoint)
-    load_model_path = pretrained
-    state_dict = torch.load(load_model_path)
-    self.backbone.load_state_dict(state_dict,  strict=False)
+    if pretrained:
+      load_model_path = pretrained
+      state_dict = torch.load(load_model_path)
+      self.backbone.load_state_dict(state_dict,  strict=False)
     if freeze:
       for param in self.backbone.parameters():
           param.requires_grad = False
@@ -36,6 +40,12 @@ class BackboneI3D(nn.Module):
   def forward(self, x):
     x = self.backbone(x)
     return x
-    
+
+if __name__=='__main__':
+  # backbone = Backbone3DResNet()
+  backbone = BackboneI3D(final_endpoint='Mixed_4e', pretrained='/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/pytorch-i3d/models/rgb_imagenet.pt')
+  input = torch.rand(4,3,8,224,224)
+  output=backbone(input)
+  print('out: ', output.size())
 
 

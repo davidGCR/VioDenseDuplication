@@ -124,7 +124,7 @@ class TubeDataset(data.Dataset):
                        min_frames_per_tube,
                        make_function,
                        spatial_transform=None,
-                       max_num_tubes=16,
+                       max_num_tubes=4,
                        train=False,
                        dataset='',
                        input_type='rgb',

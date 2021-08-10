@@ -8,7 +8,7 @@ from configs_datasets import *#hockey_MDIResNet_config, hockey_i3d_config, rwf_c
 # from VioNet.configs_datasets import hockey_config, rwf_config
 from global_var import *
 
-from epoch import train, val, test
+from epoch import *
 from model import get_model
 from dataset import VioDB
 from config import Config
@@ -36,21 +36,10 @@ def main(config, home_path):
     # cross validation phase
     cv = config.num_cv
     input_mode = config.input_type
-
+    #spatial transformation
     sample_size, norm = build_transforms_parameters(model_type=config.model)
-    
     # train set
     crop_method = GroupRandomScaleCenterCrop(size=sample_size)
-    
-    # if input_mode == 'rgb':
-    #     norm = Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-        
-    # elif input_mode == 'dynamic-images':
-    #     # norm = Normalize([0.49778724, 0.49780366, 0.49776983], [0.09050678, 0.09017131, 0.0898702 ])
-    #     norm = Normalize([38.756858/255, 3.88248729/255, 40.02898126/255], [110.6366688/255, 103.16065604/255, 96.29023126/255])
-    # else:
-    #     norm = Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-
     train_temporal_transform = build_temporal_transformation(config, config.train_temporal_transform, 'train')
     spatial_transform = Compose([crop_method,
                                  GroupRandomHorizontalFlip(),
@@ -60,10 +49,6 @@ def main(config, home_path):
 
     train_batch = config.train_batch
     if dataset == RWF_DATASET:
-        # train_data = VioDB(g_path + '/VioDB/{}_jpg/frames/'.format(dataset),
-        #                 g_path + '/VioDB/{}_jpg{}.json'.format(dataset, cv), 'training',
-        #                 spatial_transform, temporal_transform, target_transform, dataset,
-        #                 tmp_annotation_path=os.path.join(g_path, config.temp_annotation_path))
         train_data = VioDB(os.path.join(home_path, RWF_DATASET.upper(),'frames/'),
                             os.path.join(home_path, VIO_DB_DATASETS, "rwf-2000_jpg1.json"),
                             'training',
@@ -87,27 +72,16 @@ def main(config, home_path):
                               batch_size=train_batch,
                               shuffle=True,
                               num_workers=0,
-                              pin_memory=True)
+                            #   pin_memory=True
+                              )
 
     # val set
     crop_method = GroupScaleCenterCrop(size=sample_size)
-    # if input_mode == 'rgb':
-    #     norm = Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-        
-    # elif input_mode == 'dynamic-images':
-    #     norm = Normalize([0.49778724, 0.49780366, 0.49776983], [0.09050678, 0.09017131, 0.0898702 ])
-
     val_temporal_transform = build_temporal_transformation(config, config.val_temporal_transform, 'val')
     spatial_transform = Compose([crop_method, ToTensor(), norm])
     target_transform = Label()
 
-    val_batch = config.val_batch
-
     if dataset == RWF_DATASET:
-        # val_data = VioDB(g_path + '/VioDB/{}_jpg/frames/'.format(dataset),
-        #                 g_path + '/VioDB/{}_jpg{}.json'.format(dataset, cv), 'validation',
-        #                 spatial_transform, temporal_transform, target_transform, dataset,
-        #                 tmp_annotation_path=os.path.join(g_path, config.temp_annotation_path))
         val_data = VioDB(os.path.join(home_path, RWF_DATASET.upper(),'frames/'),
                             os.path.join(home_path, VIO_DB_DATASETS, "rwf-2000_jpg1.json"),
                             'validation',
@@ -128,47 +102,42 @@ def main(config, home_path):
                         tmp_annotation_path=os.path.join(g_path, config.temp_annotation_path),
                         input_type=config.input_type)
     val_loader = DataLoader(val_data,
-                            batch_size=val_batch,
+                            batch_size=config.val_batch,
                             shuffle=False,
                             num_workers=4,
-                            pin_memory=True)
+                            # pin_memory=True
+                            )
 
-    template =  '{}_fps{}_{}_split({})_input({})_TmpTransform({})_Info({})'.format(config.model,
-                                                                         sample_duration,
-                                                                         dataset,
-                                                                         cv,
-                                                                         input_mode,
-                                                                         config.train_temporal_transform,
-                                                                         config.additional_info
-                                                                         )
-    log_path = os.path.join(home_path, PATH_LOG, template)
-    # chk_path = os.path.join(PATH_CHECKPOINT, template)
-    tsb_path = os.path.join(home_path, PATH_TENSORBOARD, template)
-
-    for pth in [log_path, tsb_path]:
-        if not os.path.exists(pth):
-            os.mkdir(pth)
-
-    print('tensorboard dir:', tsb_path)                                                
-    writer = SummaryWriter(tsb_path)
-
+    exp_config_log = "SpTmpDetector_{}_model({})_head({})_stream({})_cv({})_epochs({})_tubes({})_tub_sampl_rand({})_optimizer({})_lr({})_note({})".format(config.dataset,
+                                                                config.model,
+                                                                config.head,
+                                                                config.input_type,
+                                                                config.num_cv,
+                                                                config.num_epoch,
+                                                                config.num_tubes,
+                                                                config.tube_sampling_random,
+                                                                config.optimizer,
+                                                                config.learning_rate,
+                                                                config.additional_info)
     # log
-    batch_log = Log(log_path+'/batch_log.csv', ['epoch', 'batch', 'iter', 'loss', 'acc', 'lr'])
-    epoch_log = Log(log_path+'/epoch_log.csv', ['epoch', 'loss', 'acc', 'lr'])
-    val_log = Log(log_path+'/val_log.csv', ['epoch', 'loss', 'acc'])
-    train_val_log = Log(log_path+'/train_val_LOG.csv', ['epoch', 'train_loss', 'train_acc', 'lr', 'val_loss', 'val_acc'])
+    h_p = HOME_DRIVE if config.home_path==HOME_COLAB else config.home_path
+    tsb_path_folder = os.path.join(h_p, PATH_TENSORBOARD, exp_config_log)
+    chk_path_folder = os.path.join(h_p, PATH_CHECKPOINT, exp_config_log)
+
+    for p in [tsb_path_folder, chk_path_folder]:
+        if not os.path.exists(p):
+            os.makedirs(p)                                             
+    writer = SummaryWriter(tsb_path_folder)
 
     # prepare
     criterion = nn.CrossEntropyLoss().to(config.device)
     learning_rate = config.learning_rate
     momentum = config.momentum
     weight_decay = config.weight_decay
-
     optimizer = torch.optim.SGD(params=params,
                                 lr=learning_rate,
                                 momentum=momentum,
                                 weight_decay=weight_decay)
-
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,
                                                            verbose=True,
                                                            factor=config.factor,
@@ -178,10 +147,11 @@ def main(config, home_path):
     loss_baseline = 1
 
     for i in range(config.num_epoch):
-        train_loss, train_acc, lr = train(i, train_loader, model, criterion, optimizer, config.device, batch_log, epoch_log)
-        val_loss, val_acc = val(i, val_loader, model, criterion, config.device, val_log)
+        # train_loss, train_acc, lr = train(i, train_loader, model, criterion, optimizer, config.device, batch_log, epoch_log)
+        # val_loss, val_acc = val(i, val_loader, model, criterion, config.device, val_log)
+        train_loss, train_acc = train_3dcnn_2dcnn(train_loader, i+1, model, criterion, optimizer, config.device)
+        val_loss, val_acc = val_3dcnn_2dcnn(val_loader, i+1, model, criterion, config.device)
         epoch = i+1
-        train_val_log.log({'epoch': epoch, 'train_loss': train_loss, 'train_acc': train_acc, 'lr': lr, 'val_loss': val_loss, 'val_acc': val_acc})
         writer.add_scalar('training loss', train_loss, epoch)
         writer.add_scalar('training accuracy', train_acc, epoch)
         writer.add_scalar('validation loss', val_loss, epoch)
@@ -209,12 +179,12 @@ if __name__ == '__main__':
     
     # config = rwf_config()
     # config = hockey_MDIResNet_config()
-    config = rwf_MDIResNet_config()
+    config = rwf_twostream_config()
 
     if config.dataset == RWF_DATASET:
         config.num_cv = 1
         
-        main(config, environment_config['home'])
+        main(config, HOME_DRIVE)
     elif config.dataset == HOCKEY_DATASET:
         
         for i in range(1,2):

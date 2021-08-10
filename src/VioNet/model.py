@@ -20,6 +20,7 @@ from models.models2D import ResNet, Densenet2D, FusedResNextTempPool, FeatureExt
 from models.anomaly_detector import AnomalyDetector
 from models.i3d import InceptionI3d, TwoStreamI3D
 from models.i3d_roi import InceptionI3d_Roi
+from models.violence_detector import *
 import models.models2D as rn
 # from models.violence_detector import ViolenceDetector
 from global_var import *
@@ -52,6 +53,9 @@ def get_model(config, home_path):
         model, params = VioNet_S3D(config)
     elif config.model == 'MDIResNet':
         model, params = MDI_ResNet(config)
+    elif config.model == 'TwoStreamVD_Binary_CFam':
+        model = TwoStreamVD_Binary_CFam().to(config.device)
+        params = model.parameters()
     else:
         model, params = VioNet_densenet_lean(config, home_path)
     

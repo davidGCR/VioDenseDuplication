@@ -44,7 +44,7 @@ if __name__=='__main__':
     persons_detections_path = config['p_d_path']+'/{}/{}.json'.format(config['split'],config['video'])
     person_detections = JSON_2_videoDetections(persons_detections_path)
     
-    # video_len = len(os.listdir(os.path.join(config['dataset_root'], config['split'], config['video'])))
+    video_len = len(os.listdir(os.path.join(config['dataset_root'], config['split'], config['video'])))
     video_len = 50
     start = 0#60
     split_len = 50
@@ -61,14 +61,17 @@ if __name__=='__main__':
         lps += lps_split
     
     
-    m = MakeUCFCrime2LocalClips(root_anomaly='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/UCFCrime2LocalClips/anomaly',
-                                root_normal='/Volumes/TOSHIBA EXT/DATASET/AnomalyCRIMEALL/UCFCrime2Local/frames',
-                                path_annotations='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/CrimeViolence2LocalDATASET/Txt annotations-longVideos')
+    m = MakeUCFCrime2LocalClips(root='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/UCFCrime2LocalClips',
+                                # root_normal='/Volumes/TOSHIBA EXT/DATASET/AnomalyCRIMEALL/UCFCrime2Local/frames',
+                                path_annotations='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/CrimeViolence2LocalDATASET/Txt annotations-longVideos',
+                                abnormal=True)
     paths, labels, annotations = m()
+    print('paths: ', paths)
     for idx in range(len(paths)):
         if config['video'] in paths[idx].split('/'):
             anns = m.ground_truth_boxes(paths[idx],annotations[idx])
             m.plot(paths[idx], anns, lps)
+            break
     # idx=65
     # print(idx)
     # print(Counter(labels))

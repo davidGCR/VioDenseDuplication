@@ -312,11 +312,12 @@ import cv2
 
 
 class MakeUCFCrime2LocalClips():
-    def __init__(self, root_anomaly, root_normal, path_annotations):
-        self.root_anomaly = root_anomaly
-        self.root_normal = root_normal
+    def __init__(self, root, path_annotations, abnormal):
+        self.root = root
         self.path_annotations = path_annotations
-        self.classes = ['Arrest', 'Assault'] #Robbery,Stealing
+        self.classes = ['normal', 'anomaly'] #Robbery,Stealing
+        self.subclasses = ['Arrest', 'Assault'] #Robbery,Stealing
+        self.abnormal = abnormal
     
     def __get_list__(self, path):
         paths = os.listdir(path)
@@ -420,16 +421,25 @@ class MakeUCFCrime2LocalClips():
                 cv2.destroyAllWindows()
 
     def __call__(self):
-        abnormal_paths = self.__get_list__(self.root_anomaly)
-        normal_paths = self.__get_list__(self.root_normal)
-        normal_paths = [path for path in normal_paths if "Normal" in path]
-        paths = abnormal_paths + normal_paths
-        
-        annotations_anomaly = [self.__annotation__(pt) for pt in abnormal_paths]
-        annotations_normal = [None]*len(normal_paths)
-        annotations = annotations_anomaly + annotations_normal
-        
-        labels = [1]*len(abnormal_paths) + [0]*len(normal_paths)
+        root_anomaly = os.path.join(self.root, self.classes[1])
+        root_normal = os.path.join(self.root, self.classes[0])
+
+        if self.abnormal:
+            abnormal_paths = self.__get_list__(root_anomaly)
+            paths = abnormal_paths
+            annotations_anomaly = [self.__annotation__(pt) for pt in abnormal_paths]
+            annotations = annotations_anomaly
+            labels = [1]*len(abnormal_paths)
+        else:
+            normal_paths = self.__get_list__(root_normal)
+            normal_paths = [path for path in normal_paths if "Normal" in path]
+            paths = normal_paths
+            annotations_normal = [None]*len(normal_paths)
+            annotations = annotations_normal
+            labels = [0]*len(normal_paths)
+        # paths = abnormal_paths + normal_paths
+        # annotations = annotations_anomaly + annotations_normal
+        # labels = [1]*len(abnormal_paths) + [0]*len(normal_paths)
         
         return paths, labels, annotations
         

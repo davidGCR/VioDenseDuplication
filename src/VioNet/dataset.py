@@ -40,8 +40,6 @@ def get_video_frames(video_path):
 
     return frame_list
 
-
-
 def video_loader(video_dir_path, frame_indices, dataset_name, input_type):
     video = []
     if input_type=='dynamic-images' and isinstance(frame_indices[0], list):
@@ -184,7 +182,8 @@ class VioDB(Dataset):
         temporal_transform=None,
         target_transform=None,
         dataset_name='',
-        config=None,
+        keyframe=False,
+        spatial_transform_2=None,
         tmp_annotation_path=None,
         input_type='rgb'
     ):
@@ -200,6 +199,8 @@ class VioDB(Dataset):
 
         self.loader = video_loader
         self.dataset_name = dataset_name
+        self.keyframe = keyframe
+        self.spatial_transform_2 = spatial_transform_2
 
     def __getitem__(self, index):
 
@@ -214,11 +215,12 @@ class VioDB(Dataset):
                 frames = self.temporal_transform(frames, self.videos[index]['tmp_annotation'])
             else:        
                 frames = self.temporal_transform(frames)
-                # print('frames: ', frames)
 
         clip = self.loader(path, frames, self.dataset_name, self.input_type)
         # print('clip type:', type(clip), len(clip), type(clip[0]))
-       
+        if self.keyframe:
+            center_frame = clip[int(len(clip)/2)]
+            center_frame = self.spatial_transform_2(center_frame)
         # clip list of images (H, W, C)
         if self.spatial_transform:
             clip = self.spatial_transform(clip)
@@ -231,7 +233,8 @@ class VioDB(Dataset):
             target = self.target_transform(target)
         
         # print('VioNet input:', clip.size())
-
+        if self.keyframe:
+            return clip, target, center_frame
         return clip, target
 
     def __len__(self):
