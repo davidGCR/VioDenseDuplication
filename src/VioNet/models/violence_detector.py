@@ -358,7 +358,7 @@ class TwoStreamVD_Binary_CFam(nn.Module):
         else:
             self.temporal_pool = nn.AdaptiveAvgPool3d((1, None, None))
         in_channels = 528+1024#528+1024
-        out_channels = 1024                       
+        out_channels = config['CFAMBlock_out_channels']                       
         self.CFAMBlock = CFAMBlock(in_channels, out_channels)
         self.avg_pool_2d = nn.AdaptiveAvgPool2d((1,1))
         self.conv_final = nn.Conv2d(1024, 512, kernel_size=1, bias=False)
@@ -404,20 +404,21 @@ class TwoStreamVD_Binary_CFam(nn.Module):
             # print('after avgpool 2d: ', x.size())
             
             #++++op 2
-            # x = x.view(batch, num_tubes, -1)
-            # x = x.max(dim=1).values #torch.Size([2, 9280])
-            # x = torch.squeeze(x)
-            # x=self.classifier(x)
+            x = x.view(batch, num_tubes, -1)
+            print('after view: ', x.size())
+            x = x.max(dim=1).values #torch.Size([2, 9280])
+            x = torch.squeeze(x)
+            x=self.classifier(x)
 
             #++++op 3
-            x = self.conv_final(x) #torch.Size([4, 512, 8, 8])
-            # print('after conv_final: ', x.size())
-            x = x.view(batch, num_tubes, 512, 8, 8)
-            x = torch.max(x, dim=1, keepdim=True)[0]
-            x = torch.squeeze(x, dim=1)
-            x = self.avg_pool_2d(x)
-            x = x.view(batch, -1)
-            x=self.classifier(x)
+            # x = self.conv_final(x) #torch.Size([4, 512, 8, 8])
+            # # print('after conv_final: ', x.size())
+            # x = x.view(batch, num_tubes, 512, 8, 8)
+            # x = torch.max(x, dim=1, keepdim=True)[0]
+            # x = torch.squeeze(x, dim=1)
+            # x = self.avg_pool_2d(x)
+            # x = x.view(batch, -1)
+            # x=self.classifier(x)
         else:
             # x = self.avg_pool_2d(x)
             # x = torch.squeeze(x)

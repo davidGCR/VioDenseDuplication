@@ -41,7 +41,9 @@ TWO_STREAM_CFAM_CONFIG = {
     '2d_backbone': 'resnet50',
     'base_out_layer': 'layer3',
     'num_trainable_layers': 3,
-    'fc_input_dim': 512#7105#145,#9280
+    'CFAMBlock_out_channels': 512, #1024
+    'fc_input_dim': 32768,#512#7105#145,#9280,
+    
 }
 
 TWO_STREAM_REGRESSION_CONFIG = {
