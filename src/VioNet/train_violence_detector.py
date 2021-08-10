@@ -832,36 +832,10 @@ def MIL_training(config: Config):
         accuracies = AverageMeter()
         train_loss = 0
         for i, data in enumerate(zip(loader_violence, loader_nonviolence)):
-            # print('iiiiiiiii :' , i+1)
-            # print('=============== violence batch')
-            # boxes, video_images, labels, num_tubes, paths = data[0]
-            # boxes, video_images = boxes.to(device), video_images.to(device)
-            # labels = labels.float().to(device) if config.head == REGRESSION else labels.to(device)
-
-            # print('video_images: ', video_images.size())
-            # print('num_tubes: ', config.num_tubes)
-            # print('boxes: ', boxes.size())
-
-            # print('labels: ', labels)
-
-            # print('=============== nonviolence batch')
-            # boxes, video_images, labels, num_tubes, paths = data[1]
-            # boxes, video_images = boxes.to(device), video_images.to(device)
-            # labels = labels.float().to(device) if config.head == REGRESSION else labels.to(device)
-
-            # print('video_images: ', video_images.size())
-            # print('num_tubes: ', config.num_tubes)
-            # print('boxes: ', boxes.size())
-
-            # print('labels: ', labels)
-
             video_images = torch.cat([data[0][1], data[1][1]], dim=0).to(device)
             boxes = torch.cat([data[0][0], data[1][0]], dim=0).to(device)
             if config.model == 'TwoStreamVDRegression':
                 keyframes = torch.cat([data[0][5], data[1][5]], dim=0).to(device)
-            # print('video_images cat: ', video_images.size())
-            # print('boxes cat: ', boxes.size())
-
             # zero the parameter gradients
             optimizer.zero_grad()
             #predict
@@ -869,7 +843,6 @@ def MIL_training(config: Config):
                 outs = model(video_images, keyframes, boxes, config.num_tubes)
             else:
                 outs = model(video_images, boxes, config.num_tubes)
-            # print('outs: ', outs.size())
             #loss
             if config.criterion == 'BCE':
                 labels = torch.cat([data[0][2], data[1][2]], dim=0).float().to(device)
@@ -918,8 +891,8 @@ if __name__=='__main__':
         device=get_torch_device(),
         num_epoch=100,
         criterion='BCE',
-        optimizer='Adadelta',
-        learning_rate=0.00001, #0.001 for adagrad
+        optimizer='SGD',
+        learning_rate=0.001, #0.001 for adagrad
         train_batch=2,
         val_batch=2,
         num_tubes=4,
