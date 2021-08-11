@@ -462,8 +462,8 @@ def JSON_2_tube(json_file):
 
 if __name__=="__main__":
     make_func = MakeRWF2000(root='/media/david/datos/Violence DATA/RWF-2000/frames', 
-                    train=True,
-                    path_annotations='/media/david/datos/Violence DATA/Tubes/RWF-2000')
+                    train=False,
+                    path_annotations='/media/david/datos/Violence DATA/ActionTubes/RWF-2000')
     paths, labels, annotations = make_func()
     print("paths: ", len(paths))
     print("labels: ",len(labels))
@@ -474,10 +474,14 @@ if __name__=="__main__":
     for ann in annotations:
         tubes = JSON_2_tube(ann)
         if len(tubes)==0:
+            # print(len(tubes))
             without_tube.append(ann)
     
-    with open('without_tube.txt', 'w') as filehandle:
+    with open('without_tube_{}.txt'.format('train' if make_func.train else 'val'), 'w') as filehandle:
         filehandle.writelines("%s\n" % t for t in without_tube)
+
+    tubes = JSON_2_tube('/media/david/datos/Violence DATA/ActionTubes/RWF-2000/train/Fight/C8wt47cphU8_0.json')
+    print("tubes: ",len(tubes))
 
 
     # make_func = MakeHockeyDataset(root='/media/david/datos/Violence DATA/DATASETS/HockeyFightsDATASET/frames', 
