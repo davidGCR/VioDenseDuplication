@@ -446,15 +446,39 @@ class MakeUCFCrime2LocalClips():
 
 from collections import Counter
 import random
+def JSON_2_tube(json_file):
+    """
+    """
+    with open(json_file, "r") as read_file:
+        decodedArray = json.load(read_file)
+        # print("decoded Array:", type(decodedArray), len(decodedArray))
+        
+        for f in decodedArray:
+            for i, box in  enumerate(f['boxes']):
+                f['boxes'][i] = np.asarray(f['boxes'][i])
+        # print(decodedArray[0])
+        decodedArray = sorted(decodedArray, key = lambda i: i['id'])
+        return decodedArray
 
 if __name__=="__main__":
-    # make_func = MakeRWF2000(root='/media/david/datos/Violence DATA/RWF-2000/frames', 
-    #                 train=True,
-    #                 path_annotations='/media/david/datos/Violence DATA/Tubes/RWF-2000')
-    # paths, labels, annotations = make_func()
-    # print("paths: ", paths[0:10], len(paths))
-    # print("labels: ", labels[0:10], len(labels))
-    # print("annotations: ", annotations[0:10], len(annotations))
+    make_func = MakeRWF2000(root='/media/david/datos/Violence DATA/RWF-2000/frames', 
+                    train=True,
+                    path_annotations='/media/david/datos/Violence DATA/Tubes/RWF-2000')
+    paths, labels, annotations = make_func()
+    print("paths: ", len(paths))
+    print("labels: ",len(labels))
+    print("annotations: ",len(annotations))
+
+    print("no tubes in: ")
+    without_tube=[]
+    for ann in annotations:
+        tubes = JSON_2_tube(ann)
+        if len(tubes)==0:
+            without_tube.append(ann)
+    
+    with open('without_tube.txt', 'w') as filehandle:
+        filehandle.writelines("%s\n" % t for t in without_tube)
+
 
     # make_func = MakeHockeyDataset(root='/media/david/datos/Violence DATA/DATASETS/HockeyFightsDATASET/frames', 
     #                 train=False,
@@ -476,17 +500,17 @@ if __name__=="__main__":
     # print(annotations[idx][0:10])
     # print(intervals[idx])
 
-    m = MakeUCFCrime2LocalClips(root_anomaly='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/UCFCrime2LocalClips/anomaly',
-                                root_normal='/Volumes/TOSHIBA EXT/DATASET/AnomalyCRIMEALL/UCFCrime2Local/frames',
-                                path_annotations='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/CrimeViolence2LocalDATASET/Txt annotations-longVideos')
-    paths, labels, annotations = m()
-    # idx= random.randint(0, len(paths)-1)
-    idx=65
-    print(idx)
-    print(Counter(labels))
-    print(paths[idx])
-    print(labels[idx])
-    print(annotations[idx])
+    # m = MakeUCFCrime2LocalClips(root_anomaly='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/UCFCrime2LocalClips/anomaly',
+    #                             root_normal='/Volumes/TOSHIBA EXT/DATASET/AnomalyCRIMEALL/UCFCrime2Local/frames',
+    #                             path_annotations='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/CrimeViolence2LocalDATASET/Txt annotations-longVideos')
+    # paths, labels, annotations = m()
+    # # idx= random.randint(0, len(paths)-1)
+    # idx=65
+    # print(idx)
+    # print(Counter(labels))
+    # print(paths[idx])
+    # print(labels[idx])
+    # print(annotations[idx])
 
-    anns = m.ground_truth_boxes(paths[idx],annotations[idx])
-    m.plot(paths[idx], anns)
+    # anns = m.ground_truth_boxes(paths[idx],annotations[idx])
+    # m.plot(paths[idx], anns)

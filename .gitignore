@@ -282,4 +282,3 @@ VioNet_tensorboard_log
 .vscode
 src/MyTrainedModels
 src/VioNet/weights
-*.txt
