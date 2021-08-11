@@ -188,9 +188,6 @@ class TubeDataset(data.Dataset):
         annotation = self.annotations[index]
         boxes, segments, idxs = self.sampler(JSON_2_tube(annotation), annotation)
 
-        # if boxes == None or len(boxes) == 0:
-            # print('here none')
-            # return None, None, None, None, None
         video_images = []
         num_tubes = len(segments)
         for seg in segments:

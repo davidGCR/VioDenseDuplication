@@ -42,8 +42,8 @@ class BackboneI3D(nn.Module):
     return x
 
 if __name__=='__main__':
-  backbone = Backbone3DResNet()
-  # backbone = BackboneI3D(final_endpoint='Mixed_4e', pretrained=None)
+  # backbone = Backbone3DResNet()
+  backbone = BackboneI3D(final_endpoint='Mixed_5b', pretrained=None)
   input = torch.rand(4,3,8,224,224)
   output=backbone(input)
   print('out: ', output.size())

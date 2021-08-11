@@ -387,15 +387,15 @@ class TwoStreamVD_Binary_CFam(nn.Module):
         x_3d = self._3d_stream(x1) #torch.Size([2, 528, 4, 14, 14])
         x_2d = self._2d_stream(x2) #torch.Size([2, 1024, 14, 14])
 
-        print('output_3dbackbone: ', x_3d.size())
-        print('output_2dbackbone: ', x_2d.size())
+        # print('output_3dbackbone: ', x_3d.size())
+        # print('output_2dbackbone: ', x_2d.size())
         if self.with_roipool:
             batch = int(batch/num_tubes)
             x_3d = self.roi_pool_3d(x_3d,bbox)#torch.Size([8, 528])
             x_3d = torch.squeeze(x_3d)
-            print('3d after roipool: ', x_3d.size())
+            # print('3d after roipool: ', x_3d.size())
             x_2d = self.roi_pool_2d(x_2d,bbox)
-            print('2d after roipool: ', x_2d.size())
+            # print('2d after roipool: ', x_2d.size())
         else:
             x_3d = self.temporal_pool(x_3d)
             x_3d = torch.squeeze(x_3d)
@@ -446,7 +446,7 @@ if __name__=='__main__':
     print('------- ViolenceDetector --------')
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     # model = TwoStreamVD_Binary().to(device)
-    model = TwoStreamVD_Binary_CFam(config=TWO_STREAM_CFAM_SLOWRESNET_CONFIG).to(device)
+    model = TwoStreamVD_Binary_CFam(config=TWO_STREAM_CFAM_CONFIG).to(device)
     # model = ViolenceDetectorRegression(aggregate=True).to(device)
     batch = 2
     tubes = 2
@@ -463,7 +463,8 @@ if __name__=='__main__':
     # rois[6] = torch.tensor([1, 34, 14, 85, 77]).to(device)
     # rois[7] = torch.tensor([1, 34, 14, 85, 77]).to(device)
 
-    output = model(input_1, input_2, rois, tubes)
+    # output = model(input_1, input_2, rois, tubes)
+    output = model(input_1, input_2, None, None)
     # output = model(input_1, rois, tubes)
     print('output: ', output.size())
     

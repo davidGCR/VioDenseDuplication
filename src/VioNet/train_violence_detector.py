@@ -133,7 +133,7 @@ def load_make_dataset(dataset_name, train=True, cv_split=1, home_path='', catego
         make_dataset = MakeRWF2000(root=os.path.join(home_path, 'RWF-2000/frames'),#'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames', 
                                     train=train,
                                     category=category, 
-                                    path_annotations=os.path.join(home_path, 'ActionTubes/RWF-2000'))#'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/Tubes/RWF-2000')
+                                    path_annotations=os.path.join(home_path, 'ActionTubes/RWF-2000-150frames-scored'))#'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/Tubes/RWF-2000')
 
     elif dataset_name == HOCKEY_DATASET:
         make_dataset = MakeHockeyDataset(root=os.path.join(home_path, 'HockeyFightsDATASET/frames'), #'/content/DATASETS/HockeyFightsDATASET/frames'
@@ -545,6 +545,8 @@ def main_2(config: Config):
 
     if config.optimizer == 'Adadelta':
         optimizer = torch.optim.Adadelta(params, lr=config.learning_rate, eps=1e-8)
+    elif config.optimizer == 'Adam':
+        optimizer = torch.optim.Adam(params, lr=config.learning_rate)
     elif config.optimizer == 'SGD':
         optimizer = torch.optim.SGD(params=params,
                                     lr=config.learning_rate,
@@ -581,9 +583,6 @@ def main_2(config: Config):
             video_images = torch.cat([data[0][1], data[1][1]], dim=0).to(device)
             boxes = torch.cat([data[0][0], data[1][0]], dim=0).to(device)
             labels = torch.cat([data[0][2], data[1][2]], dim=0).to(device)
-            # print('data: ', len(data))
-            # print('data[0]: ', len(data[0]))
-            # print('data[1]: ', len(data[1]))
             keyframes = torch.cat([data[0][5], data[1][5]], dim=0).to(device)
             
             # print('video_images: ', video_images.size())
@@ -800,7 +799,8 @@ def MIL_training(config: Config):
     elif config.optimizer == 'Adagrad':
         optimizer = torch.optim.Adagrad(params, lr= config.learning_rate, weight_decay=0.0010000000474974513)
         scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[25, 50])
-    
+    elif config.optimizer == 'Adam':
+        optimizer = torch.optim.Adam(params, lr= config.learning_rate)
     if config.criterion == 'BCE':
         criterion = nn.BCELoss().to(device)
     elif config.criterion=='MIL':
@@ -876,13 +876,13 @@ from models.v_d_config import *
 if __name__=='__main__':
     config = Config(
         model='TwoStreamVD_Binary_CFam',#'TwoStreamVD_Binary',#'i3d-roi',i3d+roi+fc
-        model_config=TWO_STREAM_CFAM_SLOWRESNET_CONFIG,
+        model_config=TWO_STREAM_CFAM_CONFIG,
         head=BINARY,
         dataset=RWF_DATASET,
         num_cv=1,
         input_type='rgb',
         device=get_torch_device(),
-        num_epoch=100,
+        num_epoch=65,
         criterion='BCE',
         optimizer='Adadelta',
         learning_rate=0.001, #0.001 for adagrad
@@ -893,7 +893,7 @@ if __name__=='__main__':
         frames_per_tube=8, 
         save_every=10,
         freeze=False,
-        additional_info='',
+        additional_info='using-all-longvideos',
         home_path=HOME_UBUNTU,
         num_workers=4
     )
