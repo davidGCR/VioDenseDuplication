@@ -1,4 +1,6 @@
 import sys
+
+from torch.utils.data.sampler import WeightedRandomSampler
 sys.path.insert(1, '/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/AVSS2019/src/VioNet')
 
 from numpy.core.numeric import indices
@@ -138,7 +140,7 @@ class TubeDataset(data.Dataset):
         self.spatial_transform = spatial_transform
         self.make_function = make_function
         self.paths, self.labels, self.annotations = self.make_function()
-        self.paths, self.labels, self.annotations = filter_data_without_tubelet(self.paths, self.labels, self.annotations)
+        # self.paths, self.labels, self.annotations = filter_data_without_tubelet(self.paths, self.labels, self.annotations)
 
         self.max_video_len = 40 if dataset=='hockey' else 149
         self.keyframe = keyframe
@@ -155,6 +157,15 @@ class TubeDataset(data.Dataset):
                                 random=random)
         self.max_num_tubes = max_num_tubes
     
+    def get_sampler(self):
+        class_sample_count = np.unique(self.labels, return_counts=True)[1]
+        weight = 1./class_sample_count
+        print('class_sample_count: ', class_sample_count)
+        print('weight: ', weight)
+        samples_weight = weight[self.labels]
+        samples_weight = torch.from_numpy(samples_weight)
+        sampler = WeightedRandomSampler(samples_weight, len(samples_weight))
+        return sampler
     
     def load_tube_images(self, path, seg):
         tube_images = [] #one tube-16 frames

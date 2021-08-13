@@ -28,21 +28,22 @@ class TubeCrop(object):
 
     def __call__(self, tubes: list, tube_path: str):
         # assert len(tubes) >= 1, "No tubes in video!!!==>{}".format(tube_path)
-        # if len(tubes)==0:
-        #     rdn_frames = random.sample(list(range(65,90)),self.tube_len)
-        #     c = rdn_frames[int(len(rdn_frames)/2)]
-        #     rdn_frames = list(range(c-int(self.tube_len/2), c+int(self.tube_len/2)))
-        #     tubes = [{
-        #         'frames': ['frame{}.jpg'.format(i+1) for i in rdn_frames],
-        #         'foundAt': rdn_frames,
-        #         'boxes':[np.asarray([1.1,
-        #                             1.1,
-        #                             223,
-        #                             223,
-        #                             0.1]) for i in rdn_frames],
-        #         'score':0,
-        #         'id':1
-        #     }]
+        if len(tubes)==0:
+            rdn_frames = random.sample(list(range(65,90)),self.tube_len)
+            c = rdn_frames[int(len(rdn_frames)/2)]
+            rdn_frames = list(range(c-int(self.tube_len/2), c+int(self.tube_len/2)))
+            
+            tubes = [{
+                'frames': ['frame{}.jpg'.format(i+1) for i in rdn_frames],
+                'foundAt': rdn_frames,
+                'boxes':[np.asarray([82,
+                                    82,
+                                    122,
+                                    122,
+                                    0.1]) for i in rdn_frames],
+                'score':0,
+                'id':1
+            }]
 
         segments = []
         boxes = []
@@ -86,8 +87,8 @@ class TubeCrop(object):
         for id,box in enumerate(boxes):
             boxes[id][0,0] = id
 
-        if len(boxes) == 0:    
-            return None, None, None
+        # if len(boxes) == 0:    
+        #     return None, None, None
         
         return boxes, segments, idxs
     
