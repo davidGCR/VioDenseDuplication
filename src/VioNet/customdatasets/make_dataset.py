@@ -4,6 +4,7 @@ from operator import itemgetter
 import numpy as np
 import json
 import re
+import random
 
 class MakeImageHMDB51():
     def __init__(self, root, annotation_path, fold, train):
@@ -125,7 +126,8 @@ class MakeRWF2000():
                 train,
                 category=CATEGORY_ALL,
                 path_annotations=None, 
-                path_feat_annotations=None):
+                path_feat_annotations=None,
+                shuffle=False):
         self.root = root
         self.train = train
         self.path_annotations = path_annotations
@@ -134,6 +136,7 @@ class MakeRWF2000():
         # self.NF_TAG = "NonFight"
         self.classes = ["NonFight", "Fight"]
         self.category = category
+        self.shuffle = shuffle
     
     def classes(self):
         return self.classes
@@ -204,11 +207,18 @@ class MakeRWF2000():
     def __call__(self):
         split = self.split()
         if self.category == CATEGORY_ALL:
-            return self.all_categories(split)
+            paths, labels, annotations =  self.all_categories(split)
         elif self.category == CATEGORY_POS:
-            return self.positive_category(split)
+            paths, labels, annotations = self.positive_category(split)
         elif self.category == CATEGORY_NEG:
-            return self.negative_category(split)
+            paths, labels, annotations = self.negative_category(split)
+        
+        if self.shuffle:
+            c = list(zip(paths, labels, annotations))
+            random.shuffle(c)
+            paths, labels, annotations = zip(*c)
+        
+        return paths, labels, annotations
         
 
 class MakeUCFCrime2Local():

@@ -373,6 +373,12 @@ class TwoStreamVD_Binary_CFam(nn.Module):
             # nn.Linear(32, 2),
             # nn.Sigmoid()
         )
+        self.weight_init()
+    
+    def weight_init(self):
+        for layer in self.classifier:
+            if type(layer) == nn.Linear:
+                nn.init.xavier_normal_(layer.weight)
     
     def build_3d_backbone(self):
         if self.config['backbone_name'] == 'i3d':
@@ -386,6 +392,13 @@ class TwoStreamVD_Binary_CFam(nn.Module):
 
         
     def forward(self, x1, x2, bbox=None, num_tubes=0):
+        # print('bbox: ', bbox)
+        id = 0
+        for i in range(bbox.size(0)):
+            bbox[i,0] = id
+            id+=1
+            # print(bbox[i,0])
+        # print('bbox sort: ', bbox)
         batch, c, t, h, w = x1.size()
         x_3d = self._3d_stream(x1) #torch.Size([2, 528, 4, 14, 14])
         x_2d = self._2d_stream(x2) #torch.Size([2, 1024, 14, 14])
@@ -397,7 +410,7 @@ class TwoStreamVD_Binary_CFam(nn.Module):
             x_3d = self.roi_pool_3d(x_3d,bbox)#torch.Size([8, 528])
             x_3d = torch.squeeze(x_3d)
             # print('3d after roipool: ', x_3d.size())
-            x_2d = self.roi_pool_2d(x_2d,bbox)
+            x_2d = self.roi_pool_2d(x_2d, bbox)
             # print('2d after roipool: ', x_2d.size())
         else:
             x_3d = self.temporal_pool(x_3d)

@@ -130,18 +130,20 @@ def extract_features(confi: Config, output_folder: str):
                                         dir=os.path.join(output_folder, tmp_names[-3], tmp_names[-2]))
             features_writer.dump()
 
-def load_make_dataset(dataset_name, train=True, cv_split=1, home_path='', category=2):
+def load_make_dataset(dataset_name, train=True, cv_split=1, home_path='', category=2, shuffle=False):
     if dataset_name == RWF_DATASET:
         make_dataset = MakeRWF2000(root=os.path.join(home_path, 'RWF-2000/frames'),#'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames', 
                                     train=train,
                                     category=category, 
-                                    path_annotations=os.path.join(home_path, 'ActionTubes/RWF-2000'))#'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/Tubes/RWF-2000')
+                                    path_annotations=os.path.join(home_path, 'ActionTubes/RWF-2000'),
+                                    shuffle=shuffle)#'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/Tubes/RWF-2000')
 
     elif dataset_name == HOCKEY_DATASET:
         make_dataset = MakeHockeyDataset(root=os.path.join(home_path, 'HockeyFightsDATASET/frames'), #'/content/DATASETS/HockeyFightsDATASET/frames'
                                         train=train,
                                         cv_split_annotation_path=os.path.join(home_path, 'VioNetDB-splits/hockey_jpg{}.json'.format(cv_split)), #'/content/DATASETS/VioNetDB-splits/hockey_jpg{}.json'
-                                        path_annotations=os.path.join(home_path, 'ActionTubes/hockey'))#'/content/DATASETS/ActionTubes/hockey'
+                                        path_annotations=os.path.join(home_path, 'ActionTubes/hockey'),
+                                        )#'/content/DATASETS/ActionTubes/hockey'
     return make_dataset
 
 from model_transformations import *
@@ -294,14 +296,16 @@ def main_2(config: Config):
         train=True,
         cv_split=config.num_cv, 
         home_path=config.home_path,
-        category=0
+        category=0,
+        shuffle=True
         )
     make_dataset_violence = load_make_dataset(
         config.dataset, 
         train=True,
         cv_split=config.num_cv, 
         home_path=config.home_path,
-        category=1
+        category=1,
+        shuffle=True
         )
 
     # sample_size = 224
@@ -360,14 +364,16 @@ def main_2(config: Config):
         train=False,
         cv_split=config.num_cv, 
         home_path=config.home_path,
-        category=0
+        category=0,
+        shuffle=True
         )
     val_make_dataset_violence = load_make_dataset(
         config.dataset, 
         train=False,
         cv_split=config.num_cv, 
         home_path=config.home_path,
-        category=1
+        category=1,
+        shuffle=True
         )
     dataset_val_nonviolence = TubeDataset(frames_per_tube=config.frames_per_tube, 
                             min_frames_per_tube=8,
@@ -702,8 +708,8 @@ if __name__=='__main__':
         device=get_torch_device(),
         num_epoch=100,
         criterion='BCE',
-        optimizer='Adadelta',
-        learning_rate=0.001, #0.001 for adagrad
+        optimizer='SGD',
+        learning_rate=0.01, #0.001 for adagrad
         train_batch=2,
         val_batch=2,
         num_tubes=4,
@@ -711,7 +717,7 @@ if __name__=='__main__':
         frames_per_tube=8, 
         save_every=10,
         freeze=False,
-        additional_info='2dataloaders-alldata-centerbox-twofc+bn',
+        additional_info='2dataloader-centerbox-twofc+bn+Mixed4f',
         home_path=HOME_UBUNTU,
         num_workers=4
     )
