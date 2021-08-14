@@ -161,24 +161,43 @@ def main(config: Config):
         home_path=config.home_path,
         category=2)
     
-    train_dataset = TubeDataset(frames_per_tube=config.frames_per_tube, 
-                            min_frames_per_tube=8,
-                            make_function=make_dataset,
-                            spatial_transform=i3d_transf()['train'],
-                            max_num_tubes=config.num_tubes,
-                            train=True,
-                            dataset=config.dataset,
-                            input_type=config.input_type,
-                            random=config.tube_sampling_random,
-                            keyframe=True,
-                            spatial_transform_2=resnet_transf()['train'])
+    # train_dataset = TubeDataset(frames_per_tube=config.frames_per_tube, 
+    #                         min_frames_per_tube=8,
+    #                         make_function=make_dataset,
+    #                         spatial_transform=i3d_transf()['train'],
+    #                         max_num_tubes=config.num_tubes,
+    #                         train=True,
+    #                         dataset=config.dataset,
+    #                         input_type=config.input_type,
+    #                         random=config.tube_sampling_random,
+    #                         keyframe=True,
+    #                         spatial_transform_2=resnet_transf()['train'])
+    # train_loader = DataLoader(train_dataset,
+    #                     batch_size=config.train_batch,
+    #                     shuffle=True,
+    #                     num_workers=config.num_workers,
+    #                     # pin_memory=True,
+    #                     collate_fn=my_collate,
+    #                     # sampler=train_dataset.get_sampler()
+    #                     drop_last=True
+    #                     )
+
+    from VioNet.customdatasets.vio_db import ViolenceDataset
+    from VioNet.transformations.temporal_transforms import RandomCrop, CenterCrop
+
+    train_dataset = ViolenceDataset(
+        RandomCrop(size=16, stride=1, input_type='rgb'),
+        make_dataset,
+        dataset=config.dataset,
+        spatial_transform=i3d_transf()['train'],
+        keyframe=True,
+        spatial_transform_2=resnet_transf()['train']
+    )
+
     train_loader = DataLoader(train_dataset,
                         batch_size=config.train_batch,
-                        # shuffle=True,
-                        num_workers=4,
-                        # pin_memory=True,
-                        collate_fn=my_collate,
-                        sampler=train_dataset.get_sampler()
+                        shuffle=True,
+                        num_workers=config.num_workers,
                         )
     #validation
     val_make_dataset = load_make_dataset(
@@ -188,25 +207,40 @@ def main(config: Config):
         home_path=config.home_path,
         category=2)
     
-    val_dataset = TubeDataset(frames_per_tube=config.frames_per_tube, 
-                            min_frames_per_tube=8, 
-                            make_function=val_make_dataset,
-                            spatial_transform=i3d_transf()['val'],
-                            max_num_tubes=config.num_tubes,
-                            train=False,
-                            dataset=config.dataset,
-                            input_type=config.input_type,
-                            random=config.tube_sampling_random,
-                            keyframe=True,
-                            spatial_transform_2=resnet_transf()['val'])
+    val_dataset = ViolenceDataset(
+        CenterCrop(size=16, stride=1, input_type='rgb'),
+        val_make_dataset,
+        dataset=config.dataset,
+        spatial_transform=i3d_transf()['val'],
+        keyframe=True,
+        spatial_transform_2=resnet_transf()['val']
+    )
+
     val_loader = DataLoader(val_dataset,
-                        batch_size=config.val_batch,
-                        # shuffle=True,
+                        batch_size=config.train_batch,
+                        shuffle=True,
                         num_workers=config.num_workers,
-                        sampler=val_dataset.get_sampler(),
-                        # pin_memory=True,
-                        collate_fn=my_collate
                         )
+    
+    # val_dataset = TubeDataset(frames_per_tube=config.frames_per_tube, 
+    #                         min_frames_per_tube=8, 
+    #                         make_function=val_make_dataset,
+    #                         spatial_transform=i3d_transf()['val'],
+    #                         max_num_tubes=config.num_tubes,
+    #                         train=False,
+    #                         dataset=config.dataset,
+    #                         input_type=config.input_type,
+    #                         random=config.tube_sampling_random,
+    #                         keyframe=True,
+    #                         spatial_transform_2=resnet_transf()['val'])
+    # val_loader = DataLoader(val_dataset,
+    #                     batch_size=config.val_batch,
+    #                     shuffle=True,
+    #                     num_workers=config.num_workers,
+    #                     # sampler=val_dataset.get_sampler(),
+    #                     # pin_memory=True,
+    #                     collate_fn=my_collate
+    #                     )
    
     ################## Full Detector ########################
     from models.violence_detector import ViolenceDetectorBinary
@@ -243,7 +277,7 @@ def main(config: Config):
     elif config.optimizer == 'SGD':
         optimizer = torch.optim.SGD(params=params,
                                     lr=config.learning_rate,
-                                    momentum=0.5,
+                                    momentum=0.9,
                                     weight_decay=1e-3)
     
     criterion = nn.CrossEntropyLoss().to(config.device)
@@ -308,19 +342,6 @@ def main_2(config: Config):
         shuffle=True
         )
 
-    # sample_size = 224
-    # mean = [0.45, 0.45, 0.45]
-    # std = [0.225, 0.225, 0.225]
-    # crop_size = 256
-    # num_frames = 8
-    # sampling_rate = 8
-    # frames_per_second = 30
-    # transforms.Compose([
-    #                     # transforms.CenterCrop(224),
-    #                     transforms.Resize(sample_size),
-    #                     transforms.ToTensor(),
-    #                     transforms.Normalize(mean, std)
-    #                 ])
     dataset_train_nonviolence = TubeDataset(frames_per_tube=config.frames_per_tube, 
                             min_frames_per_tube=8,
                             make_function=make_dataset_nonviolence,
@@ -700,7 +721,7 @@ def MIL_training(config: Config):
 if __name__=='__main__':
     config = Config(
         model='TwoStreamVD_Binary_CFam',#'TwoStreamVD_Binary',#'i3d-roi',i3d+roi+fc
-        model_config=TWO_STREAM_CFAM_CONFIG,
+        model_config=TWO_STREAM_CFAM_NO_TUBE_CONFIG,
         head=BINARY,
         dataset=RWF_DATASET,
         num_cv=1,
@@ -709,15 +730,15 @@ if __name__=='__main__':
         num_epoch=100,
         criterion='BCE',
         optimizer='SGD',
-        learning_rate=0.01, #0.001 for adagrad
+        learning_rate=0.001, #0.001 for adagrad
         train_batch=2,
         val_batch=2,
         num_tubes=4,
-        tube_sampling_random=True,
-        frames_per_tube=8, 
+        tube_sampling_random=False,
+        frames_per_tube=16, 
         save_every=10,
         freeze=False,
-        additional_info='2dataloader-centerbox-twofc+bn+Mixed4f',
+        additional_info='TWO_STREAM_CFAM_NO_TUBE_CONFIG',
         home_path=HOME_UBUNTU,
         num_workers=4
     )
@@ -730,8 +751,8 @@ if __name__=='__main__':
     #                                       'SpTmpDetector_rwf-2000_model(binary)_stream(rgb)_cv(1)_epochs(200)_note(restorefrom97epoch)',
     #                                       'rwf_trained/save_at_epoch-127.chk')
 
-    # main(config)
-    main_2(config)
+    main(config)
+    # main_2(config)
     # MIL_training(config)
     # extract_features(config, output_folder='/media/david/datos/Violence DATA/i3d-FeatureMaps/rwf')
     # load_features(config)

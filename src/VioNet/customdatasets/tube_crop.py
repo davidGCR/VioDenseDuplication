@@ -27,28 +27,28 @@ class TubeCrop(object):
         self.random = random
 
     def __call__(self, tubes: list, tube_path: str):
-        # assert len(tubes) >= 1, "No tubes in video!!!==>{}".format(tube_path)
-        if len(tubes)==0:
-            rdn_frames = random.sample(list(range(65,90)),self.tube_len)
-            c = rdn_frames[int(len(rdn_frames)/2)]
-            rdn_frames = list(range(c-int(self.tube_len/2), c+int(self.tube_len/2)))
+        assert len(tubes) >= 1, "No tubes in video!!!==>{}".format(tube_path)
+        # if len(tubes)==0:
+        #     rdn_frames = random.sample(list(range(65,90)),self.tube_len)
+        #     c = rdn_frames[int(len(rdn_frames)/2)]
+        #     rdn_frames = list(range(c-int(self.tube_len/2), c+int(self.tube_len/2)))
             
-            tubes = [{
-                'frames': ['frame{}.jpg'.format(i+1) for i in rdn_frames],
-                'foundAt': rdn_frames,
-                'boxes':[np.asarray([82,
-                                    82,
-                                    122,
-                                    122,
-                                    0.1]) for i in rdn_frames],
-                'score':0,
-                'id':1
-            }]
+        #     tubes = [{
+        #         'frames': ['frame{}.jpg'.format(i+1) for i in rdn_frames],
+        #         'foundAt': rdn_frames,
+        #         'boxes':[np.asarray([82,
+        #                             82,
+        #                             122,
+        #                             122,
+        #                             0.1]) for i in rdn_frames],
+        #         'score':0,
+        #         'id':1
+        #     }]
 
         segments = []
         boxes = []
         if not self.random:
-            tubes = sorted(tubes, key = lambda i: i['score'], reverse=True)
+            tubes = sorted(tubes, key = lambda i: i['len'], reverse=True)
         
         for tube in tubes:
             if self.input_type=='rgb':

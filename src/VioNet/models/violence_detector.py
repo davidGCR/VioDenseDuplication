@@ -362,12 +362,12 @@ class TwoStreamVD_Binary_CFam(nn.Module):
         
         # self.conv_final = nn.Conv2d(1024, 512, kernel_size=1, bias=False)
         self.classifier = nn.Sequential(
-            nn.Linear(config['fc_input_dim'], 1024),
+            nn.Linear(config['fc_input_dim'], 2),
             # nn.ReLU(),
             # nn.Dropout(0.6),
-            nn.BatchNorm1d(num_features=1024),
-            nn.ReLU(),
-            nn.Linear(1024, 2),
+            # nn.BatchNorm1d(num_features=1024),
+            # nn.ReLU(),
+            # nn.Linear(1024, 2),
             # nn.ReLU(),
             # nn.Dropout(0.6),
             # nn.Linear(32, 2),
@@ -393,10 +393,10 @@ class TwoStreamVD_Binary_CFam(nn.Module):
         
     def forward(self, x1, x2, bbox=None, num_tubes=0):
         # print('bbox: ', bbox)
-        id = 0
-        for i in range(bbox.size(0)):
-            bbox[i,0] = id
-            id+=1
+        # id = 0
+        # for i in range(bbox.size(0)):
+        #     bbox[i,0] = id
+        #     id+=1
             # print(bbox[i,0])
         # print('bbox sort: ', bbox)
         batch, c, t, h, w = x1.size()
@@ -464,25 +464,25 @@ if __name__=='__main__':
     print('------- ViolenceDetector --------')
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     # model = TwoStreamVD_Binary().to(device)
-    model = TwoStreamVD_Binary_CFam(config=TWO_STREAM_CFAM_CONFIG).to(device)
+    model = TwoStreamVD_Binary_CFam(config=TWO_STREAM_CFAM_NO_TUBE_CONFIG).to(device)
     # model = ViolenceDetectorRegression(aggregate=True).to(device)
     batch = 2
-    tubes = 4
+    tubes = 1
     input_1 = torch.rand(batch*tubes,3,8,224,224).to(device)
     input_2 = torch.rand(batch*tubes,3,224,224).to(device)
 
-    rois = torch.rand(batch*tubes, 5).to(device)
-    rois[0] = torch.tensor([0,  62.5481,  49.0223, 122.0747, 203.4146]).to(device)#torch.tensor([1, 14, 16, 66, 70]).to(device)
-    rois[1] = torch.tensor([1, 34, 14, 85, 77]).to(device)
-    rois[2] = torch.tensor([1, 34, 14, 85, 77]).to(device)
-    rois[3] = torch.tensor([1, 34, 14, 85, 77]).to(device)
+    # rois = torch.rand(batch*tubes, 5).to(device)
+    # rois[0] = torch.tensor([0,  62.5481,  49.0223, 122.0747, 203.4146]).to(device)#torch.tensor([1, 14, 16, 66, 70]).to(device)
+    # rois[1] = torch.tensor([1, 34, 14, 85, 77]).to(device)
+    # rois[2] = torch.tensor([1, 34, 14, 85, 77]).to(device)
+    # rois[3] = torch.tensor([1, 34, 14, 85, 77]).to(device)
     # rois[4] = torch.tensor([1, 34, 14, 85, 77]).to(device)
     # rois[5] = torch.tensor([1, 34, 14, 85, 77]).to(device)
     # rois[6] = torch.tensor([1, 34, 14, 85, 77]).to(device)
     # rois[7] = torch.tensor([1, 34, 14, 85, 77]).to(device)
 
-    output = model(input_1, input_2, rois, tubes)
-    # output = model(input_1, input_2, None, None)
+    # output = model(input_1, input_2, rois, tubes)
+    output = model(input_1, input_2, None, None)
     # output = model(input_1, rois, tubes)
     print('output: ', output.size())
     

@@ -108,17 +108,7 @@ def main(config, home_path):
                             # pin_memory=True
                             )
 
-    exp_config_log = "SpTmpDetector_{}_model({})_head({})_stream({})_cv({})_epochs({})_tubes({})_tub_sampl_rand({})_optimizer({})_lr({})_note({})".format(config.dataset,
-                                                                config.model,
-                                                                config.head,
-                                                                config.input_type,
-                                                                config.num_cv,
-                                                                config.num_epoch,
-                                                                config.num_tubes,
-                                                                config.tube_sampling_random,
-                                                                config.optimizer,
-                                                                config.learning_rate,
-                                                                config.additional_info)
+    exp_config_log = config.log
     # log
     h_p = HOME_DRIVE if config.home_path==HOME_COLAB else config.home_path
     tsb_path_folder = os.path.join(h_p, PATH_TENSORBOARD, exp_config_log)
