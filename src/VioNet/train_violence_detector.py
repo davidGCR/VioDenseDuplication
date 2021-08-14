@@ -1,22 +1,23 @@
 
-from os import path
-from pickle import FALSE
+import add_path
+from models.v_d_config import *
+
 from PIL import Image, ImageFile
-from torch.nn import parameter
+from VioNet.lib.accuracy import get_accuracy
+from VioNet.model_transformations import i3d_transf, resnet_transf
 
 # from VioNet.dataset import make_dataset
 ImageFile.LOAD_TRUNCATED_IMAGES = True
-from torch._C import device
 from torch.utils.tensorboard import SummaryWriter
 import torch
-from torchvision.transforms.transforms import Resize
+
 import torchvision.transforms as transforms
 import os
 
 #data
 from customdatasets.make_dataset import MakeRWF2000, MakeHockeyDataset
 from customdatasets.tube_dataset import TubeDataset, my_collate, my_collate_2, OneVideoTubeDataset, TubeFeaturesDataset
-from torch.utils.data import DataLoader, dataset
+from torch.utils.data import DataLoader
 
 from config import Config
 from model import VioNet_I3D_Roi, VioNet_densenet_lean_roi
@@ -29,7 +30,8 @@ from torch import nn
 from epoch import train, val
 import numpy as np
 from global_var import *
-from configs_datasets import DefaultTrasformations
+# from configs_datasets import DefaultTrasformations
+from model_transformations import DefaultTrasformations
 from models.mil_loss import MIL
 from models.violence_detector import *
 
@@ -128,65 +130,119 @@ def extract_features(confi: Config, output_folder: str):
                                         dir=os.path.join(output_folder, tmp_names[-3], tmp_names[-2]))
             features_writer.dump()
 
-def load_make_dataset(dataset_name, train=True, cv_split=1, home_path='', category=2):
+def load_make_dataset(dataset_name, train=True, cv_split=1, home_path='', category=2, shuffle=False):
     if dataset_name == RWF_DATASET:
         make_dataset = MakeRWF2000(root=os.path.join(home_path, 'RWF-2000/frames'),#'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames', 
                                     train=train,
                                     category=category, 
-                                    path_annotations=os.path.join(home_path, 'ActionTubes/RWF-2000-150frames-scored'))#'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/Tubes/RWF-2000')
+                                    path_annotations=os.path.join(home_path, 'ActionTubes/RWF-2000'),
+                                    shuffle=shuffle)#'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/Tubes/RWF-2000')
 
     elif dataset_name == HOCKEY_DATASET:
         make_dataset = MakeHockeyDataset(root=os.path.join(home_path, 'HockeyFightsDATASET/frames'), #'/content/DATASETS/HockeyFightsDATASET/frames'
                                         train=train,
                                         cv_split_annotation_path=os.path.join(home_path, 'VioNetDB-splits/hockey_jpg{}.json'.format(cv_split)), #'/content/DATASETS/VioNetDB-splits/hockey_jpg{}.json'
-                                        path_annotations=os.path.join(home_path, 'ActionTubes/hockey'))#'/content/DATASETS/ActionTubes/hockey'
+                                        path_annotations=os.path.join(home_path, 'ActionTubes/hockey'),
+                                        )#'/content/DATASETS/ActionTubes/hockey'
     return make_dataset
+
+from model_transformations import *
+from lib.train_script import train, val
+from lib.train_2it_script import train_2it, val_2it
+from lib.accuracy import *
 
 
 def main(config: Config):
     device = config.device
-    make_dataset = load_make_dataset(config.dataset, train=True, cv_split=config.num_cv, home_path=config.home_path, category=2)
-    spatial_t = DefaultTrasformations(model_name=config.model, size=224, train=True)
-    dataset = TubeDataset(frames_per_tube=16, 
-                            min_frames_per_tube=8,
-                            make_function=make_dataset,
-                            spatial_transform=spatial_t(),
-                            max_num_tubes=config.num_tubes,
-                            train=True,
-                            dataset=config.dataset,
-                            input_type=config.input_type,
-                            random=config.tube_sampling_random)
-    loader = DataLoader(dataset,
+    make_dataset = load_make_dataset(
+        config.dataset, 
+        train=True,
+        cv_split=config.num_cv,
+        home_path=config.home_path,
+        category=2)
+    
+    # train_dataset = TubeDataset(frames_per_tube=config.frames_per_tube, 
+    #                         min_frames_per_tube=8,
+    #                         make_function=make_dataset,
+    #                         spatial_transform=i3d_transf()['train'],
+    #                         max_num_tubes=config.num_tubes,
+    #                         train=True,
+    #                         dataset=config.dataset,
+    #                         input_type=config.input_type,
+    #                         random=config.tube_sampling_random,
+    #                         keyframe=True,
+    #                         spatial_transform_2=resnet_transf()['train'])
+    # train_loader = DataLoader(train_dataset,
+    #                     batch_size=config.train_batch,
+    #                     shuffle=True,
+    #                     num_workers=config.num_workers,
+    #                     # pin_memory=True,
+    #                     collate_fn=my_collate,
+    #                     # sampler=train_dataset.get_sampler()
+    #                     drop_last=True
+    #                     )
+
+    from VioNet.customdatasets.vio_db import ViolenceDataset
+    from VioNet.transformations.temporal_transforms import RandomCrop, CenterCrop
+
+    train_dataset = ViolenceDataset(
+        RandomCrop(size=16, stride=1, input_type='rgb'),
+        make_dataset,
+        dataset=config.dataset,
+        spatial_transform=i3d_transf()['train'],
+        keyframe=True,
+        spatial_transform_2=resnet_transf()['train']
+    )
+
+    train_loader = DataLoader(train_dataset,
                         batch_size=config.train_batch,
                         shuffle=True,
-                        num_workers=4,
-                        # pin_memory=True,
-                        collate_fn=my_collate
+                        num_workers=config.num_workers,
                         )
-
     #validation
-    val_make_dataset = load_make_dataset(config.dataset, train=False, cv_split=config.num_cv, home_path=config.home_path)
-    spatial_t_val = DefaultTrasformations(model_name='densenet_lean_roi', size=224, train=False)
-    val_dataset = TubeDataset(frames_per_tube=16, 
-                            min_frames_per_tube=8, 
-                            make_function=val_make_dataset,
-                            spatial_transform=spatial_t_val(),
-                            max_num_tubes=config.num_tubes,
-                            train=False,
-                            dataset=config.dataset,
-                            input_type=config.input_type,
-                            random=config.tube_sampling_random)
+    val_make_dataset = load_make_dataset(
+        config.dataset,
+        train=False,
+        cv_split=config.num_cv,
+        home_path=config.home_path,
+        category=2)
+    
+    val_dataset = ViolenceDataset(
+        CenterCrop(size=16, stride=1, input_type='rgb'),
+        val_make_dataset,
+        dataset=config.dataset,
+        spatial_transform=i3d_transf()['val'],
+        keyframe=True,
+        spatial_transform_2=resnet_transf()['val']
+    )
+
     val_loader = DataLoader(val_dataset,
-                        batch_size=config.val_batch,
+                        batch_size=config.train_batch,
                         shuffle=True,
-                        num_workers=1,
-                        # pin_memory=True,
-                        collate_fn=my_collate
+                        num_workers=config.num_workers,
                         )
+    
+    # val_dataset = TubeDataset(frames_per_tube=config.frames_per_tube, 
+    #                         min_frames_per_tube=8, 
+    #                         make_function=val_make_dataset,
+    #                         spatial_transform=i3d_transf()['val'],
+    #                         max_num_tubes=config.num_tubes,
+    #                         train=False,
+    #                         dataset=config.dataset,
+    #                         input_type=config.input_type,
+    #                         random=config.tube_sampling_random,
+    #                         keyframe=True,
+    #                         spatial_transform_2=resnet_transf()['val'])
+    # val_loader = DataLoader(val_dataset,
+    #                     batch_size=config.val_batch,
+    #                     shuffle=True,
+    #                     num_workers=config.num_workers,
+    #                     # sampler=val_dataset.get_sampler(),
+    #                     # pin_memory=True,
+    #                     collate_fn=my_collate
+    #                     )
    
     ################## Full Detector ########################
-    
-    #
     from models.violence_detector import ViolenceDetectorBinary
     if config.model == 'densenet_lean_roi':
         model, params = VioNet_densenet_lean_roi(config, config.pretrained_model)
@@ -197,18 +253,11 @@ def main(config: Config):
             freeze=config.freeze,
             input_dim=528).to(device)
         params = model.parameters()
+    elif config.model == 'TwoStreamVD_Binary_CFam':
+        model = TwoStreamVD_Binary_CFam(config.model_config).to(device)
+        params = model.parameters()
 
-    exp_config_log = "SpTmpDetector_{}_model({})_head({})_stream({})_cv({})_epochs({})_tubes({})_tub_sampl_rand({})_optimizer({})_lr({})_note({})".format(config.dataset,
-                                                                config.model,
-                                                                config.head,
-                                                                config.input_type,
-                                                                config.num_cv,
-                                                                config.num_epoch,
-                                                                config.num_tubes,
-                                                                config.tube_sampling_random,
-                                                                config.optimizer,
-                                                                config.learning_rate,
-                                                                config.additional_info)
+    exp_config_log = config.log
     
     h_p = HOME_DRIVE if config.home_path==HOME_COLAB else config.home_path
     tsb_path_folder = os.path.join(h_p, PATH_TENSORBOARD, exp_config_log)
@@ -221,27 +270,23 @@ def main(config: Config):
     writer = SummaryWriter(tsb_path_folder)
 
     if config.optimizer == 'Adadelta':
-        optimizer = torch.optim.Adadelta(params, lr=config.learning_rate, eps=1e-8)
+        optimizer = torch.optim.Adadelta(
+            params, 
+            lr=config.learning_rate, 
+            eps=1e-8)
     elif config.optimizer == 'SGD':
         optimizer = torch.optim.SGD(params=params,
                                     lr=config.learning_rate,
-                                    momentum=0.5,
+                                    momentum=0.9,
                                     weight_decay=1e-3)
     
-    if config.head == REGRESSION:
-        # criterion = nn.BCELoss().to(device)
-        # criterion = nn.BCEWithLogitsLoss().to(device)
-        criterion = MIL
-    elif config.head == BINARY:
-        criterion = nn.CrossEntropyLoss().to(config.device)
-
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,
-                                                           verbose=True,
-                                                           factor=config.factor,
-                                                           min_lr=config.min_lr)
-    from utils import AverageMeter
-    # from epoch import calculate_accuracy_2
-
+    criterion = nn.CrossEntropyLoss().to(config.device)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer,
+        verbose=True,
+        factor=config.factor,
+        min_lr=config.min_lr)
+    
     start_epoch = 0
     ##Restore training
     if config.restore_training:
@@ -249,113 +294,28 @@ def main(config: Config):
         start_epoch = last_epoch+1
         # config.num_epoch = epochs
     
-    def train(_epoch, _model, _criterion, _optimizer):
-        print('training at epoch: {}'.format(epoch))
-        _model.train()
-        losses = AverageMeter()
-        accuracies = AverageMeter()
-        for i, data in enumerate(loader):
-            boxes, video_images, labels, num_tubes, paths = data
-            boxes, video_images = boxes.to(device), video_images.to(device)
-            # labels = labels.float().to(device)
-            labels = labels.float().to(device) if config.head == REGRESSION else labels.to(device)
-
-            # print('video_images: ', video_images.size())
-            # print('num_tubes: ', config.num_tubes)
-            # print('boxes: ', boxes, boxes.size())
-
-            # zero the parameter gradients
-            optimizer.zero_grad()
-            #predict
-            outs = _model(video_images, boxes, config.num_tubes)
-            #loss
-            # print('outs: ', outs.size())
-            # print('before criterion labels: ', labels, labels.size())
-            
-            loss = _criterion(outs,labels)
-            #accuracy
-            # preds = np.round(scores.detach().cpu().numpy())
-            # acc = (preds == labels.cpu().numpy()).sum() / preds.shape[0]
-            if config.head == REGRESSION:
-                acc = get_accuracy(outs, labels)
-            else:
-                acc = calculate_accuracy_2(outs,labels)
-            # meter
-            # print('len(video_images): ', len(video_images), ' video_images.size(0):',video_images.size(0), ' preds.shape[0]:', preds.shape[0])
-            losses.update(loss.item(), outs.shape[0])
-            accuracies.update(acc, outs.shape[0])
-            # backward + optimize
-            loss.backward()
-            _optimizer.step()
-            # print(
-            #     'Epoch: [{0}][{1}/{2}]\t'
-            #     # 'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-            #     # 'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
-            #     'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-            #     'Acc {acc.val:.3f} ({acc.avg:.3f})'.format(
-            #         epoch,
-            #         i + 1,
-            #         len(loader),
-            #         # batch_time=batch_time,
-            #         # data_time=data_time,
-            #         loss=losses,
-            #         acc=accuracies
-            #     )
-            # )
-        train_loss = losses.avg
-        train_acc = accuracies.avg
-        print(
-            'Epoch: [{}]\t'
-            'Loss(train): {loss.avg:.4f}\t'
-            'Acc(train): {acc.avg:.3f}'.format(_epoch, loss=losses, acc=accuracies)
-        )
-        return train_loss, train_acc
-
-
-    def val(_epoch, _model, _criterion):
-        print('validation at epoch: {}'.format(epoch))
-        # set model to evaluate mode
-        _model.eval()
-        # meters
-        losses = AverageMeter()
-        accuracies = AverageMeter()
-        for _, data in enumerate(val_loader):
-            boxes, video_images, labels, num_tubes, paths = data
-            boxes, video_images = boxes.to(device), video_images.to(device)
-            # labels = labels.float().to(device)
-            labels = labels.float().to(device) if config.head == REGRESSION else labels.to(device)
-            # no need to track grad in eval mode
-            with torch.no_grad():
-                outputs = _model(video_images, boxes, config.num_tubes)
-                loss = _criterion(outputs, labels)
-                # preds = np.round(outputs.detach().cpu().numpy())
-                # acc = (preds == labels.cpu().numpy()).sum() / preds.shape[0]
-                
-                if config.head == REGRESSION:
-                    acc = get_accuracy(outputs, labels)
-                else:
-                    acc = calculate_accuracy_2(outputs,labels)
-
-            losses.update(loss.item(), outputs.shape[0])
-            accuracies.update(acc, outputs.shape[0])
-
-        print(
-            'Epoch: [{}]\t'
-            'Loss(val): {loss.avg:.4f}\t'
-            'Acc(val): {acc.avg:.3f}'.format(_epoch, loss=losses, acc=accuracies)
-        )
-        val_loss = losses.avg
-        val_acc = accuracies.avg
-
-        return val_loss, val_acc
-
     for epoch in range(start_epoch, config.num_epoch):
         # epoch = last_epoch+i
-        train_loss, train_acc = train(epoch, model, criterion, optimizer)
+        train_loss, train_acc = train(
+            train_loader, 
+            epoch, 
+            model, 
+            criterion, 
+            optimizer, 
+            config.device, 
+            config, 
+            calculate_accuracy_2)
         writer.add_scalar('training loss', train_loss, epoch)
         writer.add_scalar('training accuracy', train_acc, epoch)
         
-        val_loss, val_acc = val(epoch, model, criterion)
+        val_loss, val_acc = val(
+            val_loader,
+            epoch, 
+            model, 
+            criterion,
+            config.device,
+            config,
+            calculate_accuracy_2)
         scheduler.step(val_loss)
         writer.add_scalar('validation loss', val_loss, epoch)
         writer.add_scalar('validation accuracy', val_acc, epoch)
@@ -370,81 +330,40 @@ def main_2(config: Config):
         train=True,
         cv_split=config.num_cv, 
         home_path=config.home_path,
-        category=0
+        category=0,
+        shuffle=True
         )
     make_dataset_violence = load_make_dataset(
         config.dataset, 
         train=True,
         cv_split=config.num_cv, 
         home_path=config.home_path,
-        category=1
+        category=1,
+        shuffle=True
         )
 
-    # sample_size = 224
-    # mean = [0.45, 0.45, 0.45]
-    # std = [0.225, 0.225, 0.225]
-    # crop_size = 256
-    # num_frames = 8
-    # sampling_rate = 8
-    # frames_per_second = 30
-    # transforms.Compose([
-    #                     # transforms.CenterCrop(224),
-    #                     transforms.Resize(sample_size),
-    #                     transforms.ToTensor(),
-    #                     transforms.Normalize(mean, std)
-    #                 ])
-
-    data_transforms = {
-                        'train':None,
-                        'val': None
-                        }
-    keyframe = False
-    models_2d_ = [
-        'TwoStreamVD_Binary',
-        'TwoStreamVD_Binary_CFam'
-    ]
-    if config.model in models_2d_:
-        input_size = 224
-        keyframe = True
-        data_transforms = {
-                        'train': transforms.Compose([
-                            transforms.RandomResizedCrop(input_size),
-                            transforms.RandomHorizontalFlip(),
-                            transforms.ToTensor(),
-                            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-                        ]),
-                        'val': transforms.Compose([
-                            transforms.Resize(input_size),
-                            # transforms.CenterCrop(input_size),
-                            transforms.ToTensor(),
-                            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-                        ]),
-                    }
-    # print('keyframe: ', keyframe)
-    
-    spatial_t = DefaultTrasformations(model_name='i3d', size=224, train=True)
     dataset_train_nonviolence = TubeDataset(frames_per_tube=config.frames_per_tube, 
                             min_frames_per_tube=8,
                             make_function=make_dataset_nonviolence,
-                            spatial_transform=spatial_t(),
+                            spatial_transform=i3d_transf()['train'],
                             max_num_tubes=config.num_tubes,
                             train=True,
                             dataset=config.dataset,
                             input_type=config.input_type,
                             random=config.tube_sampling_random,
-                            keyframe=keyframe,
-                            spatial_transform_2=data_transforms['train'])
+                            keyframe=True,
+                            spatial_transform_2=resnet_transf()['train'])
     dataset_train_violence = TubeDataset(frames_per_tube=config.frames_per_tube, 
                             min_frames_per_tube=8,
                             make_function=make_dataset_violence,
-                            spatial_transform=spatial_t(),
+                            spatial_transform=i3d_transf()['train'],
                             max_num_tubes=config.num_tubes,
                             train=True,
                             dataset=config.dataset,
                             input_type=config.input_type,
                             random=config.tube_sampling_random,
-                            keyframe=keyframe,
-                            spatial_transform_2=data_transforms['train'])
+                            keyframe=True,
+                            spatial_transform_2=resnet_transf()['train'])
     loader_train_nonviolence = DataLoader(dataset_train_nonviolence,
                         batch_size=config.train_batch,
                         shuffle=True,
@@ -466,37 +385,39 @@ def main_2(config: Config):
         train=False,
         cv_split=config.num_cv, 
         home_path=config.home_path,
-        category=0
+        category=0,
+        shuffle=True
         )
     val_make_dataset_violence = load_make_dataset(
         config.dataset, 
         train=False,
         cv_split=config.num_cv, 
         home_path=config.home_path,
-        category=1
+        category=1,
+        shuffle=True
         )
     dataset_val_nonviolence = TubeDataset(frames_per_tube=config.frames_per_tube, 
                             min_frames_per_tube=8,
                             make_function=val_make_dataset_nonviolence,
-                            spatial_transform=spatial_t(),
+                            spatial_transform=i3d_transf()['val'],
                             max_num_tubes=config.num_tubes,
                             train=False,
                             dataset=config.dataset,
                             input_type=config.input_type,
                             random=config.tube_sampling_random,
-                            keyframe=keyframe,
-                            spatial_transform_2=data_transforms['val'])
+                            keyframe=True,
+                            spatial_transform_2=resnet_transf()['val'])
     dataset_val_violence = TubeDataset(frames_per_tube=config.frames_per_tube, 
                             min_frames_per_tube=8,
                             make_function=val_make_dataset_violence,
-                            spatial_transform=spatial_t(),
+                            spatial_transform=i3d_transf()['val'],
                             max_num_tubes=config.num_tubes,
                             train=False,
                             dataset=config.dataset,
                             input_type=config.input_type,
                             random=config.tube_sampling_random,
-                            keyframe=keyframe,
-                            spatial_transform_2=data_transforms['val'])
+                            keyframe=True,
+                            spatial_transform_2=resnet_transf()['val'])
     loader_val_nonviolence = DataLoader(dataset_val_nonviolence,
                         batch_size=config.train_batch,
                         shuffle=True,
@@ -572,95 +493,33 @@ def main_2(config: Config):
     if config.restore_training:
         model, optimizer, epochs, last_epoch, last_loss = load_checkpoint(model, config.device, optimizer, config.checkpoint_path)
         start_epoch = last_epoch+1
-        # config.num_epoch = epochs
+        # config.num_epoch = epochs 
     
-    def train(_epoch, _model, _criterion, _optimizer):
-        print('training at epoch: {}'.format(epoch))
-        _model.train()
-        losses = AverageMeter()
-        accuracies = AverageMeter()
-        for i, data in enumerate(zip(loader_train_violence, loader_train_nonviolence)):
-            video_images = torch.cat([data[0][1], data[1][1]], dim=0).to(device)
-            boxes = torch.cat([data[0][0], data[1][0]], dim=0).to(device)
-            labels = torch.cat([data[0][2], data[1][2]], dim=0).to(device)
-            keyframes = torch.cat([data[0][5], data[1][5]], dim=0).to(device)
-            
-            # print('video_images: ', video_images.size())
-            # print('num_tubes: ', config.num_tubes)
-            # print('boxes: ', boxes.size())
-            # print('labels: ', labels, labels.size())
-
-            # zero the parameter gradients
-            optimizer.zero_grad()
-            #predict
-            outs = _model(video_images, keyframes, boxes, config.num_tubes)
-            # print('outs: ', outs, outs.size())
-            #loss
-            loss = _criterion(outs,labels)
-            #accuracy
-            if config.head == REGRESSION:
-                acc = get_accuracy(outs, labels)
-            else:
-                acc = calculate_accuracy_2(outs,labels)
-            # meter
-            # print('len(video_images): ', len(video_images), ' video_images.size(0):',video_images.size(0), ' preds.shape[0]:', preds.shape[0])
-            losses.update(loss.item(), outs.shape[0])
-            accuracies.update(acc, outs.shape[0])
-            # backward + optimize
-            loss.backward()
-            _optimizer.step()
-        train_loss = losses.avg
-        train_acc = accuracies.avg
-        print(
-            'Epoch: [{}]\t'
-            'Loss(train): {loss.avg:.4f}\t'
-            'Acc(train): {acc.avg:.3f}'.format(_epoch, loss=losses, acc=accuracies)
-        )
-        return train_loss, train_acc
-
-
-    def val(_epoch, _model, _criterion):
-        print('validation at epoch: {}'.format(epoch))
-        # set model to evaluate mode
-        _model.eval()
-        # meters
-        losses = AverageMeter()
-        accuracies = AverageMeter()
-        for i, data in enumerate(zip(loader_val_violence, loader_val_nonviolence)):
-            video_images = torch.cat([data[0][1], data[1][1]], dim=0).to(device)
-            boxes = torch.cat([data[0][0], data[1][0]], dim=0).to(device)
-            labels = torch.cat([data[0][2], data[1][2]], dim=0).to(device)
-            keyframes = torch.cat([data[0][5], data[1][5]], dim=0).to(device)
-            # no need to track grad in eval mode
-            with torch.no_grad():
-                outputs = _model(video_images, keyframes, boxes, config.num_tubes)
-                loss = _criterion(outputs, labels)
-                
-                if config.head == REGRESSION:
-                    acc = get_accuracy(outputs, labels)
-                else:
-                    acc = calculate_accuracy_2(outputs,labels)
-
-            losses.update(loss.item(), outputs.shape[0])
-            accuracies.update(acc, outputs.shape[0])
-        val_loss = losses.avg
-        val_acc = accuracies.avg
-        print(
-            'Epoch: [{}]\t'
-            'Loss(val): {loss:.4f}\t'
-            'Acc(val): {acc:.3f}'.format(_epoch, loss=val_loss, acc=val_acc)
-        )
-        
-
-        return val_loss, val_acc
-
     for epoch in range(start_epoch, config.num_epoch):
         # epoch = last_epoch+i
-        train_loss, train_acc = train(epoch, model, criterion, optimizer)
+        train_loss, train_acc = train_2it(
+            loader_train_violence,
+            loader_train_nonviolence,
+            epoch,
+            model,
+            criterion,
+            optimizer,
+            config.device,
+            config.num_tubes,
+            calculate_accuracy_2,
+            )
         writer.add_scalar('training loss', train_loss, epoch)
         writer.add_scalar('training accuracy', train_acc, epoch)
         
-        val_loss, val_acc = val(epoch, model, criterion)
+        val_loss, val_acc = val_2it(
+            loader_val_violence,
+            loader_val_nonviolence,
+            epoch,
+            model,
+            criterion,
+            config.device,
+            config.num_tubes,
+            calculate_accuracy_2)
         scheduler.step(val_loss)
         writer.add_scalar('validation loss', val_loss, epoch)
         writer.add_scalar('validation accuracy', val_acc, epoch)
@@ -859,41 +718,27 @@ def MIL_training(config: Config):
             save_checkpoint(model, config.num_epoch, epoch, optimizer,train_loss, os.path.join(chk_path_folder,"save_at_epoch-"+str(epoch)+".chk"))
 
 
-
-def get_accuracy(y_prob, y_true):
-    assert y_true.ndim == 1 and y_true.size() == y_prob.size()
-
-    # print('y_true:', y_true, y_true.size())
-    # print('y_prob:', y_prob, y_prob.size())
-
-    y_prob = y_prob >= 0.5
-    # print('(y_true == y_prob):', (y_true == y_prob))
-    return (y_true == y_prob).sum().item() / y_true.size(0)
-
-import add_path
-from models.v_d_config import *
-
 if __name__=='__main__':
     config = Config(
         model='TwoStreamVD_Binary_CFam',#'TwoStreamVD_Binary',#'i3d-roi',i3d+roi+fc
-        model_config=TWO_STREAM_CFAM_CONFIG,
+        model_config=TWO_STREAM_CFAM_NO_TUBE_CONFIG,
         head=BINARY,
         dataset=RWF_DATASET,
         num_cv=1,
         input_type='rgb',
         device=get_torch_device(),
-        num_epoch=65,
+        num_epoch=100,
         criterion='BCE',
-        optimizer='Adadelta',
+        optimizer='SGD',
         learning_rate=0.001, #0.001 for adagrad
         train_batch=2,
         val_batch=2,
         num_tubes=4,
-        tube_sampling_random=True,
-        frames_per_tube=8, 
+        tube_sampling_random=False,
+        frames_per_tube=16, 
         save_every=10,
         freeze=False,
-        additional_info='using-all-longvideos',
+        additional_info='TWO_STREAM_CFAM_NO_TUBE_CONFIG',
         home_path=HOME_UBUNTU,
         num_workers=4
     )
@@ -906,8 +751,8 @@ if __name__=='__main__':
     #                                       'SpTmpDetector_rwf-2000_model(binary)_stream(rgb)_cv(1)_epochs(200)_note(restorefrom97epoch)',
     #                                       'rwf_trained/save_at_epoch-127.chk')
 
-    # main(config)
-    main_2(config)
+    main(config)
+    # main_2(config)
     # MIL_training(config)
     # extract_features(config, output_folder='/media/david/datos/Violence DATA/i3d-FeatureMaps/rwf')
     # load_features(config)

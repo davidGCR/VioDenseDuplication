@@ -354,22 +354,31 @@ class TwoStreamVD_Binary_CFam(nn.Module):
                                         aligned=True
                                         )
         else:
+            self.avg_pool_2d = nn.AdaptiveAvgPool2d((1,1))
             self.temporal_pool = nn.AdaptiveAvgPool3d((1, None, None))
         in_channels = config['CFAMBlock_in_channels']
         out_channels = config['CFAMBlock_out_channels']                       
         self.CFAMBlock = CFAMBlock(in_channels, out_channels)
-        self.avg_pool_2d = nn.AdaptiveAvgPool2d((1,1))
-        self.conv_final = nn.Conv2d(1024, 512, kernel_size=1, bias=False)
+        
+        # self.conv_final = nn.Conv2d(1024, 512, kernel_size=1, bias=False)
         self.classifier = nn.Sequential(
             nn.Linear(config['fc_input_dim'], 2),
             # nn.ReLU(),
             # nn.Dropout(0.6),
-            # nn.Linear(128, 32),
+            # nn.BatchNorm1d(num_features=1024),
+            # nn.ReLU(),
+            # nn.Linear(1024, 2),
             # nn.ReLU(),
             # nn.Dropout(0.6),
             # nn.Linear(32, 2),
             # nn.Sigmoid()
         )
+        self.weight_init()
+    
+    def weight_init(self):
+        for layer in self.classifier:
+            if type(layer) == nn.Linear:
+                nn.init.xavier_normal_(layer.weight)
     
     def build_3d_backbone(self):
         if self.config['backbone_name'] == 'i3d':
@@ -383,6 +392,13 @@ class TwoStreamVD_Binary_CFam(nn.Module):
 
         
     def forward(self, x1, x2, bbox=None, num_tubes=0):
+        # print('bbox: ', bbox)
+        # id = 0
+        # for i in range(bbox.size(0)):
+        #     bbox[i,0] = id
+        #     id+=1
+            # print(bbox[i,0])
+        # print('bbox sort: ', bbox)
         batch, c, t, h, w = x1.size()
         x_3d = self._3d_stream(x1) #torch.Size([2, 528, 4, 14, 14])
         x_2d = self._2d_stream(x2) #torch.Size([2, 1024, 14, 14])
@@ -394,7 +410,7 @@ class TwoStreamVD_Binary_CFam(nn.Module):
             x_3d = self.roi_pool_3d(x_3d,bbox)#torch.Size([8, 528])
             x_3d = torch.squeeze(x_3d)
             # print('3d after roipool: ', x_3d.size())
-            x_2d = self.roi_pool_2d(x_2d,bbox)
+            x_2d = self.roi_pool_2d(x_2d, bbox)
             # print('2d after roipool: ', x_2d.size())
         else:
             x_3d = self.temporal_pool(x_3d)
@@ -416,8 +432,10 @@ class TwoStreamVD_Binary_CFam(nn.Module):
             x = x.view(batch, num_tubes, -1)
             # print('after view: ', x.size())
             x = x.max(dim=1).values #torch.Size([2, 9280])
-            x = torch.squeeze(x)
+            # print('after tmp pool: ', x.size())
+            # x = torch.squeeze(x)
             x=self.classifier(x)
+            # print('after las fc: ', x.size())
 
             #++++op 3
             # x = self.conv_final(x) #torch.Size([4, 512, 8, 8])
@@ -446,16 +464,16 @@ if __name__=='__main__':
     print('------- ViolenceDetector --------')
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     # model = TwoStreamVD_Binary().to(device)
-    model = TwoStreamVD_Binary_CFam(config=TWO_STREAM_CFAM_CONFIG).to(device)
+    model = TwoStreamVD_Binary_CFam(config=TWO_STREAM_CFAM_NO_TUBE_CONFIG).to(device)
     # model = ViolenceDetectorRegression(aggregate=True).to(device)
     batch = 2
-    tubes = 2
+    tubes = 1
     input_1 = torch.rand(batch*tubes,3,8,224,224).to(device)
     input_2 = torch.rand(batch*tubes,3,224,224).to(device)
 
-    rois = torch.rand(batch*tubes, 5).to(device)
-    rois[0] = torch.tensor([0,  62.5481,  49.0223, 122.0747, 203.4146]).to(device)#torch.tensor([1, 14, 16, 66, 70]).to(device)
-    rois[1] = torch.tensor([1, 34, 14, 85, 77]).to(device)
+    # rois = torch.rand(batch*tubes, 5).to(device)
+    # rois[0] = torch.tensor([0,  62.5481,  49.0223, 122.0747, 203.4146]).to(device)#torch.tensor([1, 14, 16, 66, 70]).to(device)
+    # rois[1] = torch.tensor([1, 34, 14, 85, 77]).to(device)
     # rois[2] = torch.tensor([1, 34, 14, 85, 77]).to(device)
     # rois[3] = torch.tensor([1, 34, 14, 85, 77]).to(device)
     # rois[4] = torch.tensor([1, 34, 14, 85, 77]).to(device)
