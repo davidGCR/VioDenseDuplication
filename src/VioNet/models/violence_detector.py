@@ -354,26 +354,26 @@ class TwoStreamVD_Binary_CFam(nn.Module):
                                         aligned=True
                                         )
         else:
-            self.avg_pool_2d = nn.AdaptiveAvgPool2d((1,1))
+            # self.avg_pool_2d = nn.AdaptiveAvgPool2d((1,1))
             self.temporal_pool = nn.AdaptiveAvgPool3d((1, None, None))
         in_channels = config['CFAMBlock_in_channels']
         out_channels = config['CFAMBlock_out_channels']                       
         self.CFAMBlock = CFAMBlock(in_channels, out_channels)
-        
-        # self.conv_final = nn.Conv2d(1024, 512, kernel_size=1, bias=False)
-        self.classifier = nn.Sequential(
-            nn.Linear(config['fc_input_dim'], 2),
-            # nn.ReLU(),
-            # nn.Dropout(0.6),
-            # nn.BatchNorm1d(num_features=1024),
-            # nn.ReLU(),
-            # nn.Linear(1024, 2),
-            # nn.ReLU(),
-            # nn.Dropout(0.6),
-            # nn.Linear(32, 2),
-            # nn.Sigmoid()
-        )
-        self.weight_init()
+        self.avg_pool_2d = nn.AdaptiveAvgPool2d((1,1))
+        self.classifier = nn.Conv2d(out_channels, 2, kernel_size=1, bias=False)
+        # self.classifier = nn.Sequential(
+        #     nn.Linear(config['fc_input_dim'], 2),
+        #     # nn.ReLU(),
+        #     # nn.Dropout(0.6),
+        #     # nn.BatchNorm1d(num_features=1024),
+        #     # nn.ReLU(),
+        #     # nn.Linear(1024, 2),
+        #     # nn.ReLU(),
+        #     # nn.Dropout(0.6),
+        #     # nn.Linear(32, 2),
+        #     # nn.Sigmoid()
+        # )
+        # self.weight_init()
     
     def weight_init(self):
         for layer in self.classifier:
@@ -429,23 +429,23 @@ class TwoStreamVD_Binary_CFam(nn.Module):
             # print('after avgpool 2d: ', x.size())
             
             #++++op 2
-            x = x.view(batch, num_tubes, -1)
+            # x = x.view(batch, num_tubes, -1)
             # print('after view: ', x.size())
-            x = x.max(dim=1).values #torch.Size([2, 9280])
-            # print('after tmp pool: ', x.size())
-            # x = torch.squeeze(x)
-            x=self.classifier(x)
+            # x = x.max(dim=1).values #torch.Size([2, 9280])
+            # print('after tmp max pool: ', x.size())
+            # x=self.classifier(x)
             # print('after las fc: ', x.size())
 
             #++++op 3
-            # x = self.conv_final(x) #torch.Size([4, 512, 8, 8])
-            # # print('after conv_final: ', x.size())
-            # x = x.view(batch, num_tubes, 512, 8, 8)
-            # x = torch.max(x, dim=1, keepdim=True)[0]
-            # x = torch.squeeze(x, dim=1)
-            # x = self.avg_pool_2d(x)
-            # x = x.view(batch, -1)
-            # x=self.classifier(x)
+            b_1, c_1, w_1, h_1 = x.size()
+            x = x.view(batch, num_tubes, c_1, w_1, h_1)
+            x = x.max(dim=1).values
+            # print('after tmp max pool: ', x.size())
+            x = self.classifier(x)
+            # print('after classifier conv: ', x.size())
+            x = self.avg_pool_2d(x)
+            # print('after avg2D: ', x.size())
+            x = torch.squeeze(x)
         else:
             # x = self.avg_pool_2d(x)
             # x = torch.squeeze(x)
@@ -471,25 +471,25 @@ if __name__=='__main__':
     print('------- ViolenceDetector --------')
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     # model = TwoStreamVD_Binary().to(device)
-    model = TwoStreamVD_Binary_CFam(config=TWO_STREAM_CFAM_NO_TUBE_CONFIG).to(device)
+    model = TwoStreamVD_Binary_CFam(config=TWO_STREAM_CFAM_CONFIG).to(device)
     # model = ViolenceDetectorRegression(aggregate=True).to(device)
     batch = 2
-    tubes = 1
+    tubes = 4
     input_1 = torch.rand(batch*tubes,3,8,224,224).to(device)
     input_2 = torch.rand(batch*tubes,3,224,224).to(device)
 
-    # rois = torch.rand(batch*tubes, 5).to(device)
-    # rois[0] = torch.tensor([0,  62.5481,  49.0223, 122.0747, 203.4146]).to(device)#torch.tensor([1, 14, 16, 66, 70]).to(device)
-    # rois[1] = torch.tensor([1, 34, 14, 85, 77]).to(device)
-    # rois[2] = torch.tensor([1, 34, 14, 85, 77]).to(device)
-    # rois[3] = torch.tensor([1, 34, 14, 85, 77]).to(device)
-    # rois[4] = torch.tensor([1, 34, 14, 85, 77]).to(device)
-    # rois[5] = torch.tensor([1, 34, 14, 85, 77]).to(device)
-    # rois[6] = torch.tensor([1, 34, 14, 85, 77]).to(device)
-    # rois[7] = torch.tensor([1, 34, 14, 85, 77]).to(device)
+    rois = torch.rand(batch*tubes, 5).to(device)
+    rois[0] = torch.tensor([0,  62.5481,  49.0223, 122.0747, 203.4146]).to(device)#torch.tensor([1, 14, 16, 66, 70]).to(device)
+    rois[1] = torch.tensor([1, 34, 14, 85, 77]).to(device)
+    rois[2] = torch.tensor([1, 34, 14, 85, 77]).to(device)
+    rois[3] = torch.tensor([1, 34, 14, 85, 77]).to(device)
+    rois[4] = torch.tensor([1, 34, 14, 85, 77]).to(device)
+    rois[5] = torch.tensor([1, 34, 14, 85, 77]).to(device)
+    rois[6] = torch.tensor([1, 34, 14, 85, 77]).to(device)
+    rois[7] = torch.tensor([1, 34, 14, 85, 77]).to(device)
 
-    # output = model(input_1, input_2, rois, tubes)
-    output = model(input_1, input_2, None, None)
+    output = model(input_1, input_2, rois, tubes)
+    # output = model(input_1, input_2, None, None)
     # output = model(input_1, rois, tubes)
     print('output: ', output.size())
     

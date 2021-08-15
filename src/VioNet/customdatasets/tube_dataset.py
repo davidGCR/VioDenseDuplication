@@ -176,7 +176,8 @@ class TubeDataset(data.Dataset):
             elif self.dataset == 'hockey':
                 frames = [os.path.join(path,'frame{:03}.jpg'.format(i+1)) for i in seg]
             for i in frames:
-                img = self.spatial_transform(imread(i)) if self.spatial_transform else imread(i)
+                # img = self.spatial_transform(imread(i)) if self.spatial_transform else imread(i)
+                img = imread(i)
                 tube_images.append(img)
         else:
             tt = DynamicImage()
@@ -202,8 +203,9 @@ class TubeDataset(data.Dataset):
         video_images = []
         num_tubes = len(segments)
         for seg in segments:
-            
             tube_images = self.load_tube_images(path, seg)
+            if self.spatial_transform:
+                tube_images = self.spatial_transform(tube_images)
             video_images.append(torch.stack(tube_images, dim=0))
         
         key_frames = []

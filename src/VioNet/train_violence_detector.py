@@ -4,7 +4,7 @@ from models.v_d_config import *
 
 from PIL import Image, ImageFile
 from VioNet.lib.accuracy import get_accuracy
-from VioNet.model_transformations import i3d_transf, resnet_transf
+from VioNet.model_transformations import *
 
 # from VioNet.dataset import make_dataset
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -161,44 +161,44 @@ def main(config: Config):
         home_path=config.home_path,
         category=2)
     
-    # train_dataset = TubeDataset(frames_per_tube=config.frames_per_tube, 
-    #                         min_frames_per_tube=8,
-    #                         make_function=make_dataset,
-    #                         spatial_transform=i3d_transf()['train'],
-    #                         max_num_tubes=config.num_tubes,
-    #                         train=True,
-    #                         dataset=config.dataset,
-    #                         input_type=config.input_type,
-    #                         random=config.tube_sampling_random,
-    #                         keyframe=True,
-    #                         spatial_transform_2=resnet_transf()['train'])
-    # train_loader = DataLoader(train_dataset,
-    #                     batch_size=config.train_batch,
-    #                     shuffle=True,
-    #                     num_workers=config.num_workers,
-    #                     # pin_memory=True,
-    #                     collate_fn=my_collate,
-    #                     # sampler=train_dataset.get_sampler()
-    #                     drop_last=True
-    #                     )
-
-    from VioNet.customdatasets.vio_db import ViolenceDataset
-    from VioNet.transformations.temporal_transforms import RandomCrop, CenterCrop
-
-    train_dataset = ViolenceDataset(
-        RandomCrop(size=16, stride=1, input_type='rgb'),
-        make_dataset,
-        dataset=config.dataset,
-        spatial_transform=i3d_transf()['train'],
-        keyframe=True,
-        spatial_transform_2=resnet_transf()['train']
-    )
-
+    train_dataset = TubeDataset(frames_per_tube=config.frames_per_tube, 
+                            min_frames_per_tube=8,
+                            make_function=make_dataset,
+                            spatial_transform=i3d_video_transf()['train'],
+                            max_num_tubes=config.num_tubes,
+                            train=True,
+                            dataset=config.dataset,
+                            input_type=config.input_type,
+                            random=config.tube_sampling_random,
+                            keyframe=True,
+                            spatial_transform_2=resnet_transf()['train'])
     train_loader = DataLoader(train_dataset,
                         batch_size=config.train_batch,
                         shuffle=True,
                         num_workers=config.num_workers,
+                        # pin_memory=True,
+                        collate_fn=my_collate,
+                        # sampler=train_dataset.get_sampler()
+                        drop_last=True
                         )
+
+    # from VioNet.customdatasets.vio_db import ViolenceDataset
+    # from VioNet.transformations.temporal_transforms import RandomCrop, CenterCrop
+
+    # train_dataset = ViolenceDataset(
+    #     RandomCrop(size=16, stride=1, input_type='rgb'),
+    #     make_dataset,
+    #     dataset=config.dataset,
+    #     spatial_transform=i3d_transf()['train'],
+    #     keyframe=True,
+    #     spatial_transform_2=resnet_transf()['train']
+    # )
+
+    # train_loader = DataLoader(train_dataset,
+    #                     batch_size=config.train_batch,
+    #                     shuffle=True,
+    #                     num_workers=config.num_workers,
+    #                     )
     #validation
     val_make_dataset = load_make_dataset(
         config.dataset,
@@ -207,40 +207,40 @@ def main(config: Config):
         home_path=config.home_path,
         category=2)
     
-    val_dataset = ViolenceDataset(
-        CenterCrop(size=16, stride=1, input_type='rgb'),
-        val_make_dataset,
-        dataset=config.dataset,
-        spatial_transform=i3d_transf()['val'],
-        keyframe=True,
-        spatial_transform_2=resnet_transf()['val']
-    )
+    # val_dataset = ViolenceDataset(
+    #     CenterCrop(size=16, stride=1, input_type='rgb'),
+    #     val_make_dataset,
+    #     dataset=config.dataset,
+    #     spatial_transform=i3d_transf()['val'],
+    #     keyframe=True,
+    #     spatial_transform_2=resnet_transf()['val']
+    # )
 
-    val_loader = DataLoader(val_dataset,
-                        batch_size=config.train_batch,
-                        shuffle=True,
-                        num_workers=config.num_workers,
-                        )
-    
-    # val_dataset = TubeDataset(frames_per_tube=config.frames_per_tube, 
-    #                         min_frames_per_tube=8, 
-    #                         make_function=val_make_dataset,
-    #                         spatial_transform=i3d_transf()['val'],
-    #                         max_num_tubes=config.num_tubes,
-    #                         train=False,
-    #                         dataset=config.dataset,
-    #                         input_type=config.input_type,
-    #                         random=config.tube_sampling_random,
-    #                         keyframe=True,
-    #                         spatial_transform_2=resnet_transf()['val'])
     # val_loader = DataLoader(val_dataset,
-    #                     batch_size=config.val_batch,
+    #                     batch_size=config.train_batch,
     #                     shuffle=True,
     #                     num_workers=config.num_workers,
-    #                     # sampler=val_dataset.get_sampler(),
-    #                     # pin_memory=True,
-    #                     collate_fn=my_collate
     #                     )
+    
+    val_dataset = TubeDataset(frames_per_tube=config.frames_per_tube, 
+                            min_frames_per_tube=8, 
+                            make_function=val_make_dataset,
+                            spatial_transform=i3d_video_transf()['val'],
+                            max_num_tubes=config.num_tubes,
+                            train=False,
+                            dataset=config.dataset,
+                            input_type=config.input_type,
+                            random=config.tube_sampling_random,
+                            keyframe=True,
+                            spatial_transform_2=resnet_transf()['val'])
+    val_loader = DataLoader(val_dataset,
+                        batch_size=config.val_batch,
+                        shuffle=True,
+                        num_workers=config.num_workers,
+                        # sampler=val_dataset.get_sampler(),
+                        # pin_memory=True,
+                        collate_fn=my_collate
+                        )
    
     ################## Full Detector ########################
     from models.violence_detector import ViolenceDetectorBinary
@@ -721,7 +721,7 @@ def MIL_training(config: Config):
 if __name__=='__main__':
     config = Config(
         model='TwoStreamVD_Binary_CFam',#'TwoStreamVD_Binary',#'i3d-roi',i3d+roi+fc
-        model_config=TWO_STREAM_CFAM_NO_TUBE_CONFIG,
+        model_config=TWO_STREAM_CFAM_CONFIG,
         head=BINARY,
         dataset=RWF_DATASET,
         num_cv=1,
@@ -734,11 +734,11 @@ if __name__=='__main__':
         train_batch=2,
         val_batch=2,
         num_tubes=4,
-        tube_sampling_random=False,
+        tube_sampling_random=True,
         frames_per_tube=16, 
         save_every=10,
         freeze=False,
-        additional_info='TWO_STREAM_CFAM_NO_TUBE_CONFIG',
+        additional_info='TWO_STREAM_CFAM_CONFIG+ConvFinal',
         home_path=HOME_UBUNTU,
         num_workers=4
     )
