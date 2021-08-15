@@ -21,16 +21,16 @@ def i3d_transf():
     norm = Normalize([38.756858/255, 3.88248729/255, 40.02898126/255], [110.6366688/255, 103.16065604/255, 96.29023126/255])
     T = {
         'train':transforms.Compose([
-                            transforms.CenterCrop(sample_size),
-                            # transforms.Resize(sample_size),
+                            # transforms.CenterCrop(sample_size),
+                            transforms.Resize(sample_size),
                             # transforms.RandomHorizontalFlip(0.5),
                             transforms.ToTensor(),
                             norm
                             # transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
                         ]),
         'val': transforms.Compose([
-                            transforms.CenterCrop(sample_size),
-                            # transforms.Resize(sample_size),
+                            # transforms.CenterCrop(sample_size),
+                            transforms.Resize(sample_size),
                             transforms.ToTensor(),
                             norm
                             # transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
