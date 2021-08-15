@@ -449,9 +449,16 @@ class TwoStreamVD_Binary_CFam(nn.Module):
         else:
             # x = self.avg_pool_2d(x)
             # x = torch.squeeze(x)
-            x = x.view(batch, -1)
+            # x = x.view(batch, -1)
             # print('view: ', x.size())
+            # x = self.classifier(x)
+
             x = self.classifier(x)
+            # print('after classifier: ', x.size())
+            x = self.avg_pool_2d(x)
+            # print('after avg_pool_2d: ', x.size())
+            x = torch.squeeze(x)
+            # print('after squeeze: ', x.size())
           
 
         return x
