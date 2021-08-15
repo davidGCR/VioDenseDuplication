@@ -73,7 +73,26 @@ def resnet_transf():
                 transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
             ]),
         }
-    return T     
+    return T  
+
+def resnet_di_transf():
+    norm = transforms.Normalize([0.49778724, 0.49780366, 0.49776983], [0.09050678, 0.09017131, 0.0898702 ])  
+    input_size = (224,224)
+    T = {
+            'train': transforms.Compose([
+                transforms.RandomResizedCrop(input_size),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                norm
+            ]),
+            'val': transforms.Compose([
+                transforms.Resize(input_size),
+                # transforms.CenterCrop(input_size),
+                transforms.ToTensor(),
+                norm
+            ]),
+        }
+    return T
 
 class DefaultTrasformations:
     def __init__(self, model_name, size=None, mean=None, std=None, train=True):
@@ -101,7 +120,7 @@ class DefaultTrasformations:
             norm = Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
         elif self.model_name == 'MDIResNet':
             sample_size = (224,224) if not self.size else self.size
-            norm = dyn_img_transf_parameters()
+            # norm = dyn_img_transf_parameters()
         else:
             print('Loading default spatial transformations')
             sample_size = (224,224) if not self.size else self.size
@@ -146,5 +165,3 @@ class DefaultTrasformations:
 #         norm = dyn_img_transf_parameters()
 #     return sample_size, norm
 
-def dyn_img_transf_parameters():
-    return Normalize([0.49778724, 0.49780366, 0.49776983], [0.09050678, 0.09017131, 0.0898702 ])

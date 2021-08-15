@@ -8,52 +8,81 @@ from customdatasets.dataset_utils import imread
 from transformations.dynamic_image_transformation import DynamicImage
 import torch
 
+TWO_STREAM_INPUT = {
+    'input_1': {
+        'type': 'rgb',
+        'spatial_transform': None,
+        'temporal_transform': None
+    },
+    'input_2': {
+        'type': 'rgb',
+        'spatial_transform': None,
+        'temporal_transform': None
+    }
+}
+
 class ViolenceDataset(data.Dataset):
     """
     
     """
-    def __init__(self, temp_crop,
+    def __init__(self,
                        make_function,
-                       spatial_transform=None,
-                       train=False,
-                       dataset='',
-                       input_type='rgb',
-                       random=True,
-                       keyframe=False,
-                       spatial_transform_2=None):
+                       dataset,
+                       config
+                       ):
         self.dataset = dataset
-        self.input_type = input_type
-        self.spatial_transform = spatial_transform
+        self.config = config
+        # self.input_type_1 = config['input_1']
+        # self.spatial_transform = spatial_transform
+
         self.make_function = make_function
         self.paths, self.labels, self.annotations = self.make_function()
         self.max_video_len = 40 if dataset=='hockey' else 149
-        self.keyframe = keyframe
-        self.spatial_transform_2 = spatial_transform_2
+        # self.keyframe = keyframe
+        # self.spatial_transform_2 = spatial_transform_2
 
         print('paths: {}, labels:{}, annot:{}'.format(len(self.paths), len(self.labels), len(self.annotations)))
-        self.sampler = temp_crop
+        self.sampler = self.config['input_1']['temporal_transform']
+        
+
+    def load_input_1(self, path, seg):
+        clip_images = []
+        raw_clip_images = []
+        if self.config['input_1']['type']=='rgb':
+            frames_paths = [self.build_frame_name(path, i) for i in seg] #rwf
+            for i in frames_paths:
+                img = imread(i)
+                clip_images.append(img)
+            raw_clip_images = clip_images.copy()
+            if self.config['input_1']['spatial_transform']:
+                clip_images = self.config['input_1']['spatial_transform'](clip_images)
+            
+        return clip_images, raw_clip_images
     
-    def load_images(self, path, seg):
-        tube_images = [] #one tube-16 frames
-        if self.input_type=='rgb':
-            if self.dataset == 'rwf-2000':
-                frames = [os.path.join(path,'frame{}.jpg'.format(i+1)) for i in seg] #rwf
-            elif self.dataset == 'hockey':
-                frames = [os.path.join(path,'frame{:03}.jpg'.format(i+1)) for i in seg]
-            for i in frames:
-                img = self.spatial_transform(imread(i)) if self.spatial_transform else imread(i)
-                tube_images.append(img)
-        else:
+    def build_frame_name(self, path, frame_number):
+        if self.dataset == 'rwf-2000':
+            return os.path.join(path,'frame{}.jpg'.format(frame_number+1))
+        elif self.dataset == 'hockey':
+            return os.path.join(path,'frame{:03}.jpg'.format(frame_number+1))
+
+    
+    def load_input_2(self, frames, path):
+        if self.config['input_2']['type'] == 'rgb':
+            i = frames[int(len(frames)/2)]
+            img_path = self.build_frame_name(path, i)
+            key_frame = imread(img_path)
+            
+        elif self.config['input_2']['type'] == 'dynamic-image':
             tt = DynamicImage()
-            for shot in seg:
-                if self.dataset == 'rwf-2000':
-                    frames = [os.path.join(path,'frame{}.jpg'.format(i+1)) for i in shot] #rwf
-                elif self.dataset == 'hockey':
-                    frames = [os.path.join(path,'frame{:03}.jpg'.format(i+1)) for i in shot]
-                shot_images = [imread(img_path) for img_path in frames]
-                img = self.spatial_transform(tt(shot_images)) if self.spatial_transform else tt(shot_images)
-                tube_images.append(img)
-        return tube_images
+            frames_paths = [self.build_frame_name(path, i) for i in frames] #rwf
+            shot_images = [imread(img_path) for img_path in frames_paths]
+            # img = self.spatial_transform(tt(shot_images)) if self.spatial_transform else tt(shot_images)
+            key_frame = tt(shot_images)
+        raw_key_frame = key_frame.copy()
+        if self.config['input_2']['spatial_transform']:
+            key_frame = self.config['input_2']['spatial_transform'](key_frame)
+        return key_frame, raw_key_frame
+
 
     def __len__(self):
         return len(self.paths)
@@ -66,21 +95,14 @@ class ViolenceDataset(data.Dataset):
         frames = self.sampler(frames)
         # print(frames)
 
-        video_images = self.load_images(path, frames)
+        video_images, raw_clip_images = self.load_input_1(path, frames)
         video_images = torch.stack(video_images, dim=0).permute(1,0,2,3)
         
+        # raw_clip_images = 
         key_frame = None
-        if self.keyframe:
-            i = frames[int(len(frames)/2)]
-            # print('keyframe: ', i)
-            if self.dataset == 'rwf-2000':
-                img_path = os.path.join(path,'frame{}.jpg'.format(i+1)) #rwf
-            elif self.dataset == 'hockey':
-                img_path = os.path.join(path,'frame{:03}.jpg'.format(i+1))
-            key_frame = self.spatial_transform_2(imread(img_path)) if self.spatial_transform_2 else imread(img_path)
-        
-        if self.keyframe:
-            return video_images, label, path, key_frame
+        if self.config['input_2'] is not None:
+            key_frame, raw_key_frame = self.load_input_2(frames, path)
+            return video_images, label, path, key_frame, torchvision.transforms.ToTensor()(raw_key_frame)
         else:
             return video_images, label, path
 
