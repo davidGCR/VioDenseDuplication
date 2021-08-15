@@ -1,5 +1,5 @@
 from re import T
-from transformations.spatial_transforms import Normalize, GroupRandomHorizontalFlip
+from transformations.spatial_transforms import Compose, Normalize, GroupRandomScaleCenterCrop, GroupRandomHorizontalFlip, ToTensor
 from transformations.temporal_transforms import *
 import torchvision.transforms as transforms
 
@@ -34,6 +34,25 @@ def i3d_transf():
                             transforms.ToTensor(),
                             norm
                             # transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+                        ])
+    }
+    return T
+
+def i3d_video_transf():
+    sample_size = (224,224)
+    norm = Normalize([38.756858/255, 3.88248729/255, 40.02898126/255], [110.6366688/255, 103.16065604/255, 96.29023126/255])
+    T = {
+        'train':Compose([
+                            GroupRandomScaleCenterCrop(size=sample_size),
+                            GroupRandomHorizontalFlip(),
+                            ToTensor(),
+                            norm
+                            # transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+                        ]),
+        'val': Compose([
+                            GroupRandomScaleCenterCrop(size=sample_size),
+                            ToTensor(),
+                            norm
                         ])
     }
     return T
