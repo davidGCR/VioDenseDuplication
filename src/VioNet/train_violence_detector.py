@@ -89,17 +89,16 @@ def main(config: Config):
         home_path=config.home_path,
         category=2)
     # train_loader, val_loader = data_with_tubes(config, make_dataset, val_make_dataset)
-    train_loader, val_loader = data_without_tubes(config, make_dataset, val_make_dataset)
+    train_loader, val_loader = data_with_tubes(config, make_dataset, val_make_dataset)
     
-    dataiter = iter(train_loader)
-    video_images, label, path, key_frame, raw_clip_images = dataiter.next()
-    print('raw_clip_images: ', type(raw_clip_images), raw_clip_images.size())
-    # create grid of images
-    img_grid = torchvision.utils.make_grid(raw_clip_images)
-
-    # show images
-    matplotlib_imshow(img_grid, one_channel=True)
-    plt.show()
+    # dataiter = iter(train_loader)
+    # video_images, label, path, key_frame, raw_clip_images = dataiter.next()
+    # print('raw_clip_images: ', type(raw_clip_images), raw_clip_images.size())
+    # # create grid of images
+    # img_grid = torchvision.utils.make_grid(raw_clip_images)
+    # # show images
+    # matplotlib_imshow(img_grid, one_channel=True)
+    # plt.show()
 
     # write to tensorboard
     # writer.add_image('four_fashion_mnist_images', img_grid)
@@ -186,17 +185,49 @@ def main(config: Config):
             save_checkpoint(model, config.num_epoch, epoch, optimizer,train_loss, os.path.join(chk_path_folder,"save_at_epoch-"+str(epoch)+".chk"))
 
 def data_with_tubes(config: Config, make_dataset_train, make_dataset_val):
+    TWO_STREAM_INPUT_train = {
+        'input_1': {
+            'type': 'rgb',
+            'spatial_transform': i3d_video_transf()['train'],
+            'temporal_transform': None
+        },
+        # 'input_2': {
+        #     'type': 'rgb',
+        #     'spatial_transform': resnet_transf()['train'],
+        #     'temporal_transform': None
+        # }
+        'input_2': {
+            'type': 'dynamic-image',
+            'spatial_transform': resnet_di_transf()['train'],
+            'temporal_transform': None
+        }
+    }
+
+    TWO_STREAM_INPUT_val = {
+        'input_1': {
+            'type': 'rgb',
+            'spatial_transform': i3d_video_transf()['val'],
+            'temporal_transform': CenterCrop(size=16, stride=1, input_type='rgb')
+        },
+        # 'input_2': {
+        #     'type': 'rgb',
+        #     'spatial_transform': resnet_transf()['val'],
+        #     'temporal_transform': None
+        # }
+        'input_2': {
+            'type': 'dynamic-image',
+            'spatial_transform': resnet_di_transf()['val'],
+            'temporal_transform': None
+        }
+    }
     train_dataset = TubeDataset(frames_per_tube=config.frames_per_tube, 
                             min_frames_per_tube=8,
                             make_function=make_dataset_train,
-                            spatial_transform=i3d_video_transf()['train'],
                             max_num_tubes=config.num_tubes,
                             train=True,
                             dataset=config.dataset,
-                            input_type=config.input_type,
                             random=config.tube_sampling_random,
-                            keyframe=True,
-                            spatial_transform_2=resnet_transf()['train'])
+                            config=TWO_STREAM_INPUT_train)
     train_loader = DataLoader(train_dataset,
                         batch_size=config.train_batch,
                         shuffle=True,
@@ -209,14 +240,11 @@ def data_with_tubes(config: Config, make_dataset_train, make_dataset_val):
     val_dataset = TubeDataset(frames_per_tube=config.frames_per_tube, 
                             min_frames_per_tube=8, 
                             make_function=make_dataset_val,
-                            spatial_transform=i3d_video_transf()['val'],
                             max_num_tubes=config.num_tubes,
                             train=False,
                             dataset=config.dataset,
-                            input_type=config.input_type,
                             random=config.tube_sampling_random,
-                            keyframe=True,
-                            spatial_transform_2=resnet_transf()['val'])
+                            config=TWO_STREAM_INPUT_val)
     val_loader = DataLoader(val_dataset,
                         batch_size=config.val_batch,
                         shuffle=True,
@@ -253,16 +281,16 @@ def data_without_tubes(config: Config, make_dataset_train, make_dataset_val):
             'spatial_transform': i3d_video_transf()['val'],
             'temporal_transform': CenterCrop(size=16, stride=1, input_type='rgb')
         },
-        # 'input_2': {
-        #     'type': 'rgb',
-        #     'spatial_transform': resnet_transf()['val'],
-        #     'temporal_transform': None
-        # }
         'input_2': {
-            'type': 'dynamic-image',
-            'spatial_transform': resnet_di_transf()['val'],
+            'type': 'rgb',
+            'spatial_transform': resnet_transf()['val'],
             'temporal_transform': None
         }
+        # 'input_2': {
+        #     'type': 'dynamic-image',
+        #     'spatial_transform': resnet_di_transf()['val'],
+        #     'temporal_transform': None
+        # }
     }
 
     train_dataset = ViolenceDataset(
@@ -295,7 +323,7 @@ def data_without_tubes(config: Config, make_dataset_train, make_dataset_val):
 if __name__=='__main__':
     config = Config(
         model='TwoStreamVD_Binary_CFam',#'TwoStreamVD_Binary',#'i3d-roi',i3d+roi+fc
-        model_config=TWO_STREAM_CFAM_NO_TUBE_CONFIG,
+        model_config=TWO_STREAM_CFAM_CONFIG,
         head=BINARY,
         dataset=RWF_DATASET,
         num_cv=1,
@@ -312,7 +340,7 @@ if __name__=='__main__':
         frames_per_tube=16, 
         save_every=10,
         freeze=False,
-        additional_info='TWO_STREAM_CFAM_NO_TUBE_CONFIG+ConvFinal+alltubes+dynImg',
+        additional_info='TWO_STREAM_CFAM_CONFIG+ConvFinal+dynImg',
         home_path=HOME_UBUNTU,
         num_workers=4
     )

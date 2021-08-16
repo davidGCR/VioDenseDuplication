@@ -7,17 +7,17 @@ def train(_loader, _epoch, _model, _criterion, _optimizer, _device, _config, _ac
     losses = AverageMeter()
     accuracies = AverageMeter()
     for i, data in enumerate(_loader):
-        # boxes, video_images, labels, num_tubes, paths, key_frames = data
-        # boxes, video_images = boxes.to(_device), video_images.to(_device)
-        # labels = labels.to(_device)
-        # key_frames = key_frames.to(_device)
-       
-
-        video_images, labels, paths, key_frames, _ = data
-        video_images = video_images.to(_device)
+        boxes, video_images, labels, num_tubes, paths, key_frames = data
+        boxes, video_images = boxes.to(_device), video_images.to(_device)
         labels = labels.to(_device)
         key_frames = key_frames.to(_device)
-        boxes = None
+       
+
+        # video_images, labels, paths, key_frames, _ = data
+        # video_images = video_images.to(_device)
+        # labels = labels.to(_device)
+        # key_frames = key_frames.to(_device)
+        # boxes = None
 
         # print('video_images: ', video_images.size())
         # print('key_frames: ', key_frames.size())
@@ -69,16 +69,16 @@ def val(_loader, _epoch, _model, _criterion, _device, _config, _accuracy_fn):
     losses = AverageMeter()
     accuracies = AverageMeter()
     for _, data in enumerate(_loader):
-        # boxes, video_images, labels, num_tubes, paths, key_frames = data
-        # boxes, video_images = boxes.to(_device), video_images.to(_device)
-        # labels = labels.to(_device)
-        # key_frames = key_frames.to(_device)
-
-        video_images, labels, paths, key_frames, _ = data
-        video_images = video_images.to(_device)
+        boxes, video_images, labels, num_tubes, paths, key_frames = data
+        boxes, video_images = boxes.to(_device), video_images.to(_device)
         labels = labels.to(_device)
         key_frames = key_frames.to(_device)
-        boxes = None
+
+        # video_images, labels, paths, key_frames, _ = data
+        # video_images = video_images.to(_device)
+        # labels = labels.to(_device)
+        # key_frames = key_frames.to(_device)
+        # boxes = None
         # no need to track grad in eval mode
         with torch.no_grad():
             outputs = _model(video_images, key_frames, boxes, _config.num_tubes)
