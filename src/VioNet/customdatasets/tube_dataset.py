@@ -193,7 +193,8 @@ class TubeDataset(data.Dataset):
     
     def load_input_2(self, frames, path):
         if self.config['input_2']['type'] == 'rgb':
-            i = frames[int(len(frames)/2)]
+            # i = frames[int(len(frames)/2)]
+            i = 0
             img_path = self.build_frame_name(path, i)
             key_frame = imread(img_path)
             

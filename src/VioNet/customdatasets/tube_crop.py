@@ -42,7 +42,8 @@ class TubeCrop(object):
         #                             122,
         #                             0.1]) for i in rdn_frames],
         #         'score':0,
-        #         'id':1
+        #         'id':1,
+        #         'len':1
         #     }]
 
         segments = []
@@ -67,18 +68,18 @@ class TubeCrop(object):
         idxs = range(len(boxes))
         if self.max_num_tubes != 0 and len(boxes) > self.max_num_tubes:
             if self.random:
-                if self.train:
-                    idxs = random.sample(range(len(boxes)), self.max_num_tubes)
-                    boxes = list(itemgetter(*idxs)(boxes))
-                    segments = list(itemgetter(*idxs)(segments))
-                else:
-                    n = len(boxes)
-                    m = int(n/2)
-                    # arr = np.array(boxes)
-                    boxes = boxes[m-int(self.max_num_tubes/2) : m+int(self.max_num_tubes/2)]
-                    segments = segments[m-int(self.max_num_tubes/2) : m+int(self.max_num_tubes/2)]
-                    # boxes = boxes.tolist()
-                    # segments = segments.tolist()
+                idxs = random.sample(range(len(boxes)), self.max_num_tubes)
+                boxes = list(itemgetter(*idxs)(boxes))
+                segments = list(itemgetter(*idxs)(segments))
+                # if self.train:
+                #     idxs = random.sample(range(len(boxes)), self.max_num_tubes)
+                #     boxes = list(itemgetter(*idxs)(boxes))
+                #     segments = list(itemgetter(*idxs)(segments))
+                # else:
+                #     n = len(boxes)
+                #     m = int(n/2)
+                #     boxes = boxes[m-int(self.max_num_tubes/2) : m+int(self.max_num_tubes/2)]
+                #     segments = segments[m-int(self.max_num_tubes/2) : m+int(self.max_num_tubes/2)]
             else:
                 # print(tubes)
                 # tubes = sorted(tubes, key = lambda i: i['score'], reverse=True)

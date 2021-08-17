@@ -111,28 +111,67 @@ from customdatasets.make_dataset import MakeRWF2000
 from global_var import *
 from config import Config
 from torch.utils.data import DataLoader
+from model_transformations import *
 
 
 if __name__=='__main__':
     # temporal_transform = RandomCrop(size=16, stride=1, input_type='rgb')
-    temporal_transform = CenterCrop(size=16, stride=1, input_type='rgb')
+    TWO_STREAM_INPUT_train = {
+        'input_1': {
+            'type': 'rgb',
+            'spatial_transform': i3d_video_transf()['train'],
+            'temporal_transform': RandomCrop(size=16, stride=1, input_type='rgb')
+        },
+        'input_2': {
+            'type': 'rgb',
+            'spatial_transform': torchvision.transforms.ToTensor(),
+            'temporal_transform': None
+        }
+        # 'input_2': {
+        #     'type': 'dynamic-image',
+        #     'spatial_transform': torchvision.transforms.ToTensor(),
+        #     'temporal_transform': None
+        # }
+    }
+
     make_dataset = MakeRWF2000(
         root=os.path.join(HOME_UBUNTU, 'RWF-2000/frames'),#'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames', 
                         train=True,
                         path_annotations=os.path.join(HOME_UBUNTU, 'ActionTubes/RWF-2000'),
-                        shuffle=False)
+                        shuffle=True)
     dataset = ViolenceDataset(
-        temporal_transform,
         make_dataset,
         dataset='rwf-2000',
-        spatial_transform=torchvision.transforms.ToTensor(),
-        keyframe=True,
-        spatial_transform_2=torchvision.transforms.ToTensor(),
-
+        config=TWO_STREAM_INPUT_train
     )
+    train_loader = DataLoader(dataset,
+                        batch_size=4,
+                        shuffle=True,
+                        num_workers=4,
+                        )
 
-    for i in range(len(dataset)):
-        video_images, label, path, key_frame = dataset[i]
-        print('video_images: ', video_images.size())
-        print('label: ',label)
-        print('key_frame: ', key_frame.size())
+    ####### COMPUTE MEAN / STD
+    # placeholders
+    psum    = torch.tensor([0.0, 0.0, 0.0])
+    psum_sq = torch.tensor([0.0, 0.0, 0.0])
+
+    for data in train_loader:
+        video_images, label, path, key_frame, _ = data
+        # print('video_images: ', video_images.size())
+        # print('label: ',label)
+        # print('key_frame: ', key_frame.size())
+        psum    += key_frame.sum(axis        = [0, 2, 3])
+        psum_sq += (key_frame ** 2).sum(axis = [0, 2, 3])
+    
+    # pixel count
+    image_size = 224
+    count = len(dataset) * image_size * image_size
+
+    # mean and std
+    total_mean = psum / count
+    total_var  = (psum_sq / count) - (total_mean ** 2)
+    total_std  = torch.sqrt(total_var)
+
+    # output
+    print('mean: '  + str(total_mean))
+    print('std:  '  + str(total_std))

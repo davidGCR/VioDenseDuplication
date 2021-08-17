@@ -191,16 +191,16 @@ def data_with_tubes(config: Config, make_dataset_train, make_dataset_val):
             'spatial_transform': i3d_video_transf()['train'],
             'temporal_transform': None
         },
-        # 'input_2': {
-        #     'type': 'rgb',
-        #     'spatial_transform': resnet_transf()['train'],
-        #     'temporal_transform': None
-        # }
         'input_2': {
-            'type': 'dynamic-image',
-            'spatial_transform': resnet_di_transf()['train'],
+            'type': 'rgb',
+            'spatial_transform': resnet_transf()['train'],
             'temporal_transform': None
         }
+        # 'input_2': {
+        #     'type': 'dynamic-image',
+        #     'spatial_transform': resnet_di_transf()['train'],
+        #     'temporal_transform': None
+        # }
     }
 
     TWO_STREAM_INPUT_val = {
@@ -209,16 +209,16 @@ def data_with_tubes(config: Config, make_dataset_train, make_dataset_val):
             'spatial_transform': i3d_video_transf()['val'],
             'temporal_transform': CenterCrop(size=16, stride=1, input_type='rgb')
         },
-        # 'input_2': {
-        #     'type': 'rgb',
-        #     'spatial_transform': resnet_transf()['val'],
-        #     'temporal_transform': None
-        # }
         'input_2': {
-            'type': 'dynamic-image',
-            'spatial_transform': resnet_di_transf()['val'],
+            'type': 'rgb',
+            'spatial_transform': resnet_transf()['val'],
             'temporal_transform': None
         }
+        # 'input_2': {
+        #     'type': 'dynamic-image',
+        #     'spatial_transform': resnet_di_transf()['val'],
+        #     'temporal_transform': None
+        # }
     }
     train_dataset = TubeDataset(frames_per_tube=config.frames_per_tube, 
                             min_frames_per_tube=8,
@@ -333,14 +333,14 @@ if __name__=='__main__':
         criterion='BCE',
         optimizer='SGD',
         learning_rate=0.001, #0.001 for adagrad
-        train_batch=2,
-        val_batch=2,
+        train_batch=4,
+        val_batch=4,
         num_tubes=4,
         tube_sampling_random=True,
         frames_per_tube=16, 
         save_every=10,
         freeze=False,
-        additional_info='TWO_STREAM_CFAM_CONFIG+ConvFinal+dynImg',
+        additional_info='TWO_STREAM_CFAM_CONFIG+ConvFinal+rgb+noNorm+notubevideos+1stframeasKeyframe',
         home_path=HOME_UBUNTU,
         num_workers=4
     )
@@ -352,7 +352,7 @@ if __name__=='__main__':
     #                                       PATH_CHECKPOINT,
     #                                       'SpTmpDetector_rwf-2000_model(binary)_stream(rgb)_cv(1)_epochs(200)_note(restorefrom97epoch)',
     #                                       'rwf_trained/save_at_epoch-127.chk')
-
+    torch.autograd.set_detect_anomaly(True)
     main(config)
     # main_2(config)
     # MIL_training(config)
