@@ -37,5 +37,5 @@ def draw_boxes(img, boxes, scores=None, tags=None, ids=None, line_thick=1, line_
             cv2.putText(img, text, (x1, y1 - 7), cv2.FONT_ITALIC, 0.5, color[line_color], line_thick)
         if ids is not None:
             text = "{}".format(int(ids[i]))
-            cv2.putText(img, text, (x1, y1 - 7), cv2.FONT_ITALIC, 0.5, color[line_color], line_thick)
+            cv2.putText(img, text, (x1, y1 + 15), cv2.FONT_ITALIC, 0.5, color[line_color], line_thick)
     return img

@@ -107,6 +107,8 @@ class UCFCrime2LocalVideoDataset(data.Dataset):
         self.clip_temporal_stride = clip_temporal_stride
 
         self.clips = self.get_video_clips(self.path)
+        self.video_name = path.split('/')[-1]
+        self.clase = path.split('/')[-2]
     
     def __len__(self):
         return len(self.clips)

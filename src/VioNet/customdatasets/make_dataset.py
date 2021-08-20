@@ -473,7 +473,7 @@ def JSON_2_tube(json_file):
 if __name__=="__main__":
     make_func = MakeRWF2000(root='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames', 
                     train=True,
-                    path_annotations='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/RWF-2000-150frames',
+                    path_annotations='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/RWF-2000-2',
                     category=2)
     paths, labels, annotations = make_func()
     print("paths: ", len(paths))
@@ -481,33 +481,33 @@ if __name__=="__main__":
     print("annotations: ",len(annotations))
 
     print("no tubes in: ")
-    # without_tube=[]
-    # for ann in annotations:
-    #     tubes = JSON_2_tube(ann)
-    #     if len(tubes)==0:
-    #         # print(len(tubes))
-    #         without_tube.append(ann)
+    without_tube=[]
+    for ann in annotations:
+        tubes = JSON_2_tube(ann)
+        if len(tubes)==0:
+            # print(len(tubes))
+            without_tube.append(ann)
     
-    # with open('without_tube_{}.txt'.format('train' if make_func.train else 'val'), 'w') as filehandle:
-    #     filehandle.writelines("%s\n" % t for t in without_tube)
+    with open('3without_tube_{}.txt'.format('train' if make_func.train else 'val'), 'w') as filehandle:
+        filehandle.writelines("%s\n" % t for t in without_tube)
 
     # tubes = JSON_2_tube('/media/david/datos/Violence DATA/ActionTubes/RWF-2000/train/Fight/C8wt47cphU8_0.json')
     # print("tubes: ",len(tubes))
 
-    video_num_tubes=[]
-    num_tubes=[]
-    for ann in annotations:
-        tubes = JSON_2_tube(ann)
-        video_num_tubes.append((ann, len(tubes)))
-        num_tubes.append(len(tubes))
+    # video_num_tubes=[]
+    # num_tubes=[]
+    # for ann in annotations:
+    #     tubes = JSON_2_tube(ann)
+    #     video_num_tubes.append((ann, len(tubes)))
+    #     num_tubes.append(len(tubes))
     
-    # with open('videos_num_tubes_{}.txt'.format('train' if make_func.train else 'val'), 'w') as filehandle:
+    # with open('2videos_num_tubes_{}.txt'.format('train' if make_func.train else 'val'), 'w') as filehandle:
     #     filehandle.writelines("{},{}\n".format(t[0], t[1]) for t in video_num_tubes)
 
-    def Average(lst):
-        return sum(lst) / len(lst)
+    # def Average(lst):
+    #     return sum(lst) / len(lst)
     
-    print('Avg num_tubes: ', Average(num_tubes))
+    # print('Avg num_tubes: ', Average(num_tubes))
 
     # make_func = MakeHockeyDataset(root='/media/david/datos/Violence DATA/DATASETS/HockeyFightsDATASET/frames', 
     #                 train=False,

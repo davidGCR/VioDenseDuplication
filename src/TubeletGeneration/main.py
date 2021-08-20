@@ -18,6 +18,7 @@ from incremental_linking import IncrementalLinking
 
 from PIL import Image, ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
+import random
 
 
 def plot_image_detections(decodedArray, dataset_path):
@@ -147,14 +148,15 @@ def get_videos_from_num_tubes(my_list, num_tubes):
             videos.append(dcc['path'])
     return videos
 
-def extract_tubes_from_dataset(dataset_persons_detections_path, folder_out, dataset_root, start_frame, seg_len):
+def extract_tubes_from_dataset(dataset_persons_detections_path, folder_out, dataset_root, frames):
     
     """
         Args:
             dataset_persons_detections_path: Path to folder containing the person detections in JSON format
     """
     # start_frame = 60
-    frames = list(range(start_frame, start_frame+seg_len))
+    # frames = list(range(start_frame, start_frame+seg_len))
+    
     videos_list = os.listdir(dataset_persons_detections_path)
     num_live_paths = []
     for i, video_folder in enumerate(videos_list):
@@ -163,7 +165,12 @@ def extract_tubes_from_dataset(dataset_persons_detections_path, folder_out, data
         person_detections = JSON_2_videoDetections("{}/{}".format(dataset_persons_detections_path, video_folder))
         
         segmentator = MotionSegmentation(video_detections=person_detections,
-                                            dataset_root=dataset_root)
+                                        dataset_root=dataset_root,
+                                        ratio_box_mmap=0.3,
+                                        size=5,
+                                        segment_size=5,
+                                        stride=1,
+                                        overlap=0)
         tube_builder = IncrementalLinking(video_detections=person_detections,
                                             iou_thresh=0.3,
                                             jumpgap=5,
@@ -171,10 +178,10 @@ def extract_tubes_from_dataset(dataset_persons_detections_path, folder_out, data
 
         live_paths = tube_builder(frames, segmentator, None)
         print('live_paths: ', len(live_paths))
-        num_live_paths.append({
-            'path': dataset_persons_detections_path,
-            'num': len(live_paths)
-            })
+        # num_live_paths.append({
+        #     'path': dataset_persons_detections_path,
+        #     'num': len(live_paths)
+        #     })
         if not os.path.isdir(folder_out):
             os.makedirs(folder_out)
         tube_2_JSON(output_path=os.path.join(folder_out, video_folder), tube=live_paths)
@@ -204,12 +211,12 @@ def extract_tubes_from_video(dataset_root, persons_detections, frames, plot=None
 
     live_paths = tube_builder(frames, segmentator, plot)
     print('live_paths: ', len(live_paths))
-    for lp in live_paths:
-        print(lp['score'])
-    CountFrequency([{
-        'path': '',
-        'num': len(live_paths)
-        }])
+    # for lp in live_paths:
+    #     print(lp['score'])
+    # CountFrequency([{
+    #     'path': '',
+    #     'num': len(live_paths)
+    #     }])
 
 
 if __name__=="__main__":
@@ -237,20 +244,6 @@ if __name__=="__main__":
     # print('Paths ---live_paths[lp][frames_name]=', [lp['frames_name'] for lp in live_paths])
     # print('Paths ---live_paths[lp][frames_name]=', [(len(lp['boxes']), lp['len']) for lp in live_paths])
     # print('Live Paths Final:', len(live_paths))
-
-    ##processing RWF-2000 dataset
-    
-    # path_in = '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/RWF-2000'
-    # path_out = '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/Tubes/RWF-2000'
-   
-    # path_in = '/media/david/datos/Violence DATA/PersonDetections/RWF-2000'
-    # path_out = '/media/david/datos/Violence DATA/ActionTubes/RWF-2000'
-   
-    # splits = ['train/Fight', 'train/NonFight', 'val/Fight', 'val/NonFight']
-    # for sp in splits:
-    #     extract_tubes_from_dataset(dataset_persons_detections_path=os.path.join(path_in, sp),
-    #                                 folder_out=os.path.join(path_out, sp),
-    #                                 dataset_root=dataset_root)
    
     # tubes = JSON_2_tube('/media/david/datos/Violence DATA/Tubes/RWF-2000/train/Fight/_6-B11R9FJM_2.json')
     # print(len(tubes))
@@ -266,45 +259,58 @@ if __name__=="__main__":
     # }
     # config=ucfcrime2local_config
 
-    rwf_config = {
-        'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames',
-        'split': 'train/Fight',
-        'video': '_2RYnSFPD_U_0',
-        'p_d_path': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/RWF-2000'
-    }
-    config = rwf_config
-    persons_detections_path = config['p_d_path']+'/{}/{}.json'.format(config['split'],config['video'])
-    person_detections = JSON_2_videoDetections(persons_detections_path)
-    
-    video_len = 25
-    start = 60
-    split_len = 25
-    s=0
-    for i in range(start,start + video_len, split_len):
-        print('++++++split: ', s+1)
-        frames = list(range(i,i+split_len))
-        extract_tubes_from_video(config['dataset_root'],
-                                person_detections,
-                                frames,
-                                {'wait': 1500}
-                                )
+    # rwf_config = {
+    #     'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames',
+    #     'split': 'train/Fight',
+    #     'video': '_6-B11R9FJM_0',#'_2RYnSFPD_U_0',
+    #     'p_d_path': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/RWF-2000'
+    # }
+    # config = rwf_config
+    # persons_detections_path = config['p_d_path']+'/{}/{}.json'.format(config['split'],config['video'])
+    # person_detections = JSON_2_videoDetections(persons_detections_path)
+    # frames = np.linspace(0, 149, 25,dtype=np.int16).tolist()
+    # print('random frames: ', frames)
 
-    ##PROCESS ALL DATASET
+    # extract_tubes_from_video(config['dataset_root'],
+    #                             person_detections,
+    #                             frames,
+    #                             {'wait': 2000}
+    #                             )
+    
+    #PROCESS ALL DATASET
     # rwf_config = {
     #     'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames',
     #     'path_in':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/RWF-2000',
-    #     'path_out':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/RWF-2000-150frames-scored',
+    #     'path_out':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/RWF-2000-3',
     #     'splits':['train/Fight', 'train/NonFight', 'val/Fight', 'val/NonFight'],
     #     'start_frame':0,
     #     'seg_len': 150
     # }
+    # frames = np.linspace(0, 149, 25,dtype=np.int16).tolist()
     # config = rwf_config
-    
-   
     # for sp in config['splits']:
     #     extract_tubes_from_dataset(dataset_persons_detections_path=os.path.join(config['path_in'], sp),
     #                                 folder_out=os.path.join(config['path_out'], sp),
     #                                 dataset_root=config['dataset_root'],
-    #                                 start_frame=config['start_frame'],
-    #                                 seg_len=config['seg_len'])
+    #                                 # start_frame=config['start_frame'],
+    #                                 # seg_len=config['seg_len']
+    #                                 frames=frames)
+    
+    hockey_config = {
+        'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/HockeyFightsDATASET/frames',
+        'path_in':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/hockey',
+        'path_out':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/hockey2',
+        'splits':['violence', 'nonviolence'],
+        'start_frame':0,
+        'seg_len': 150
+    }
+    frames = np.linspace(0, 39, 25,dtype=np.int16).tolist()
+    config = hockey_config
+    for sp in config['splits']:
+        extract_tubes_from_dataset(dataset_persons_detections_path=os.path.join(config['path_in'], sp),
+                                    folder_out=os.path.join(config['path_out'], sp),
+                                    dataset_root=config['dataset_root'],
+                                    # start_frame=config['start_frame'],
+                                    # seg_len=config['seg_len']
+                                    frames=frames)
 

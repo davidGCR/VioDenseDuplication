@@ -7,6 +7,10 @@ import random as rng
 import cv2
 import numpy as np
 import os
+from PIL import Image
+def imread(path):
+    with Image.open(path) as img:
+        return img.convert('RGB')
 
 class MotionSegmentation:
     def __init__(self, video_detections,
@@ -188,18 +192,189 @@ class MotionSegmentation:
         num_splits = 6
         split_size = 25
 
+    def normalize(self, data):
+        data = (data / 255.0).astype(np.float32)
+        mean = np.mean(data)
+        std = np.std(data)
+        return (data-mean) / std
+    
+    def compute_mean_image(self, images, normalize=True):
+        """
+        input:
+            frames: list of np.array images [(224,224,3), (224,224,3), ...]
+        output:
+            avg_sum: average image of frames
+        """
+        # images = [np.array(i) for i in images]
+        images = np.array(images, dtype = np.float32) #(224, 224, 3)
+        avg_sum = np.mean(images, axis=0)
+        if normalize:
+            avg_sum = self.normalize(avg_sum)
+        return avg_sum
 
-    def __call__(self,frames):
+        
+    def remove_background(self, image, avg_sum, normalize=False):
+        image_without_backgorund = np.abs(image - avg_sum)
+        if normalize:
+            image_without_backgorund = self.normalize(image_without_backgorund)
+        return image_without_backgorund
+    
+    def compute_motion_in_boxes(self, frame_without_back, detections):
+        return None
+
+    def conected_components(self, image, thresh1):
+        output = cv2.connectedComponentsWithStats((thresh1*255).astype(np.uint8), 4, cv2.CV_32S)
+        (numLabels, labels, stats, centroids) = output
+        # loop over the number of unique connected component labels
+        final_components = []
+        for i in range(1, numLabels):
+            # if this is the first component then we examine the
+            # *background* (typically we would just ignore this
+            # component in our loop)
+            # if i == 0:
+            #     text = "examining component {}/{} (background)".format(
+            #         i + 1, numLabels)
+            # # otherwise, we are examining an actual connected component
+            # else:
+            #     text = "examining component {}/{}".format( i + 1, numLabels)
+            # print a status message update for the current connected
+            # component
+            # print("[INFO] {}".format(text))
+            # extract the connected component statistics and centroid for
+            # the current label
+            x = stats[i, cv2.CC_STAT_LEFT]
+            y = stats[i, cv2.CC_STAT_TOP]
+            w = stats[i, cv2.CC_STAT_WIDTH]
+            h = stats[i, cv2.CC_STAT_HEIGHT]
+            area = stats[i, cv2.CC_STAT_AREA]
+
+            # ensure the width, height, and area are all neither too small
+            # nor too big
+            keepWidth = w > 5 and w < 50
+            keepHeight = h > 45 and h < 65
+            keepArea = area > 500 and area < 1500
+
+            if area > 49:
+                # final_components.append()
+                (cX, cY) = centroids[i]
+                cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 3)
+                cv2.circle(image, (int(cX), int(cY)), 4, (0, 0, 255), -1)
+        
+        return image
+
+    def motion_from_background_substraction(self, frames):
+        """
+        input:
+            frames: list of image indices [0, 6, 12, ...]
+        
+        """
+        #read images
+        img_paths, images = self.read_segment(frames)
+        avg_sum = self.compute_mean_image(images, normalize=False)
+        
+        for i, im in enumerate(images):
+            im = self.remove_background(im, avg_sum, True)
+            ##Threshold
+            gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY) #(224,224)
+            ret, thresh1 = cv2.threshold(gray, 0.5, 1, cv2.THRESH_BINARY)
+            # thresh1 = cv2.threshold((gray*255).astype(np.uint8), 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)[1]
+            # kernel = np.ones((5,5),np.uint8)
+            # thresh1 = cv2.dilate(thresh1,kernel,iterations = 1)
+
+            # apply connected component analysis to the thresholded image
+            image_boxes = self.conected_components(im,thresh1)
+
+            cv2.imshow('{}'.format(i+1), im)
+            cv2.imshow('thresh1-{}'.format(i+1), thresh1)
+            cv2.imshow('componentes-{}'.format(i+1), image_boxes)
+            key = cv2.waitKey(1000)
+            if key == 27:#if ESC is pressed, exit loop
+                cv2.destroyAllWindows()
+
+        #plot
+        avg_sum = self.normalize(avg_sum)
+        cv2.imshow('avg_sum', avg_sum)
+        key = cv2.waitKey(3000)
+        if key == 27:#if ESC is pressed, exit loop
+            cv2.destroyAllWindows()
+        
+        return None
+    
+    def read_segment(self, segment):
+        """
+        input:
+            list of frames paths
+        output: (img_paths, images)
+            img_paths: list of image paths
+            images: list of np.array images [(224,224,3), (224,224,3), ...]
+        """
+        img_paths = []
+        images = []
+        for f in segment:
+            split = self.video_detections[f]['split']
+            video = self.video_detections[f]['video']
+            frame = self.video_detections[f]['fname']
+            img_path = os.path.join(self.dataset_root, split, video, frame)
+            img_paths.append(img_path)
+            images.append(np.array(imread(img_path)))
+        return img_paths, images
+    
+    def motion_di_online(self, frames):
         segments = self.tmp_sampler(frames)
         motion_images = []
         clips_idxs = []
-        for segment in segments: #For each video clip process a set of dynamic images
+        wait = 3000
+        for i, segment in enumerate(segments): #For each video clip process a set of dynamic images
+            print('-----segment: ', i+1)
+            img_paths, images = self.read_segment(segment)
+            #Motion image
+            dyn_image = self.tmp_transform(img_paths)
+            cv2.imshow('dyn_image', dyn_image)
+            dyn_image_norm = self.normalize(dyn_image)
+            cv2.imshow('dyn_image_norm', dyn_image_norm)
+            key = cv2.waitKey(wait)
+            if key == 27:#if ESC is pressed, exit loop
+                cv2.destroyAllWindows() 
+            
+            for im in images:
+                im = np.array(im)
+                cv2.imshow('im', im)
+                im_without_mov = np.abs(im*dyn_image_norm)
+                im_without_mov = self.normalize(im_without_mov)
+                cv2.imshow('im_without_mov', im_without_mov)
+                key = cv2.waitKey(wait)
+                if key == 27:#if ESC is pressed, exit loop
+                    cv2.destroyAllWindows()
+
+
+            ##Threshold
+            img = cv2.cvtColor(dyn_image, cv2.COLOR_BGR2GRAY) #(224,224)
+            ret, thresh1 = cv2.threshold(img, self.binary_thres, 255, cv2.THRESH_BINARY)
+            # thresh1 = self.remove_big_short_blobs(thresh1)
+            # motion_images.append(thresh1)
+            # clips_idxs += segment
+            cv2.imshow('thresh1', thresh1)
+            key = cv2.waitKey(wait)
+            if key == 27:#if ESC is pressed, exit loop
+                cv2.destroyAllWindows() 
+        
+        return None
+
+
+
+    def motion_from_dynamic_images(self, frames):
+        segments = self.tmp_sampler(frames)
+        motion_images = []
+        clips_idxs = []
+        for i, segment in enumerate(segments): #For each video clip process a set of dynamic images
+            print('-----segment: ', i+1)
             img_paths = []
             for f in segment:
                 split = self.video_detections[f]['split']
                 video = self.video_detections[f]['video']
                 frame = self.video_detections[f]['fname']
                 img_path = os.path.join(self.dataset_root, split, video, frame)
+                print(img_path)
                 img_paths.append(img_path)
             #Motion image
             dyn_image = self.tmp_transform(img_paths)
@@ -259,7 +434,12 @@ class MotionSegmentation:
         motion_map['areas'] = contours_areas
         motion_map['polygons'] = polygons
         motion_map['boxes_from_polygons']=boxes_from_polygons
-        
+        return motion_map
+
+    def __call__(self,frames):
+        # motion_map = self.motion_di_online(frames)
+        # motion_map = self.motion_from_dynamic_images(frames)
+        motion_map = self.motion_from_background_substraction(frames)
         return motion_map
 
     def plot(self, motion_map, lbbox=[], wait=300):
