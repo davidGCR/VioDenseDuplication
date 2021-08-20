@@ -61,14 +61,14 @@ def load_make_dataset(dataset_name, train=True, cv_split=1, home_path='', catego
         make_dataset = MakeRWF2000(root=os.path.join(home_path, 'RWF-2000/frames'),#'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames', 
                                     train=train,
                                     category=category, 
-                                    path_annotations=os.path.join(home_path, 'ActionTubes/RWF-2000-150frames-scored'),
+                                    path_annotations=os.path.join(home_path, 'ActionTubes/RWF-2000-3'),
                                     shuffle=shuffle)#'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/Tubes/RWF-2000')
 
     elif dataset_name == HOCKEY_DATASET:
         make_dataset = MakeHockeyDataset(root=os.path.join(home_path, 'HockeyFightsDATASET/frames'), #'/content/DATASETS/HockeyFightsDATASET/frames'
                                         train=train,
                                         cv_split_annotation_path=os.path.join(home_path, 'VioNetDB-splits/hockey_jpg{}.json'.format(cv_split)), #'/content/DATASETS/VioNetDB-splits/hockey_jpg{}.json'
-                                        path_annotations=os.path.join(home_path, 'ActionTubes/hockey'),
+                                        path_annotations=os.path.join(home_path, 'ActionTubes/hockey2'),
                                         )#'/content/DATASETS/ActionTubes/hockey'
     return make_dataset
 
@@ -166,8 +166,8 @@ def main(config: Config):
             config.device, 
             config, 
             calculate_accuracy_2)
-        writer.add_scalar('training loss', train_loss, epoch)
-        writer.add_scalar('training accuracy', train_acc, epoch)
+        # writer.add_scalar('training loss', train_loss, epoch)
+        # writer.add_scalar('training accuracy', train_acc, epoch)
         
         val_loss, val_acc = val(
             val_loader,
@@ -178,8 +178,14 @@ def main(config: Config):
             config,
             calculate_accuracy_2)
         scheduler.step(val_loss)
-        writer.add_scalar('validation loss', val_loss, epoch)
-        writer.add_scalar('validation accuracy', val_acc, epoch)
+        # writer.add_scalar('validation loss', val_loss, epoch)
+        # writer.add_scalar('validation accuracy', val_acc, epoch)
+
+        writer.add_scalars('loss', {'train': train_loss}, epoch)
+        writer.add_scalars('loss', {'valid': val_loss}, epoch)
+
+        writer.add_scalars('acc', {'train': train_acc}, epoch)
+        writer.add_scalars('acc', {'valid': val_acc}, epoch)
 
         if (epoch+1)%config.save_every == 0:
             save_checkpoint(model, config.num_epoch, epoch, optimizer,train_loss, os.path.join(chk_path_folder,"save_at_epoch-"+str(epoch)+".chk"))
@@ -230,11 +236,11 @@ def data_with_tubes(config: Config, make_dataset_train, make_dataset_val):
                             config=TWO_STREAM_INPUT_train)
     train_loader = DataLoader(train_dataset,
                         batch_size=config.train_batch,
-                        shuffle=True,
+                        # shuffle=True,
                         num_workers=config.num_workers,
                         # pin_memory=True,
                         collate_fn=my_collate,
-                        # sampler=train_dataset.get_sampler()
+                        sampler=train_dataset.get_sampler(),
                         drop_last=True
                         )
     val_dataset = TubeDataset(frames_per_tube=config.frames_per_tube, 
@@ -247,11 +253,12 @@ def data_with_tubes(config: Config, make_dataset_train, make_dataset_val):
                             config=TWO_STREAM_INPUT_val)
     val_loader = DataLoader(val_dataset,
                         batch_size=config.val_batch,
-                        shuffle=True,
+                        # shuffle=True,
                         num_workers=config.num_workers,
-                        # sampler=val_dataset.get_sampler(),
+                        sampler=val_dataset.get_sampler(),
                         # pin_memory=True,
-                        collate_fn=my_collate
+                        collate_fn=my_collate,
+                        drop_last=True
                         )
     return train_loader, val_loader
 
@@ -331,7 +338,7 @@ if __name__=='__main__':
         device=get_torch_device(),
         num_epoch=100,
         criterion='BCE',
-        optimizer='SGD',
+        optimizer='Adadelta',
         learning_rate=0.001, #0.001 for adagrad
         train_batch=4,
         val_batch=4,
@@ -340,7 +347,7 @@ if __name__=='__main__':
         frames_per_tube=16, 
         save_every=10,
         freeze=False,
-        additional_info='TWO_STREAM_CFAM_CONFIG+ConvFinal+rgb+noNorm+notubevideos+1stframeasKeyframe',
+        additional_info='TWO_STREAM_CFAM_CONFIG+otherTrack+tubes3+alldata',
         home_path=HOME_UBUNTU,
         num_workers=4
     )

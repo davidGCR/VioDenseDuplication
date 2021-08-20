@@ -138,9 +138,9 @@ class TubeDataset(data.Dataset):
         # self.spatial_transform = spatial_transform
         self.make_function = make_function
         self.paths, self.labels, self.annotations = self.make_function()
-        self.paths, self.labels, self.annotations = filter_data_without_tubelet(self.paths, self.labels, self.annotations)
+        # self.paths, self.labels, self.annotations = filter_data_without_tubelet(self.paths, self.labels, self.annotations)
 
-        self.max_video_len = 40 if dataset=='hockey' else 149
+        self.max_video_len = 39 if dataset=='hockey' else 149
         # self.keyframe = keyframe
         # self.spatial_transform_2 = spatial_transform_2
 
