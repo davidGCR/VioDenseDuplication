@@ -46,34 +46,66 @@ def i3d_video_transf():
                             GroupRandomScaleCenterCrop(size=sample_size),
                             GroupRandomHorizontalFlip(),
                             ToTensor(),
-                            norm
+                            # norm
                             # transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
                         ]),
         'val': Compose([
                             GroupRandomScaleCenterCrop(size=sample_size),
                             ToTensor(),
-                            norm
+                            # norm
                         ])
     }
     return T
 
 def resnet_transf():
+    # mean = [0.3833, 0.3768, 0.3709]
+    # std = [0.2596, 0.2587, 0.2598]
+
+    # old
+    mean = [0.485, 0.456, 0.406]
+    std = [0.229, 0.224, 0.225]
+
     input_size = (224,224)
     T = {
             'train': transforms.Compose([
                 transforms.RandomResizedCrop(input_size),
                 transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
-                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+                transforms.Normalize(mean=mean, std=std)
             ]),
             'val': transforms.Compose([
                 transforms.Resize(input_size),
                 # transforms.CenterCrop(input_size),
                 transforms.ToTensor(),
-                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+                transforms.Normalize(mean=mean, std=std)
             ]),
         }
-    return T     
+    return T  
+
+def resnet_di_transf():
+    mean = [0.5002, 0.5001, 0.5001]
+    std = [0.0799, 0.0795, 0.0796]
+
+    #old
+    # mean = [0.49778724, 0.49780366, 0.49776983]
+    # std = [0.09050678, 0.09017131, 0.0898702 ]
+    norm = transforms.Normalize(mean=mean, std=std)  
+    input_size = (224,224)
+    T = {
+            'train': transforms.Compose([
+                transforms.RandomResizedCrop(input_size),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                norm
+            ]),
+            'val': transforms.Compose([
+                transforms.Resize(input_size),
+                # transforms.CenterCrop(input_size),
+                transforms.ToTensor(),
+                norm
+            ]),
+        }
+    return T
 
 class DefaultTrasformations:
     def __init__(self, model_name, size=None, mean=None, std=None, train=True):
@@ -101,7 +133,7 @@ class DefaultTrasformations:
             norm = Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
         elif self.model_name == 'MDIResNet':
             sample_size = (224,224) if not self.size else self.size
-            norm = dyn_img_transf_parameters()
+            # norm = dyn_img_transf_parameters()
         else:
             print('Loading default spatial transformations')
             sample_size = (224,224) if not self.size else self.size
@@ -146,5 +178,3 @@ class DefaultTrasformations:
 #         norm = dyn_img_transf_parameters()
 #     return sample_size, norm
 
-def dyn_img_transf_parameters():
-    return Normalize([0.49778724, 0.49780366, 0.49776983], [0.09050678, 0.09017131, 0.0898702 ])

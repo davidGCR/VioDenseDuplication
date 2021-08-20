@@ -209,12 +209,13 @@ if __name__=='__main__':
     # with_temporal_pool=True
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    feature_map = torch.rand(1, 3, 4, 14, 14).to(device)
+    feature_map = torch.rand(3, 3, 4, 14, 14).to(device)
 
-    rois = torch.rand(2, 5).to(device)
+    num_rois = 3
+    rois = torch.rand(num_rois, 5).to(device)
     rois[0] = torch.tensor([0,  62.5481,  49.0223, 122.0747, 203.4146]).to(device)#torch.tensor([1, 14, 16, 66, 70]).to(device)
-    rois[1] = torch.tensor([1, 34, 14, 85, 77]).to(device)
-    # rois[2] = torch.tensor([3, 100, 126, 122, 130]).to(device)
+    rois[1] = torch.tensor([0, 34, 14, 85, 77]).to(device)
+    rois[2] = torch.tensor([1, 100, 126, 122, 130]).to(device)
 
     roi_op = SingleRoIExtractor3D(roi_layer_type='RoIAlign',
                                     output_size=8,
@@ -233,8 +234,8 @@ if __name__=='__main__':
     out,_ = roi_op(feature_map, rois)
     print('out:', out.size())
 
-    for i in range(out.size(0)):
-        print(out[i], out[i].size())
+    # for i in range(out.size(0)):
+    #     print(out[i], out[i].size())
 
     # tmp_pool_avg = nn.AdaptiveAvgPool3d((1, None, None)) #torch.Size([1, 2048, 1, 8, 8])
     # tmp_pool_max = nn.AdaptiveMaxPool3d((1, None, None))

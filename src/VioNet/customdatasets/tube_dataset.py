@@ -125,26 +125,24 @@ class TubeDataset(data.Dataset):
     def __init__(self, frames_per_tube,
                        min_frames_per_tube,
                        make_function,
-                       spatial_transform=None,
                        max_num_tubes=4,
                        train=False,
                        dataset='',
-                       input_type='rgb',
                        random=True,
-                       keyframe=False,
-                       spatial_transform_2=None):
+                       config=None):
+        self.config = config
         self.dataset = dataset
-        self.input_type = input_type
+        # self.input_type = input_type
         self.frames_per_tube = frames_per_tube
         self.min_frames_per_tube = min_frames_per_tube
-        self.spatial_transform = spatial_transform
+        # self.spatial_transform = spatial_transform
         self.make_function = make_function
         self.paths, self.labels, self.annotations = self.make_function()
-        self.paths, self.labels, self.annotations = filter_data_without_tubelet(self.paths, self.labels, self.annotations)
+        # self.paths, self.labels, self.annotations = filter_data_without_tubelet(self.paths, self.labels, self.annotations)
 
-        self.max_video_len = 40 if dataset=='hockey' else 149
-        self.keyframe = keyframe
-        self.spatial_transform_2 = spatial_transform_2
+        self.max_video_len = 39 if dataset=='hockey' else 149
+        # self.keyframe = keyframe
+        # self.spatial_transform_2 = spatial_transform_2
 
         print('paths: {}, labels:{}, annot:{}'.format(len(self.paths), len(self.labels), len(self.annotations)))
         self.sampler = TubeCrop(tube_len=frames_per_tube, 
@@ -152,7 +150,7 @@ class TubeDataset(data.Dataset):
                                 central_frame=True,
                                 max_num_tubes=max_num_tubes,
                                 train=train,
-                                input_type=input_type,
+                                input_type=self.config['input_1']['type'],
                                 max_video_len=self.max_video_len,
                                 random=random)
         self.max_num_tubes = max_num_tubes
@@ -167,16 +165,55 @@ class TubeDataset(data.Dataset):
         sampler = WeightedRandomSampler(samples_weight, len(samples_weight))
         return sampler
     
+    def build_frame_name(self, path, frame_number):
+        if self.dataset == 'rwf-2000':
+            return os.path.join(path,'frame{}.jpg'.format(frame_number+1))
+        elif self.dataset == 'hockey':
+            return os.path.join(path,'frame{:03}.jpg'.format(frame_number+1))
+    
+    def load_input_1(self, path, seg):
+        tube_images = []
+        raw_clip_images = []
+        if self.config['input_1']['type']=='rgb':
+            frames_paths = [self.build_frame_name(path, i) for i in seg] #rwf
+            for i in frames_paths:
+                img = imread(i)
+                tube_images.append(img)
+            raw_clip_images = tube_images.copy()
+            if self.config['input_1']['spatial_transform']:
+                tube_images = self.config['input_1']['spatial_transform'](tube_images)
+        elif self.config['input_1']['type']=='dynamic-image':
+            tt = DynamicImage()
+            for shot in seg:
+                frames_paths = [self.build_frame_name(path, i) for i in shot]
+                shot_images = [imread(img_path) for img_path in frames_paths]
+                img = self.spatial_transform(tt(shot_images)) if self.spatial_transform else tt(shot_images)
+                tube_images.append(img)
+        return tube_images, raw_clip_images
+    
+    def load_input_2(self, frames, path):
+        if self.config['input_2']['type'] == 'rgb':
+            # i = frames[int(len(frames)/2)]
+            i = 0
+            img_path = self.build_frame_name(path, i)
+            key_frame = imread(img_path)
+            
+        elif self.config['input_2']['type'] == 'dynamic-image':
+            tt = DynamicImage()
+            frames_paths = [self.build_frame_name(path, i) for i in frames] #rwf
+            shot_images = [imread(img_path) for img_path in frames_paths]
+            # img = self.spatial_transform(tt(shot_images)) if self.spatial_transform else tt(shot_images)
+            key_frame = tt(shot_images)
+        raw_key_frame = key_frame.copy()
+        if self.config['input_2']['spatial_transform']:
+            key_frame = self.config['input_2']['spatial_transform'](key_frame)
+        return key_frame, raw_key_frame
+
     def load_tube_images(self, path, seg):
         tube_images = [] #one tube-16 frames
         if self.input_type=='rgb':
-            if self.dataset == 'rwf-2000':
-                
-                frames = [os.path.join(path,'frame{}.jpg'.format(i+1)) for i in seg] #rwf
-            elif self.dataset == 'hockey':
-                frames = [os.path.join(path,'frame{:03}.jpg'.format(i+1)) for i in seg]
+            frames = [self.build_frame_name(path, i) for i in seg]
             for i in frames:
-                # img = self.spatial_transform(imread(i)) if self.spatial_transform else imread(i)
                 img = imread(i)
                 tube_images.append(img)
         else:
@@ -203,20 +240,22 @@ class TubeDataset(data.Dataset):
         video_images = []
         num_tubes = len(segments)
         for seg in segments:
-            tube_images = self.load_tube_images(path, seg)
-            if self.spatial_transform:
-                tube_images = self.spatial_transform(tube_images)
+            # tube_images = self.load_tube_images(path, seg)
+            # if self.spatial_transform:
+            #     tube_images = self.spatial_transform(tube_images)
+            tube_images, _ = self.load_input_1(path, seg)
             video_images.append(torch.stack(tube_images, dim=0))
         
         key_frames = []
-        if self.keyframe:
+        if self.config['input_2'] is not None:
             for seg in segments:
-                i = seg[int(len(seg)/2)]
-                if self.dataset == 'rwf-2000':
-                    img_path = os.path.join(path,'frame{}.jpg'.format(i+1)) #rwf
-                elif self.dataset == 'hockey':
-                    img_path = os.path.join(path,'frame{:03}.jpg'.format(i+1))
-                key_frame = self.spatial_transform_2(imread(img_path)) if self.spatial_transform_2 else imread(img_path)
+                # i = seg[int(len(seg)/2)]
+                # if self.dataset == 'rwf-2000':
+                #     img_path = os.path.join(path,'frame{}.jpg'.format(i+1)) #rwf
+                # elif self.dataset == 'hockey':
+                #     img_path = os.path.join(path,'frame{:03}.jpg'.format(i+1))
+                # key_frame = self.spatial_transform_2(imread(img_path)) if self.spatial_transform_2 else imread(img_path)
+                key_frame, _ = self.load_input_2(seg, path)
                 key_frames.append(key_frame)
 
         
@@ -229,7 +268,7 @@ class TubeDataset(data.Dataset):
                 p_box = boxes[len(boxes)-1]
                 # p_box[0,0] = bbox_id+i
                 boxes.append(p_box)
-                if self.keyframe:
+                if self.config['input_2'] is not None:
                     key_frames.append(key_frames[-1])
         for j,b in enumerate(boxes):
             b[0,0] = j
@@ -242,8 +281,7 @@ class TubeDataset(data.Dataset):
 
         video_images = torch.stack(video_images, dim=0).permute(0,2,1,3,4)
         # return path, label, annotation, frames_names, boxes, video_images
-        if self.keyframe:
-            
+        if self.config['input_2'] is not None:
             key_frames = torch.stack(key_frames, dim=0)
             # print('key_frames: ', key_frames.size())
             # print('video_images: ', video_images.size())
