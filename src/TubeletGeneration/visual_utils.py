@@ -2,6 +2,8 @@ import os
 import numpy as np
 import cv2
 
+from PIL import Image
+
 color = {'green':(0,255,0),
         'blue':(255,165,0),
         'dark red':(0,0,139),
@@ -11,7 +13,7 @@ color = {'green':(0,255,0),
         'brown':(42,42,165),
         'deep pink':(147,20,255),
         'fuchisia':(255,0,255),
-        'yello':(0,238,238),
+        'yellow':(0,238,238),
         'orange':(0,165,255),
         'saddle brown':(19,69,139),
         'black':(0,0,0),
@@ -39,3 +41,7 @@ def draw_boxes(img, boxes, scores=None, tags=None, ids=None, line_thick=1, line_
             text = "{}".format(int(ids[i]))
             cv2.putText(img, text, (x1, y1 + 15), cv2.FONT_ITALIC, 0.5, color[line_color], line_thick)
     return img
+
+def imread(path):
+    with Image.open(path) as img:
+        return img.convert('RGB')
