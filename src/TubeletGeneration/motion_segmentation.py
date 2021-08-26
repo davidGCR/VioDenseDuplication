@@ -381,6 +381,24 @@ class MotionSegmentation:
         
         return None
     
+    def non_motion_suppresion(
+        self, 
+        current_frame, 
+        dyn_image_norm, 
+        bright_pixels, 
+        dark_pixels):
+        im = np.array(current_frame)
+        im_without_mov = np.abs(im*dyn_image_norm)
+        im_without_mov = self.normalize(im_without_mov)
+        gray = cv2.cvtColor(im_without_mov, cv2.COLOR_BGR2GRAY)
+        ##Threshold
+        ret, thresh1 = cv2.threshold(gray, self.config['binary_thres_norm'], 1, cv2.THRESH_BINARY)
+        # apply connected component analysis to the thresholded image
+        image_componets, components = self.conected_components(im, thresh1)
+        best_components = self.get_k_better_components(components, bright_pixels + dark_pixels, self.config['k_best_components'])
+
+        return im_without_mov, image_componets, best_components
+
     def motion_di_online(self, images, img_paths, debug=False, save_folder=None):
         wait = self.config['plot_wait']
         # print('-----segment: ', segment, 'len: ', len(segment))
@@ -424,52 +442,65 @@ class MotionSegmentation:
             key = cv2.waitKey(wait)
             if key == 27:#if ESC is pressed, exit loop
                 cv2.destroyAllWindows() 
+       
         
-        for idx, im in enumerate(images):
-            im = np.array(im)
-            raw_image = im.copy()
-            im_without_mov = np.abs(im*dyn_image_norm)
-            im_without_mov = self.normalize(im_without_mov)
-            gray = cv2.cvtColor(im_without_mov, cv2.COLOR_BGR2GRAY)
-            ##Threshold
-            ret, thresh1 = cv2.threshold(gray, self.config['binary_thres_norm'], 1, cv2.THRESH_BINARY)
-            # apply connected component analysis to the thresholded image
-            image_componets, components = self.conected_components(im, thresh1)
-            best_components = self.get_k_better_components(components, bright_pixels + dark_pixels, self.config['k_best_components'])
+        # if isinstance(images, np.array):
+        #     im_without_mov, image_componets, best_components = self.non_motion_suppresion(images, dyn_image_norm, bright_pixels, dark_pixels)
+            # return best_components
+        if isinstance(images, list):
+            motion_regions_map = {
+                'frames':[],
+                'm_regions': []
+            }
+            # motion_tube = []
+            for idx, im in enumerate(images):
+                # im = np.array(im)
+                raw_image = im.copy()
+                im_without_mov, image_componets, best_components = self.non_motion_suppresion(im, dyn_image_norm, bright_pixels, dark_pixels)
+                # print('best_components: ', len(best_components))
+                if len(best_components)>0:
+                    best_motion_region = best_components[0]
+                    motion_regions_map['frames'].append(img_paths[idx].split('/')[-1])
+                    motion_regions_map['m_regions'].append(best_motion_region)
+                    # print('best_motion_region: ', best_motion_region['x1'],best_motion_region['y1'],best_motion_region['x2'],best_motion_region['x2'])
+                # else:
+                #     motion_regions_map['frames'].append(img_paths[idx].split('/')[-1])
+                #     motion_regions_map['m_regions'].append(best_motion_region)
 
+
+                if debug:
+                    frame_name = img_paths[idx].split('/')[-1][:-4]
+                    cv2.imshow('frame_name', im)
+                    for bc in best_components:
+                        # print('bc: ', bc)
+                        cv2.rectangle(
+                            image_componets, 
+                            (int(bc['x1']), int(bc['y1'])), 
+                            (int(bc['x2']), int(bc['y2'])), 
+                            color['deep pink'], 
+                            3)
+                    
+                    if save_folder is not None:
+                        cv2.imshow(frame_name + '_components', image_componets)
+                        cv2.imshow(frame_name + '_without_mov', im_without_mov)
+                        cv2.imwrite(save_folder + '/{}.jpg'.format(frame_name), raw_image)
+                        cv2.imwrite(save_folder + '/{}.jpg'.format(frame_name + '_components'), image_componets)
+                        cv2.imwrite(save_folder + '/{}.jpg'.format(frame_name + '_without_mov'), 255*im_without_mov)
+                    else:
+                        cv2.imshow('_components', image_componets)
+                        cv2.imshow('_without_mov', im_without_mov)
+
+                    key = cv2.waitKey(wait)
+                    if key == 27:#if ESC is pressed, exit loop
+                        cv2.destroyAllWindows()
+
+            # cv2.imshow('thresh1', thresh1)
             if debug:
-                frame_name = img_paths[idx].split('/')[-1][:-4]
-                cv2.imshow('frame_name', im)
-                for bc in best_components:
-                    # print('bc: ', bc)
-                    cv2.rectangle(
-                        image_componets, 
-                        (int(bc['x1']), int(bc['y1'])), 
-                        (int(bc['x2']), int(bc['y2'])), 
-                        color['deep pink'], 
-                        3)
-                
-                if save_folder is not None:
-                    cv2.imshow(frame_name + '_components', image_componets)
-                    cv2.imshow(frame_name + '_without_mov', im_without_mov)
-                    cv2.imwrite(save_folder + '/{}.jpg'.format(frame_name), raw_image)
-                    cv2.imwrite(save_folder + '/{}.jpg'.format(frame_name + '_components'), image_componets)
-                    cv2.imwrite(save_folder + '/{}.jpg'.format(frame_name + '_without_mov'), 255*im_without_mov)
-                else:
-                    cv2.imshow('_components', image_componets)
-                    cv2.imshow('_without_mov', im_without_mov)
-
                 key = cv2.waitKey(wait)
                 if key == 27:#if ESC is pressed, exit loop
-                    cv2.destroyAllWindows()
-
-        # cv2.imshow('thresh1', thresh1)
-        if debug:
-            key = cv2.waitKey(wait)
-            if key == 27:#if ESC is pressed, exit loop
-                cv2.destroyAllWindows() 
-        
-        return None
+                    cv2.destroyAllWindows() 
+            
+            return motion_regions_map
 
 
 
