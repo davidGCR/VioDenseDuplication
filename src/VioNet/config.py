@@ -117,7 +117,7 @@ class Config:
         self.head = head
         self.tube_sampling_random = tube_sampling_random
         self.num_workers = num_workers
-        self.criterion = criterion
+        # self.criterion = criterion
         self.frames_per_tube = frames_per_tube
         self.model_config = model_config
         self.log = self.log_name()

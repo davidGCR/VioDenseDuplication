@@ -437,7 +437,7 @@ if __name__=="__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # device = torch.device("cpu")
 
-    input = torch.rand(4,3,16,224,224).to(device) #for slowFAst backbone: 3x4x256x320, RWF-frames 224x224, RWF-video 640x360
+    input = torch.rand(4,3,8,224,224).to(device) #for slowFAst backbone: 3x4x256x320, RWF-frames 224x224, RWF-video 640x360
     i3d = InceptionI3d(2, in_channels=3, final_endpoint='Mixed_4e').to(device)
     # i3d = InceptionI3d(num_classes=2, in_channels=3).to(device)
     # print(i3d)

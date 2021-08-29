@@ -51,6 +51,7 @@ TWO_STREAM_CFAM_CONFIG = {
     'backbone_name':'i3d', #i3d, 3dresnet
     'final_endpoint':'Mixed_4e',#'Mixed_5b', #Mixed_4e, so far, only for i3d
     'with_roipool': True,
+    'head': 'binary',
     'roi_layer_output':8,
     'roi_with_temporal_pool':True,
     'roi_spatial_scale':16,
@@ -63,6 +64,7 @@ TWO_STREAM_CFAM_CONFIG = {
     'CFAMBlock_in_channels': 528+1024,#528+1024,#528+1024, #832+2048
     'CFAMBlock_out_channels': 512, #1024
     'fc_input_dim': 8*8*512,#512#7105#145,#9280,
+    'load_weigths': '/media/david/datos/Violence DATA/VioNet_pth/rwf-2000_model(TwoStreamVD_Binary_CFam)_head(binary)_stream(rgb)_cv(1)_epochs(100)_num_tubes(4)_framesXtube(16)_tub_sampl_rand(True)_optimizer(Adadelta)_lr(0.001)_note(TWO_STREAM_CFAM_CONFIG+otherTrack)/save_at_epoch-39.chk'
     
 }
 

@@ -360,20 +360,12 @@ class TwoStreamVD_Binary_CFam(nn.Module):
         out_channels = config['CFAMBlock_out_channels']                       
         self.CFAMBlock = CFAMBlock(in_channels, out_channels)
         self.avg_pool_2d = nn.AdaptiveAvgPool2d((1,1))
-        self.classifier = nn.Conv2d(out_channels, 2, kernel_size=1, bias=False)
-        # self.classifier = nn.Sequential(
-        #     nn.Linear(config['fc_input_dim'], 2),
-        #     # nn.ReLU(),
-        #     # nn.Dropout(0.6),
-        #     # nn.BatchNorm1d(num_features=1024),
-        #     # nn.ReLU(),
-        #     # nn.Linear(1024, 2),
-        #     # nn.ReLU(),
-        #     # nn.Dropout(0.6),
-        #     # nn.Linear(32, 2),
-        #     # nn.Sigmoid()
-        # )
-        # self.weight_init()
+        if self.config['head'] == 'binary':
+            self.classifier = nn.Conv2d(out_channels, 2, kernel_size=1, bias=False)
+        elif self.config['head'] == 'regression':
+            self.classifier = nn.Conv2d(out_channels, 1, kernel_size=1, bias=False)
+
+
     
     def weight_init(self):
         for layer in self.classifier:
@@ -392,13 +384,6 @@ class TwoStreamVD_Binary_CFam(nn.Module):
 
         
     def forward(self, x1, x2, bbox=None, num_tubes=0):
-        # print('bbox: ', bbox)
-        # id = 0
-        # for i in range(bbox.size(0)):
-        #     bbox[i,0] = id
-        #     id+=1
-            # print(bbox[i,0])
-        # print('bbox sort: ', bbox)
         batch, c, t, h, w = x1.size()
         x_3d = self._3d_stream(x1) #torch.Size([2, 528, 4, 14, 14])
         x_2d = self._2d_stream(x2) #torch.Size([2, 1024, 14, 14])
@@ -438,14 +423,29 @@ class TwoStreamVD_Binary_CFam(nn.Module):
 
             #++++op 3
             b_1, c_1, w_1, h_1 = x.size()
-            x = x.view(batch, num_tubes, c_1, w_1, h_1)
-            x = x.max(dim=1).values
-            # print('after tmp max pool: ', x.size())
-            x = self.classifier(x)
-            # print('after classifier conv: ', x.size())
-            x = self.avg_pool_2d(x)
-            # print('after avg2D: ', x.size())
-            x = torch.squeeze(x)
+            if self.config['head'] == 'binary':
+                x = x.view(batch, num_tubes, c_1, w_1, h_1)
+                x = x.max(dim=1).values
+                # print('after tmp max pool: ', x.size())
+                x = self.classifier(x)
+                # print('after classifier conv: ', x.size())
+                x = self.avg_pool_2d(x)
+                # print('after avg2D: ', x.size())
+                x = torch.squeeze(x)
+            elif self.config['head'] == 'regression':
+                x = self.classifier(x)
+                # print('after classifier conv: ', x.size())
+                x = self.avg_pool_2d(x)
+                # print('after avg2D: ', x.size())
+                x = torch.squeeze(x)
+                x = torch.sigmoid(x)
+                # print('after sigmoid: ', x.size(), x)
+                x = x.view(batch, num_tubes, -1)
+                x = x.max(dim=1).values
+                x = torch.squeeze(x)
+                # print('after max: ', x.size(), x)
+
+
         else:
             # x = self.avg_pool_2d(x)
             # x = torch.squeeze(x)
