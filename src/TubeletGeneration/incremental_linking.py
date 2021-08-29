@@ -1,8 +1,10 @@
 
+from genericpath import isdir
 import os
 from sys import flags
 import cv2
 import numpy as np
+from numpy.lib.function_base import append
 import visual_utils
 
 def bbox_iou_numpy(box1, box2):
@@ -93,15 +95,24 @@ FLAC_MERGED_1 = -1
 FLAC_MERGED_2 = -2
 
 class IncrementalLinking:
-    def __init__(self, video_detections, iou_thresh, jumpgap, dataset_root):
-        self.video_detections = video_detections
+    def __init__(
+        self, 
+        # video_detections, 
+        config,
+        # iou_thresh, 
+        # jumpgap, 
+        # dataset_root
+        ):
+        self.config = config
+        self.video_detections = self.config['person_detections']
         # self.frames =frames
         # self.segmentor = segmentor
-        self.iou_thresh = iou_thresh
-        self.jumpgap = jumpgap
-        self.dataset_root = dataset_root
+        
+        self.iou_thresh = self.config['min_iou_close_persons']
+        self.jumpgap = self.config['jumpgap']
+        self.dataset_root = self.config['dataset_root']
         # self.plot_wait = 1000
-        self.max_num_motion_boxes = 4
+        # self.max_num_motion_boxes = 4
         
     
     def path_count(self, paths):
@@ -244,31 +255,125 @@ class IncrementalLinking:
         """
         tmp = box1[0] >= box2[0] and box1[1] >= box2[1] and box1[2] <= box2[2] and box1[3] <= box2[3]
         return tmp
+    
+    def split_by_windows(self, frames, window_len):
+        for i in range(0, len(frames), window_len): 
+            yield frames[i:i + window_len]
+        
+    def get_temporal_window(self, t, windows):
+        for w in windows:
+            if t in w:
+                return w
 
-    def __call__(self, frames, segmentor, plot=None):
+    def read_segment(self, segment):
+        """
+        input:
+            list of frames paths
+        output: (img_paths, images)
+            img_paths: list of image paths
+            images: list of np.array images [(224,224,3), (224,224,3), ...]
+        """
+        img_paths = []
+        images = []
+        for f in segment:
+            split = self.video_detections[f]['split']
+            video = self.video_detections[f]['video']
+            frame = self.video_detections[f]['fname']
+            img_path = os.path.join(self.dataset_root, split, video, frame)
+            img_paths.append(img_path)
+            images.append(np.array(visual_utils.imread(img_path)))
+        return img_paths, images
+    
+    def load_frame(self, frame_t):
+        split = self.video_detections[frame_t]['split']
+        video = self.video_detections[frame_t]['video']
+        frame_name = self.video_detections[frame_t]['fname']
+        img_path = os.path.join(self.dataset_root, split, video, frame_name)
+        # image = cv2.imread(img_path, cv2.IMREAD_COLOR)
+        image = np.array(visual_utils.imread(img_path))
+
+        person_boxes = self.video_detections[frame_t]['pred_boxes'] #real bbox
+
+        return img_path, image, person_boxes
+
+    def process_clip(self, live_tubes, clip_frames, segmentor_fn, plot=None, debug=False):
+        new_tubes = []
+        start_linking = False
+        img_paths, images = self.read_segment(clip_frames)
+        current_motion_map = {
+                    'map': segmentor_fn(images, img_paths),
+                    'frames': clip_frames
+                    }
+        print('clip_frames: ', clip_frames)
+        
+        # for image in images:
+
+
+
+    def __call__(self, frames, segmentor, plot=None, debug=False):
         live_paths = []
         dead_paths = []
+        video_windows = []
         start_linking = False
         # MOTION_MAP = segmentor(frames)
         images_to_video = []
         plot_wait_1 = 1000#4000
         plot_wait_2 = 1000#6000
-        debug = False
-        # segmentor.plot(MOTION_MAP, wait=3000)
         # avg_image = segmentor.compute_mean_image(frames)
+        windows = list(self.split_by_windows(frames, self.config['temporal_window']))
+        current_window = None
+        print('windows: ', windows)
+        # if debug:
+        #     save_folder = os.path.join(
+        #         '/Users/davidchoqueluqueroman/Downloads/TubeGenerationExamples', 
+        #         video_name)
+        debug_folder = '/Users/davidchoqueluqueroman/Downloads/TubeGenerationExamples'
         for t in frames:
+            #get current temporal window
+            w = self.get_temporal_window(t, windows)
+            img_paths, images = self.read_segment(w)
+            
+            #PLot and save results
+            debug_motion_segm = debug
+            video_name = img_paths[0].split('/')[-2]
+            save_folder = os.path.join(debug_folder, video_name)
+            if not os.path.isdir(save_folder):
+                os.mkdir(save_folder)
+            #initialize motion segmentation
+            if current_window == None:
+                # s_folder = os.path.join(save_folder, str(w))
+                s_folder = None
+                motion_regions_map = segmentor(images, img_paths, debug_motion_segm, s_folder)
+                current_window = {
+                    'motion_regions_map': motion_regions_map,
+                    'frames_numbers': w,
+                    # 'tube': motion_tube
+                    }
+                video_windows.append(current_window)
+            else:
+                if not t in current_window['frames_numbers']:
+                    # s_folder = os.path.join(save_folder, str(w))
+                    s_folder = None
+                    motion_regions_map = segmentor(images, img_paths, debug_motion_segm, s_folder)
+                    current_window = {
+                        'motion_regions_map': motion_regions_map,
+                        'frames_numbers': w,
+                        # 'tube': motion_tube
+                    }
+                    video_windows.append(current_window)
+                
+            #initialize tube building
             num_persons = self.video_detections[t]['pred_boxes'].shape[0]
             if num_persons == 0: #no persons detected in frame
                 if debug:
                     print('\t*** NO PERSONS DETECTED at frame:{}'.format(t))
                     img = self.plot_frame(t, None, motion_map=None, plot_wait=plot_wait_1)
                     images_to_video.append(img)
-                if not start_linking:
-                    continue
-                else:
-                    lp_count = self.path_count(live_paths)
-                    for lp in range(lp_count):
+                if start_linking:
+                   for lp in range(len(live_paths)):
                         live_paths[lp]['lastfound'] += 1
+                else:    
+                    continue
             else:
                 self.video_detections[t]['pred_boxes'][:, 4] = np.arange(1,self.video_detections[t]['pred_boxes'].shape[0]+1)
                 person_detections = self.video_detections[t]['pred_boxes']
@@ -323,7 +428,7 @@ class IncrementalLinking:
                     if debug:
                         img = self.plot_frame(t,merged_boxes=None, motion_map=None, plot_wait=plot_wait_1)
                         images_to_video.append(img)
-                    for lp in range(lp_count):
+                    for lp in range(len(live_paths)):
                         live_paths[lp]['lastfound'] += 1
                     continue
 
@@ -375,103 +480,49 @@ class IncrementalLinking:
                             img = self.plot_frame(t,merge_pred_boxes,motion_map=None, plot_wait=plot_wait_2)
                             images_to_video.append(img)
 
-                    # for lp in live_paths:    
-                        # # verify if there is a live path not detected in this frame but includes actual region
-                        # is_dead_lp = lp['lastfound'] > self.jumpgap
-                        # if not self.is_inside(merge_pred_boxes[i,:], lp['boxes'][-1]) and not is_dead_lp:
-                        #     print('\t*** STARTED NEW TUBE at frame:{}'.format(t))
-                        #     live_paths.append(
-                        #         {
-                        #             'frames_name': [self.video_detections[t]['fname']],
-                        #             'boxes':[merge_pred_boxes[i,:]],
-                        #             'len': 1, ##length of tube
-                        #             'id': len(live_paths), #id tube
-                        #             'foundAt': [t],
-                        #             'lastfound': 0, #diff between current frame and last frame in path
-                        #             'score': merge_pred_boxes[i,4]
-                        #         }
-                        #     )
-                        #     img = self.plot_tube_frame(t,live_paths[-1], color='blue', plot_wait=plot_wait_2)
-                        # else:
-                        #     img = self.plot_frame(t,merge_pred_boxes, plot_wait=plot_wait_1)
-                        # images_to_video.append(img)
-                
-                #terminate dead paths
-                # live_paths, dead_paths = self.terminate_paths(live_paths, self.jumpgap)
+        
+        if debug:
+            create_video(images_to_video, debug_folder , 'tube_gen.avi', save_frames=True)
+        
+        if len(live_paths)==0:
+            live_path_from_motion = ({
+                    'frames_name': [],
+                    'boxes':[],
+                    'len': 0, ##length of tube
+                    'id': '', #id tube
+                    'foundAt': [],
+                    'lastfound': 0, #diff between current frame and last frame in path
+                    'score': 0
+                })
+            motion_in_video = True
+            for vw in video_windows:#for each clip
+                # window = vw['map']
+                motion_regions_map = vw['motion_regions_map']
 
-                # num_boxes = merge_pred_boxes.shape[0] #update number of bboxes in frame
-                # if len(live_paths)==0: #first frame
-                #     for b in range(num_boxes):
-                #         print('\t*** STARTED NEW TUBE at frame:{}'.format(t))
-                #         live_paths.append(
-                #             {
-                #                 'frames_name': [self.video_detections[t]['fname']],
-                #                 # 'boxes':[video_detections[t]['pred_boxes'][b,:]], ## Tube/list of bboxes
-                #                 'boxes':[merge_pred_boxes[b,:]],
-                #                 'len': 1, ##length of tube
-                #                 'id': b, #id tube
-                #                 'foundAt': [t],
-                #                 'lastfound': 0, #diff between current frame and last frame in path
-                #                 'score': merge_pred_boxes[b,4]
-                #             }
-                #         )
-                # else:
-                #     lp_count = self.path_count(live_paths)
-                #     matrices = []
-                #     covered_boxes = np.zeros(num_boxes)
-                #     for lp in range(lp_count):
-                #         linking_ious = self.iou_path_box(live_paths[lp], merge_pred_boxes[:,:4], self.iou_thresh)
-                #         matrices.append(linking_ious)
-                #     for lp in range(lp_count): #check over live tubes
-                #         if live_paths[lp]['lastfound'] < self.jumpgap: #verify if path is possibly dead
-                #             box_to_lp_score = matrices[lp]
-                #             if np.sum(box_to_lp_score) > self.iou_thresh: #there is at least on box that match the tube
-                #                 maxInd = np.argmax(box_to_lp_score)
-                #                 max_score = np.max(box_to_lp_score)
-                #                 live_paths[lp]['frames_name'].append(self.video_detections[t]['fname'])
-                #                 live_paths[lp]['len'] += 1
-                #                 live_paths[lp]['boxes'].append(merge_pred_boxes[maxInd,:])
-                #                 live_paths[lp]['foundAt'].append(t)
-                #                 covered_boxes[maxInd] = 1
-                #                 # live_paths[lp]['score']+=merge_pred_boxes[maxInd,4]
-                #             else:
-                #                 live_paths[lp]['lastfound'] += 1
-                #     ## terminate dead paths
-                #     live_paths, dead_paths = self.terminate_paths(live_paths, self.jumpgap)
-                #     ## join dead paths
-                #     for dp in range(len(dead_paths)):
-                #         dead_paths[dp]['id']
-                #         live_paths.append(dead_paths[dp])
-                #     lp_count = self.path_count(live_paths)
-                #     ##start new paths/tubes
-                #     if np.sum(covered_boxes) < num_boxes:
-                #         for b in range(num_boxes):
-                #             if not covered_boxes.flatten()[b]:
-                #                 # print('start other tube at:', self.video_detections[t]['fname'])
-                #                 live_paths.append(
-                #                     {
-                #                         'frames_name': [self.video_detections[t]['fname']],
-                #                         # 'boxes':[video_detections[t]['pred_boxes'][b,:]], ## Tube/list of bboxes
-                #                         'boxes':[merge_pred_boxes[b,:]],
-                #                         'len': 1, ##length of tube
-                #                         'id': lp_count, #id tube
-                #                         'foundAt': [t],
-                #                         'lastfound': 0, #diff between current frame and last frame in path
-                #                         'score': merge_pred_boxes[b,4]
-                #                     }
-                #                 )
-                #                 lp_count += 1
-        # image_folder = os.path.join('/Users/davidchoqueluqueroman/Downloads/TubeGenerationExamples','_2RYnSFPD_U_0')
-        # create_video(images_to_video, image_folder , 'tube_gen.avi', save_frames=True)
-        # live_paths = sorted(live_paths, key = lambda i: i['score'], reverse=True)
-        # print('live_paths before: ', len(live_paths))
-
-        # for i in range(len(live_paths)):
-        #     lp = live_paths[i]
-        #     print('id:{}, foundAt: {}, len: {}, lastfound: {}'.format(lp['id'], lp['foundAt'], lp['len'], lp['lastfound']))
-
+                if len(motion_regions_map['m_regions']) == 0:
+                    motion_in_video = False
+                    continue
+                else:
+                    motion_in_video = True
+                frames_numbers = vw['frames_numbers']
+                middle_idx = int(len(motion_regions_map['m_regions'])/2)
+                middle_box = motion_regions_map['m_regions'][middle_idx]
+                middle_frame = motion_regions_map['frames'][middle_idx]
+                box = np.array([middle_box['x1'], middle_box['y1'], middle_box['x2'], middle_box['y2'], 0])
+                # print('middle_frame: ', middle_frame)
+                # print('box: ', box)
+                live_path_from_motion['frames_name'].append(middle_frame)
+                live_path_from_motion['boxes'].append(box),
+                live_path_from_motion['len'] += 1
+                live_path_from_motion['id'] = 8
+                live_path_from_motion['foundAt'].append(frames_numbers[middle_idx])
+            # print('frames_name: ', live_path_from_motion['frames_name'])
+            if motion_in_video:
+                live_paths = [live_path_from_motion]
+            else:
+                live_paths = []
+        
         self.fill_gaps(live_paths)
-        # live_paths = self.remove_short_paths(live_paths,16)
         
         # if len(live_paths)==0:
         #     motion_boxes = MOTION_MAP['boxes_from_polygons']
@@ -525,14 +576,8 @@ class IncrementalLinking:
 
 
     def plot_frame(self, frame_t, merged_boxes=None, motion_map=None, plot_wait=3000):
-        split = self.video_detections[frame_t]['split']
-        video = self.video_detections[frame_t]['video']
-        frame = self.video_detections[frame_t]['fname']
-        img_path = os.path.join(self.dataset_root, split, video, frame)
-        image = cv2.imread(img_path, cv2.IMREAD_COLOR)
-        #Persons
-        pred_boxes = self.video_detections[frame_t]['pred_boxes'] #real bbox
-        
+        img_path, image, pred_boxes = self.load_frame(frame_t)
+        frame_name = img_path.split('/')[-1][:-4]
         if pred_boxes.shape[0] != 0:
             image = visual_utils.draw_boxes(image,
                                             pred_boxes[:, :4],
@@ -549,7 +594,7 @@ class IncrementalLinking:
                                             # ids=tube_ids,
                                             line_thick=1, 
                                             line_color='red')
-        if motion_map:
+        if motion_map is not None:
             countours = motion_map['contours']
             boxes_from_polygons = motion_map['boxes_from_polygons']
             polygons = motion_map['polygons']
@@ -562,10 +607,10 @@ class IncrementalLinking:
                             (0,238,238),
                             1)
         #plot
-        cv2.namedWindow(frame,cv2.WINDOW_NORMAL)
-        cv2.resizeWindow(frame, (600,600))
+        cv2.namedWindow(frame_name,cv2.WINDOW_NORMAL)
+        cv2.resizeWindow(frame_name, (600,600))
         image = cv2.resize(image, (600,600))
-        cv2.imshow(frame, image)
+        cv2.imshow(frame_name, image)
         key = cv2.waitKey(plot_wait)#pauses for 3 seconds before fetching next image
         if key == 27:#if ESC is pressed, exit loop
             cv2.destroyAllWindows()
@@ -573,13 +618,16 @@ class IncrementalLinking:
         return image
     
     def plot_tube_frame(self, frame_t, tube, color, motion_map=None, plot_wait=3000):
-        split = self.video_detections[frame_t]['split']
-        video = self.video_detections[frame_t]['video']
-        frame = self.video_detections[frame_t]['fname']
-        img_path = os.path.join(self.dataset_root, split, video, frame)
-        image = cv2.imread(img_path, cv2.IMREAD_COLOR)
-        #Persons
-        pred_boxes = self.video_detections[frame_t]['pred_boxes'] #real bbox
+        # split = self.video_detections[frame_t]['split']
+        # video = self.video_detections[frame_t]['video']
+        # frame = self.video_detections[frame_t]['fname']
+        # img_path = os.path.join(self.dataset_root, split, video, frame)
+        # image = cv2.imread(img_path, cv2.IMREAD_COLOR)
+        # #Persons
+        # pred_boxes = self.video_detections[frame_t]['pred_boxes'] #real bbox
+
+        img_path, image, pred_boxes = self.load_frame(frame_t)
+        frame_name = img_path.split('/')[-1][:-4]
         
         if pred_boxes.shape[0] != 0:
             image = visual_utils.draw_boxes(image,
@@ -609,10 +657,10 @@ class IncrementalLinking:
                             (0,238,238),
                             1)
         #plot
-        cv2.namedWindow(frame,cv2.WINDOW_NORMAL)
-        cv2.resizeWindow(frame, (600,600))
+        cv2.namedWindow(frame_name,cv2.WINDOW_NORMAL)
+        cv2.resizeWindow(frame_name, (600,600))
         image = cv2.resize(image, (600,600))
-        cv2.imshow(frame, image)
+        cv2.imshow(frame_name, image)
         key = cv2.waitKey(plot_wait)#pauses for 3 seconds before fetching next image
         if key == 27:#if ESC is pressed, exit loop
             cv2.destroyAllWindows()
@@ -620,11 +668,11 @@ class IncrementalLinking:
 
     def plot_tubes(self, frames, motion_map, live_paths, plot_wait):
         for t in frames:
-            split = self.video_detections[t]['split']
-            video = self.video_detections[t]['video']
-            frame = self.video_detections[t]['fname']
-            img_path = os.path.join(self.dataset_root, split, video, frame)
-            image = cv2.imread(img_path, cv2.IMREAD_COLOR)
+            img_path, image, pred_boxes = self.load_frame(t)
+            # frame_name = img_path.split('/')[-1][:-4]
+            frame_name = img_path.split('/')[-1]
+            # print('frame_name: ',frame_name)
+
             #draw motion blobs
             if motion_map is not None:
                 countours = motion_map['contours']
@@ -651,19 +699,19 @@ class IncrementalLinking:
             
             # live_paths = sorted(live_paths, key = lambda i: i['score'], reverse=True)
             # live_paths = live_paths[0:4] if len(live_paths)>4 else live_paths
-            lp = self.path_count(live_paths)
+            # lp = self.path_count(live_paths)
             box_tubes = []
             tube_ids = []
             tube_scores = []
             # print('====frame: ', frame, ', t: ', t)
-            for l in range(lp):
+            for l in range(len(live_paths)):
                 # print('frame number: {}, live_path {}, frames in lp: {}'.format(t, live_paths[l]['id'], 
                 #                                                     live_paths[l]['foundAt']))
-                # foundAt = True if t in live_paths[l]['foundAt'] else False
-                foundAt = True if frame in live_paths[l]['frames_name'] else False
+                # print(live_paths[l])
+                foundAt = True if frame_name in live_paths[l]['frames_name'] else False
                 if foundAt:
                     # bbox = live_paths[l]['boxes'][-1]
-                    idx = live_paths[l]['frames_name'].index(frame)
+                    idx = live_paths[l]['frames_name'].index(frame_name)
                     bbox = live_paths[l]['boxes'][idx]
                     # print('foundAt box: ',bbox, live_paths[l]['len'])
                     # print('foundAt all box: ',bbox, live_paths[l]['boxes'])
@@ -684,10 +732,10 @@ class IncrementalLinking:
                                                 ids=tube_ids,
                                                 line_thick=1, 
                                                 line_color='red')
-            cv2.namedWindow('FRAME'+str(t+1),cv2.WINDOW_NORMAL)
-            cv2.resizeWindow('FRAME'+str(t+1), (600,600))
+            cv2.namedWindow('FRAME'+frame_name,cv2.WINDOW_NORMAL)
+            cv2.resizeWindow('FRAME'+frame_name, (600,600))
             image = cv2.resize(image, (600,600))
-            cv2.imshow('FRAME'+str(t+1), image)
+            cv2.imshow('FRAME'+frame_name, image)
             key = cv2.waitKey(plot_wait)#pauses for 3 seconds before fetching next image
             if key == 27:#if ESC is pressed, exit loop
                 cv2.destroyAllWindows() 

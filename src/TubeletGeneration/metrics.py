@@ -12,25 +12,8 @@ import cv2
 import re
 import numpy as np
 
-def extract_tubes_from_video(dataset_root, persons_detections, frames, plot=None):
-    segmentator = MotionSegmentation(video_detections=persons_detections,
-                                        dataset_root=dataset_root,
-                                        ratio_box_mmap=0.3,
-                                        size=5,
-                                        segment_size=10,
-                                        stride=1,
-                                        overlap=0)
-    tube_builder = IncrementalLinking(video_detections=persons_detections,
-                                        iou_thresh=0.3,
-                                        jumpgap=10,
-                                        dataset_root=dataset_root)
-
-    live_paths = tube_builder(frames, segmentator, plot)
-    print('live_paths: ', len(live_paths))
-    for lp in live_paths:
-        print(lp['score'])
-    return live_paths
-    
+from main import extract_tubes_from_video
+from tube_config import *
 
 if __name__=='__main__':
     #ONE VIDEO test
@@ -78,48 +61,60 @@ if __name__=='__main__':
 
     from torchvision import transforms
     from VioNet.customdatasets.ucfcrime2local_dataset import UCFCrime2LocalVideoDataset
+    #### videos
+    # video = 'Stealing091(245-468)'#--224'
+    video = 'Arrest002(257-536)'
     video_dataset = UCFCrime2LocalVideoDataset(
-        path='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/UCFCrime2LocalClips/anomaly/Stealing091(245-468)',
-        sp_annotation='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/CrimeViolence2LocalDATASET/Txt annotations-longVideos/Stealing091.txt',
-        p_detections='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/ucfcrime2local/anomaly/Stealing091(245-468).json',
+        path='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/UCFCrime2LocalClips/anomaly/{}'.format(video),
+        sp_annotation='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/CrimeViolence2LocalDATASET/Txt annotations-longVideos/{}.txt'.format(video.split('(')[0]),
+        p_detections='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/ucfcrime2local/anomaly/{}.json'.format(video),
         transform=transforms.ToTensor(),
-        clip_len=25,
+        clip_len=280,
         clip_temporal_stride=5
     )
 
-    def iou_tube_gt(tube, gt):
+    def loc_error_tube_gt(tube, gt, threshold=0.5):
+        fails = 0
         for box_gt in gt:
             frame_number_gt = box_gt['frame']
-            fails = 0
-            print('tube[frames_name]:', tube['frames_name'])
+            print('frame_number_gt:', frame_number_gt)
+            # print('tube[frames_name]:', tube['frames_name'])
             f_numbers = [int(re.findall(r'\d+', f_name)[0]) for f_name in tube['frames_name']]
             f_numbers.sort()
-            print('f_numbers', f_numbers)
+            # print('f_numbers', f_numbers)
             if frame_number_gt in  f_numbers:
                 for i in range(len(f_numbers)):
                     if f_numbers[i] == frame_number_gt:
-                        b1 = np.array([int(box_gt['xmin']), int(box_gt['ymin']), int(box_gt['xmax']), int(box_gt['ymax'])]).reshape((1,4))
-                        b2 = np.array(tube['boxes'][i][:4]).reshape((1,4))
+                        b1 = np.array([int(box_gt['xmin']), int(box_gt['ymin']), int(box_gt['xmax']), int(box_gt['ymax'])]).reshape((1,4))#(1,4)
+                        b2 = np.array(tube['boxes'][i][:4]).reshape((1,4))#(1,4)
                         # print('f_numbers[i] == frame_number_gt', f_numbers[i], frame_number_gt)
-                        iou = bbox_iou_numpy(b1,b2)
-                        print(b1,b1.shape, b2, b2.shape, iou)
+                        iou = bbox_iou_numpy(b1,b2) 
+                        print('iou(b1: {}, b2: {}) = {}'.format(b1, b2, iou))
+                        if iou < threshold:
+                            fails += 1
             else:
                 fails += 1
+        print('fails={}, num_frames={}'.format(fails, len(gt)))
+        return fails/len(gt)
             
-                
+    
+    person_detections = JSON_2_videoDetections(video_dataset.p_detections)
+    TUBE_BUILD_CONFIG['dataset_root'] = '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/UCFCrime2LocalClips'
+    TUBE_BUILD_CONFIG['person_detections'] = person_detections
 
     for clip, frames, gt in video_dataset:
         print('--',clip, len(clip), frames.size())
-        for g in gt:
-            print(g)
+        # for g in gt:
+        #     print(g)
         
         person_detections = JSON_2_videoDetections(video_dataset.p_detections)
-        lps_split = extract_tubes_from_video('/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/UCFCrime2LocalClips',
-                                person_detections,
+        lps_split = extract_tubes_from_video(
                                 clip,
-                                # {'wait': 200}
+                                # {'wait': 100}
                                 )
-        iou_tube_gt(lps_split[0], gt)
+        le = loc_error_tube_gt(lps_split[0], gt)
+        print('localization error: ', le)
+
         # for lp in lps_split:
         #     iou_tube_gt(lp, gt)
         

@@ -1,5 +1,5 @@
-# import sys
-# sys.path.insert(1, '/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/AVSS2019/src')
+import sys
+sys.path.insert(1, '/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/AVSS2019/src/VioNet')
 import transformations.temporal_transforms as ts
 import transformations.dynamic_image_transformation as tt
 import random as rng
@@ -7,34 +7,36 @@ import random as rng
 import cv2
 import numpy as np
 import os
-from PIL import Image
-def imread(path):
-    with Image.open(path) as img:
-        return img.convert('RGB')
+import operator
+from visual_utils import color, imread
+
 
 class MotionSegmentation:
-    def __init__(self, video_detections,
-                        dataset_root,
-                        ratio_box_mmap,
-                        size=5,
-                        segment_size=5,
-                        stride=1,
-                        overlap=0,
-                        position='start'
+    def __init__(self, 
+                        # video_detections,
+                        # dataset_root,
+                        config
+                        # ratio_box_mmap,
+                        # size=5,
+                        # segment_size=5,
+                        # stride=1,
+                        # overlap=0,
+                        # position='start'
                         ):
-        self.video_detections = video_detections
-        self.dataset_root = dataset_root
-        self.tmp_sampler = ts.SegmentsCrop(size=size,
-                                            segment_size=segment_size,
-                                            stride=stride,
-                                            overlap=overlap,
-                                            position=position)
+        # self.video_detections = video_detections
+        # self.dataset_root = dataset_root
+        # self.tmp_sampler = ts.SegmentsCrop(size=size,
+        #                                     segment_size=segment_size,
+        #                                     stride=stride,
+        #                                     overlap=overlap,
+        #                                     position=position)
         self.tmp_transform = tt.DynamicImage(output_type='ndarray')
-        self.binary_thres = 150
+        self.config = config
+        # self.binary_thres = self.config['binary_thres']
         self.img_shape = (224,224)
         self.min_blob_area = 30
         self.score = 0
-        self.ratio_box_mmap = ratio_box_mmap
+        # self.ratio_box_mmap = ratio_box_mmap
         # self.processed_img = None
     
     def blob_detection(self, gray_image):
@@ -99,13 +101,13 @@ class MotionSegmentation:
 
     def filter_no_motion_boxes(self, frame_detections, motion_map):
         results = []
-        for det_box in frame_detections:
-            ratio = self.ratio_motionmap_bbox(motion_map, det_box)
-            # print('ratio:', ratio)
-            if ratio>=self.ratio_box_mmap:
-                # det_box[4] += self.score
-                # print('score with motion: ', det_box[4])
-                results.append(det_box)
+        # for det_box in frame_detections:
+        #     ratio = self.ratio_motionmap_bbox(motion_map, det_box)
+        #     # print('ratio:', ratio)
+        #     if ratio>=self.ratio_box_mmap:
+        #         # det_box[4] += self.score
+        #         # print('score with motion: ', det_box[4])
+        #         results.append(det_box)
         return results
 
     def polygon_from_blob(self, cnt):
@@ -228,39 +230,121 @@ class MotionSegmentation:
         # loop over the number of unique connected component labels
         final_components = []
         for i in range(1, numLabels):
-            # if this is the first component then we examine the
-            # *background* (typically we would just ignore this
-            # component in our loop)
-            # if i == 0:
-            #     text = "examining component {}/{} (background)".format(
-            #         i + 1, numLabels)
-            # # otherwise, we are examining an actual connected component
-            # else:
-            #     text = "examining component {}/{}".format( i + 1, numLabels)
-            # print a status message update for the current connected
-            # component
-            # print("[INFO] {}".format(text))
-            # extract the connected component statistics and centroid for
-            # the current label
             x = stats[i, cv2.CC_STAT_LEFT]
             y = stats[i, cv2.CC_STAT_TOP]
             w = stats[i, cv2.CC_STAT_WIDTH]
             h = stats[i, cv2.CC_STAT_HEIGHT]
             area = stats[i, cv2.CC_STAT_AREA]
 
-            # ensure the width, height, and area are all neither too small
-            # nor too big
-            keepWidth = w > 5 and w < 50
-            keepHeight = h > 45 and h < 65
-            keepArea = area > 500 and area < 1500
-
-            if area > 49:
-                # final_components.append()
+            if area > self.config['min_conected_comp_area']:
                 (cX, cY) = centroids[i]
+                final_components.append({
+                    'id':i,
+                    'x1':x,
+                    'y1':y,
+                    'x2':x + w,
+                    'y2':y + h,
+                    'cx': cX, 
+                    'cY': cY,
+                    'area': area
+                })
                 cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 3)
                 cv2.circle(image, (int(cX), int(cY)), 4, (0, 0, 255), -1)
         
-        return image
+        return image, final_components
+
+    def get_brightest_region(self, image, gray, radius):
+        # apply a Gaussian blur to the image then find the brightest
+        # region
+        gray = cv2.GaussianBlur(gray, (radius, radius), 0)
+        (minVal, maxVal, minLoc, maxLoc) = cv2.minMaxLoc(gray)
+        im = image.copy()
+        cv2.circle(im, maxLoc, radius, (0, 255, 0), 2)
+        # cv2.circle(im, minLoc, radius, (255, 0, 0), 2)
+        return im
+    
+    def get_k_brightest_regions(self, image, gray, radius, k):
+        """
+        Get k brightest pixels from an image
+        args:
+            * image: rgb (h,w,3) to plot centers
+            * gray: gray (h,w)
+            * radius: kernel size for gaussian blur
+            * k: number of pixels to return
+        return:
+            * im: rgb (h,w,3) with k ploted circles
+            * centers: list of k coordinates of brightest pixels [(x,y), (x,y), ...]
+        """
+        # apply a Gaussian blur to the image then find the brightest
+        gray = cv2.GaussianBlur(gray, (radius, radius), 0)
+        idx = np.argpartition(-gray.ravel(),k)[:k]
+        idx2=np.argsort(-gray.ravel()[idx])
+        row,col = np.unravel_index(idx[idx2], gray.shape)
+        xy = np.stack((row,col), axis=1)
+        im = image.copy()
+        centers = []
+        for i,j in xy:
+            centers.append((j,i))
+            cv2.circle(im, (j,i), radius, (255, 0, 0), 1)
+        return im, centers
+    
+    def get_k_dark_regions(self, image, gray, radius, k):
+        """
+        Get k darkness pixels from an image
+        args:
+            * image: rgb (h,w,3) to plot centers
+            * gray: gray (h,w)
+            * radius: kernel size for gaussian blur
+            * k: number of pixels to return
+        return:
+            * im: rgb (h,w,3) with k ploted circles
+            * centers: list of k coordinates of darkness pixels [(x,y), (x,y), ...]
+        """
+        gray = cv2.GaussianBlur(gray, (radius, radius), 0)
+        idx = np.argpartition(gray.ravel(),k)[:k]
+        idx2=np.argsort(gray.ravel()[idx])
+        row,col = np.unravel_index(idx[idx2], gray.shape)
+        xy = np.stack((row,col), axis=1)
+        im = image.copy()
+        centers = []
+        for i,j in xy:
+            centers.append((j,i))
+            cv2.circle(im, (j,i), radius, (0, 0, 255), 1)
+        return im, centers
+
+    def color_quantization(self, image, K):
+        Z = image.reshape((-1,3))
+        # convert to np.float32
+        Z = np.float32(Z)
+        # define criteria, number of clusters(K) and apply kmeans()
+        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
+        ret,label,center=cv2.kmeans(Z,K,None,criteria,10,cv2.KMEANS_RANDOM_CENTERS)
+
+        # Now convert back into uint8, and make original image
+        center = np.uint8(center)
+
+        res = center[label.flatten()]
+        res2 = res.reshape((image.shape))
+        return res2, center
+
+    def get_k_better_components(self, components, centers, k):
+        max_component_idx = []
+        counters = []
+        for idx, c in enumerate(components):
+            counter = 0
+            for x,y in centers:
+                insideComponent = x >= c['x1'] and y >= c['y1'] and x <= c['x2'] and y <= c['y2']
+                counter = counter+1 if insideComponent else counter + 0
+            counters.append(counter)
+        
+        s = np.array(counters)
+        sort_index = np.argsort(s)
+        sort_index.tolist()
+        # print('sort_index: ', sort_index)
+        sorted_components = [components[idx] for idx in sort_index]
+        # print('sorted_components: ', sorted_components[-k])
+        best_k_components = sorted_components[-k:]
+        return best_k_components
 
     def motion_from_background_substraction(self, frames):
         """
@@ -274,12 +358,9 @@ class MotionSegmentation:
         
         for i, im in enumerate(images):
             im = self.remove_background(im, avg_sum, True)
-            ##Threshold
             gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY) #(224,224)
+            ##Threshold
             ret, thresh1 = cv2.threshold(gray, 0.5, 1, cv2.THRESH_BINARY)
-            # thresh1 = cv2.threshold((gray*255).astype(np.uint8), 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)[1]
-            # kernel = np.ones((5,5),np.uint8)
-            # thresh1 = cv2.dilate(thresh1,kernel,iterations = 1)
 
             # apply connected component analysis to the thresholded image
             image_boxes = self.conected_components(im,thresh1)
@@ -300,65 +381,126 @@ class MotionSegmentation:
         
         return None
     
-    def read_segment(self, segment):
-        """
-        input:
-            list of frames paths
-        output: (img_paths, images)
-            img_paths: list of image paths
-            images: list of np.array images [(224,224,3), (224,224,3), ...]
-        """
-        img_paths = []
-        images = []
-        for f in segment:
-            split = self.video_detections[f]['split']
-            video = self.video_detections[f]['video']
-            frame = self.video_detections[f]['fname']
-            img_path = os.path.join(self.dataset_root, split, video, frame)
-            img_paths.append(img_path)
-            images.append(np.array(imread(img_path)))
-        return img_paths, images
-    
-    def motion_di_online(self, frames):
-        segments = self.tmp_sampler(frames)
-        motion_images = []
-        clips_idxs = []
-        wait = 3000
-        for i, segment in enumerate(segments): #For each video clip process a set of dynamic images
-            print('-----segment: ', i+1)
-            img_paths, images = self.read_segment(segment)
-            #Motion image
-            dyn_image = self.tmp_transform(img_paths)
-            cv2.imshow('dyn_image', dyn_image)
-            dyn_image_norm = self.normalize(dyn_image)
+    def non_motion_suppresion(
+        self, 
+        current_frame, 
+        dyn_image_norm, 
+        bright_pixels, 
+        dark_pixels):
+        im = np.array(current_frame)
+        im_without_mov = np.abs(im*dyn_image_norm)
+        im_without_mov = self.normalize(im_without_mov)
+        gray = cv2.cvtColor(im_without_mov, cv2.COLOR_BGR2GRAY)
+        ##Threshold
+        ret, thresh1 = cv2.threshold(gray, self.config['binary_thres_norm'], 1, cv2.THRESH_BINARY)
+        # apply connected component analysis to the thresholded image
+        image_componets, components = self.conected_components(im, thresh1)
+        best_components = self.get_k_better_components(components, bright_pixels + dark_pixels, self.config['k_best_components'])
+
+        return im_without_mov, image_componets, best_components
+
+    def motion_di_online(self, images, img_paths, debug=False, save_folder=None):
+        wait = self.config['plot_wait']
+        # print('-----segment: ', segment, 'len: ', len(segment))
+        # img_paths, images = self.read_segment(segment)
+        #Motion image
+        
+        dyn_image = self.tmp_transform(img_paths)
+        dyn_image_raw = dyn_image.copy()
+        dyn_image_equ, centers = self.color_quantization(dyn_image, self.config['num_clusters_color_quantization'])
+        ##Threshold
+        gray_dyn_image = cv2.cvtColor(dyn_image, cv2.COLOR_BGR2GRAY) #(224,224)
+        ret, thresh1 = cv2.threshold(gray_dyn_image, self.config['binary_thres'], 255, cv2.THRESH_BINARY)
+        ##brightest regions
+        brightest_image, bright_pixels = self.get_k_brightest_regions(
+            dyn_image, 
+            gray_dyn_image, 
+            self.config['blur_kernel_size'], 
+            self.config['k_brightnes_darkness_pixels'])
+        brightest_image, dark_pixels = self.get_k_dark_regions(
+            brightest_image, 
+            gray_dyn_image, 
+            self.config['blur_kernel_size'], 
+            self.config['k_brightnes_darkness_pixels'])
+        
+        dyn_image = dyn_image_equ
+        dyn_image_norm = self.normalize(dyn_image)
+
+        if debug:
+            cv2.imshow('dyn_image', dyn_image_raw)
+            cv2.imshow('dyn_image_equ', dyn_image_equ)
             cv2.imshow('dyn_image_norm', dyn_image_norm)
+            cv2.imshow('brightest_image', brightest_image)
+            if save_folder is not None:
+                if not os.path.isdir(save_folder):
+                    os.mkdir(save_folder)
+                cv2.imwrite(save_folder + '/{}.jpg'.format('dyn_image'), dyn_image)
+                cv2.imwrite(save_folder + '/{}.jpg'.format('dyn_image_equ'), dyn_image_equ)
+                cv2.imwrite(save_folder + '/{}.jpg'.format('dyn_image_norm'), 255*dyn_image_norm)
+                cv2.imwrite(save_folder + '/{}.jpg'.format('brightest_image'), brightest_image)
+            
             key = cv2.waitKey(wait)
             if key == 27:#if ESC is pressed, exit loop
                 cv2.destroyAllWindows() 
-            
-            for im in images:
-                im = np.array(im)
-                cv2.imshow('im', im)
-                im_without_mov = np.abs(im*dyn_image_norm)
-                im_without_mov = self.normalize(im_without_mov)
-                cv2.imshow('im_without_mov', im_without_mov)
+       
+        
+        # if isinstance(images, np.array):
+        #     im_without_mov, image_componets, best_components = self.non_motion_suppresion(images, dyn_image_norm, bright_pixels, dark_pixels)
+            # return best_components
+        if isinstance(images, list):
+            motion_regions_map = {
+                'frames':[],
+                'm_regions': []
+            }
+            # motion_tube = []
+            for idx, im in enumerate(images):
+                # im = np.array(im)
+                raw_image = im.copy()
+                im_without_mov, image_componets, best_components = self.non_motion_suppresion(im, dyn_image_norm, bright_pixels, dark_pixels)
+                # print('best_components: ', len(best_components))
+                if len(best_components)>0:
+                    best_motion_region = best_components[0]
+                    motion_regions_map['frames'].append(img_paths[idx].split('/')[-1])
+                    motion_regions_map['m_regions'].append(best_motion_region)
+                    # print('best_motion_region: ', best_motion_region['x1'],best_motion_region['y1'],best_motion_region['x2'],best_motion_region['x2'])
+                # else:
+                #     motion_regions_map['frames'].append(img_paths[idx].split('/')[-1])
+                #     motion_regions_map['m_regions'].append(best_motion_region)
+
+
+                if debug:
+                    frame_name = img_paths[idx].split('/')[-1][:-4]
+                    cv2.imshow('frame_name', im)
+                    for bc in best_components:
+                        # print('bc: ', bc)
+                        cv2.rectangle(
+                            image_componets, 
+                            (int(bc['x1']), int(bc['y1'])), 
+                            (int(bc['x2']), int(bc['y2'])), 
+                            color['deep pink'], 
+                            3)
+                    
+                    if save_folder is not None:
+                        cv2.imshow(frame_name + '_components', image_componets)
+                        cv2.imshow(frame_name + '_without_mov', im_without_mov)
+                        cv2.imwrite(save_folder + '/{}.jpg'.format(frame_name), raw_image)
+                        cv2.imwrite(save_folder + '/{}.jpg'.format(frame_name + '_components'), image_componets)
+                        cv2.imwrite(save_folder + '/{}.jpg'.format(frame_name + '_without_mov'), 255*im_without_mov)
+                    else:
+                        cv2.imshow('_components', image_componets)
+                        cv2.imshow('_without_mov', im_without_mov)
+
+                    key = cv2.waitKey(wait)
+                    if key == 27:#if ESC is pressed, exit loop
+                        cv2.destroyAllWindows()
+
+            # cv2.imshow('thresh1', thresh1)
+            if debug:
                 key = cv2.waitKey(wait)
                 if key == 27:#if ESC is pressed, exit loop
-                    cv2.destroyAllWindows()
-
-
-            ##Threshold
-            img = cv2.cvtColor(dyn_image, cv2.COLOR_BGR2GRAY) #(224,224)
-            ret, thresh1 = cv2.threshold(img, self.binary_thres, 255, cv2.THRESH_BINARY)
-            # thresh1 = self.remove_big_short_blobs(thresh1)
-            # motion_images.append(thresh1)
-            # clips_idxs += segment
-            cv2.imshow('thresh1', thresh1)
-            key = cv2.waitKey(wait)
-            if key == 27:#if ESC is pressed, exit loop
-                cv2.destroyAllWindows() 
-        
-        return None
+                    cv2.destroyAllWindows() 
+            
+            return motion_regions_map
 
 
 
@@ -380,7 +522,7 @@ class MotionSegmentation:
             dyn_image = self.tmp_transform(img_paths)
             ##Threshold
             img = cv2.cvtColor(dyn_image, cv2.COLOR_BGR2GRAY) #(224,224)
-            ret, thresh1 = cv2.threshold(img, self.binary_thres, 255, cv2.THRESH_BINARY)
+            ret, thresh1 = cv2.threshold(img, self.config['binary_thres'], 255, cv2.THRESH_BINARY)
             thresh1 = self.remove_big_short_blobs(thresh1)
             motion_images.append(thresh1)
             clips_idxs += segment
@@ -436,10 +578,10 @@ class MotionSegmentation:
         motion_map['boxes_from_polygons']=boxes_from_polygons
         return motion_map
 
-    def __call__(self,frames):
-        # motion_map = self.motion_di_online(frames)
+    def __call__(self, images, img_paths, debug, save_folder):
+        motion_map = self.motion_di_online(images, img_paths, debug, save_folder)
         # motion_map = self.motion_from_dynamic_images(frames)
-        motion_map = self.motion_from_background_substraction(frames)
+        # motion_map = self.motion_from_background_substraction(frames)
         return motion_map
 
     def plot(self, motion_map, lbbox=[], wait=300):
@@ -478,3 +620,29 @@ class MotionSegmentation:
             key = cv2.waitKey(wait)
             if key == 27:#if ESC is pressed, exit loop
                 cv2.destroyAllWindows()
+
+from tube_config import *
+from visual_utils import imread
+if __name__=='__main__':
+    segmentator = MotionSegmentation(MOTION_SEGMENTATION_CONFIG)
+    video_path = '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/violentflows/frames/1/Violence/fans_violence__F_GHT_S_MORE_MPORTANT_THAN_FOOTBALL_sometimes__shevchenko776__9a616Ppoeak'
+    frames = os.listdir(video_path)
+    
+    num_frames = len(frames)
+    print('num_frames: ', num_frames)
+    numbers = np.linspace(0, num_frames, dtype=np.int16).tolist()
+    print('numbers: ', numbers, len(numbers))
+
+    def split_by_windows(frames, window_len):
+        for i in range(0, len(frames), window_len): 
+            yield frames[i:i + window_len]
+    
+    clips = list(split_by_windows(numbers, 10))
+    print('clips: ', clips, len(clips))
+
+    for clip in clips:
+        print('------', clip)
+        frames_paths = [os.path.join(video_path, 'frame{:03}.jpg'.format(i+1)) for i in clip]
+        print('------', frames_paths)
+        images = [np.array(imread(f)) for f in frames_paths]
+        segmentator(images, frames_paths, True, save_folder=None)

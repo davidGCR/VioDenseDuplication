@@ -19,116 +19,7 @@ from incremental_linking import IncrementalLinking
 from PIL import Image, ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 import random
-
-
-def plot_image_detections(decodedArray, dataset_path):
-    for item in decodedArray:
-        img_path = os.path.join(dataset_path, item['split'], item['video'], item['fname'])
-        image = cv2.imread(img_path, cv2.IMREAD_COLOR)
-        pred_boxes = item['pred_boxes']
-        
-        merged_pred_boxes = merge_close_detections(pred_boxes)
-        pred_tags_name = item['tags']
-        if merged_pred_boxes is not None:
-            pred_boxes = np.concatenate((pred_boxes, merged_pred_boxes), axis=0)
-            pred_tags_name = pred_tags_name = item['tags'] + ["merged"]*merged_pred_boxes.shape[0]
-        
-        
-        print(item)
-        if pred_boxes.shape[0] != 0:
-            image = visual_utils.draw_boxes(image,
-                                            pred_boxes[:, :4],
-                                            scores=pred_boxes[:, 4],
-                                            tags=pred_tags_name,
-                                            line_thick=1, 
-                                            line_color='white')
-        name = img_path.split('/')[-1].split('.')[-2]
-        # fpath = '{}/{}.png'.format(out_path, name)
-        # cv2.imwrite(fpath, image)
-        cv2.imshow(name, image)
-        key = cv2.waitKey(800)#pauses for 3 seconds before fetching next image
-        if key == 27:#if ESC is pressed, exit loop
-            cv2.destroyAllWindows()
-            # break
-
-# def tracking(decodedArray, 
-#             vname,
-#             dataset_frames_path="/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames", 
-#             video_out_path = '/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/AVSS2019/videos_',
-#             plot=True):
-
-#     mot_tracker = Sort(iou_threshold=0.1)
-#     start_tracking = False
-#     tracked_objects = None
-
-#     if plot:
-#         size = (224,224)
-#         result = cv2.VideoWriter('{}/{}.avi'.format(video_out_path,vname), 
-#                             cv2.VideoWriter_fourcc('M','J','P','G'),
-#                             10, size)
-
-
-#     for i, item in enumerate(decodedArray): #frame by frame
-        
-#         if plot:
-#             img_path = os.path.join(dataset_frames_path, item['split'], item['video'], item['fname'])
-#             image = cv2.imread(img_path, cv2.IMREAD_COLOR)
-        
-#         # print("image shape:", image.shape)
-
-#         pred_boxes = item["pred_boxes"]
-#         pred_tags_name = item['tags']
-
-#         if not start_tracking:
-#             merge_pred_boxes = merge_close_detections(pred_boxes, only_merged=True)
-#             start_tracking = True if len(merge_pred_boxes)>0 else False
-#         # pred_boxes = merge_pred_boxes
-#         # print("pred_boxes: ", pred_boxes.shape)
-        
-#         # if merge_pred_boxes is not None:
-#             # print("merge_pred_boxes: ", merge_pred_boxes.shape)
-        
-#         if pred_boxes.shape[0] != 0 and plot:
-#             image = visual_utils.draw_boxes(image,
-#                                             pred_boxes[:, :4],
-#                                             # scores=pred_boxes[:, 4],
-#                                             # tags=pred_tags_name,
-#                                             line_thick=1, 
-#                                             line_color='white')
-#         if start_tracking:
-#             if tracked_objects is not None: 
-#                 if pred_boxes.shape[0] == 0:
-#                     pred_boxes = np.empty((0,5))
-#                     print('tracked_objects(no persons in frame):frame {}'.format(i+1),tracked_objects.shape)
-#                 else:
-#                     pred_boxes = merge_close_detections(pred_boxes, only_merged=False) #merge close bboxes in every frame
-#                     pred_boxes = np.stack(pred_boxes)
-#                     tracked_objects = mot_tracker.update(pred_boxes)
-#                     print('tracked_objects:frame {}'.format(i+1),tracked_objects.shape, ' ids: ', tracked_objects[:,4])
-#             else:
-#                 merge_pred_boxes = np.stack(merge_pred_boxes)
-#                 tracked_objects = mot_tracker.update(merge_pred_boxes)
-#                 print('--tracked_objects:frame {}'.format(i+1),tracked_objects.shape, ' ids: ', tracked_objects[:,4])      
-#             if plot:
-#                 image = visual_utils.draw_boxes(image,
-#                                                 tracked_objects[:, :4],
-#                                                 ids=tracked_objects[:, 4],
-#                                                 # tags=["per-"]*tracked_objects.shape[0],
-#                                                 line_thick=2, 
-#                                                 line_color='green')
-
-#         if plot:
-#             result.write(image) # save video
-#             name = img_path.split('/')[-1].split('.')[-2]
-#             cv2.imshow(name, image)
-#             key = cv2.waitKey(10)#pauses for 3 seconds before fetching next image
-#             if key == 27:#if ESC is pressed, exit loop
-#                 cv2.destroyAllWindows()
-#     if plot:
-#         result.release()
-#         # cv2.destroyAllWindows()
-    
-#     return tracked_objects
+from tube_config import *
 
 
 def CountFrequency(my_list):
@@ -148,43 +39,43 @@ def get_videos_from_num_tubes(my_list, num_tubes):
             videos.append(dcc['path'])
     return videos
 
-def extract_tubes_from_dataset(dataset_persons_detections_path, folder_out, dataset_root, frames):
+def extract_tubes_from_dataset(dataset_persons_detections_path, folder_out, frames):
     
     """
         Args:
             dataset_persons_detections_path: Path to folder containing the person detections in JSON format
     """
-    # start_frame = 60
-    # frames = list(range(start_frame, start_frame+seg_len))
-    
     videos_list = os.listdir(dataset_persons_detections_path)
+    videos_list = sorted(videos_list)
     num_live_paths = []
+    
     for i, video_folder in enumerate(videos_list):
         assert '.json' in video_folder, 'Unrecognized format!!!'
         print("Processing ({}/{}), pt: {}/{} ...".format(i+1,len(videos_list), dataset_persons_detections_path, video_folder))
-        person_detections = JSON_2_videoDetections("{}/{}".format(dataset_persons_detections_path, video_folder))
         
-        segmentator = MotionSegmentation(video_detections=person_detections,
-                                        dataset_root=dataset_root,
-                                        ratio_box_mmap=0.3,
-                                        size=5,
-                                        segment_size=5,
-                                        stride=1,
-                                        overlap=0)
-        tube_builder = IncrementalLinking(video_detections=person_detections,
-                                            iou_thresh=0.3,
-                                            jumpgap=5,
-                                            dataset_root=dataset_root)
+        if not os.path.isdir(folder_out):
+            os.makedirs(folder_out)
+        
+        if os.path.exists(os.path.join(folder_out, video_folder)):
+            print('Already done!!!')
+            continue
 
-        live_paths = tube_builder(frames, segmentator, None)
+        person_detections = JSON_2_videoDetections("{}/{}".format(dataset_persons_detections_path, video_folder))
+        TUBE_BUILD_CONFIG['person_detections'] = person_detections
+        segmentator = MotionSegmentation(MOTION_SEGMENTATION_CONFIG)
+        tube_builder = IncrementalLinking(TUBE_BUILD_CONFIG)
+
+        live_paths = tube_builder(frames, segmentator, None, False)
         print('live_paths: ', len(live_paths))
         # num_live_paths.append({
         #     'path': dataset_persons_detections_path,
         #     'num': len(live_paths)
         #     })
-        if not os.path.isdir(folder_out):
-            os.makedirs(folder_out)
+
         tube_2_JSON(output_path=os.path.join(folder_out, video_folder), tube=live_paths)
+        
+    
+        
     # CountFrequency(num_live_paths)
 
     # videos_no_tubes = get_videos_from_num_tubes(num_live_paths, 0)
@@ -193,23 +84,10 @@ def extract_tubes_from_dataset(dataset_persons_detections_path, folder_out, data
 
     return num_live_paths
 
-    
-
-
-def extract_tubes_from_video(dataset_root, persons_detections, frames, plot=None):
-    segmentator = MotionSegmentation(video_detections=persons_detections,
-                                        dataset_root=dataset_root,
-                                        ratio_box_mmap=0.3,
-                                        size=5,
-                                        segment_size=5,
-                                        stride=1,
-                                        overlap=0)
-    tube_builder = IncrementalLinking(video_detections=persons_detections,
-                                        iou_thresh=0.3,
-                                        jumpgap=5,
-                                        dataset_root=dataset_root)
-
-    live_paths = tube_builder(frames, segmentator, plot)
+def extract_tubes_from_video(frames, plot=None):
+    segmentator = MotionSegmentation(MOTION_SEGMENTATION_CONFIG)
+    tube_builder = IncrementalLinking(TUBE_BUILD_CONFIG)
+    live_paths = tube_builder(frames, segmentator, plot, False)
     print('live_paths: ', len(live_paths))
     # for lp in live_paths:
     #     print(lp['score'])
@@ -261,33 +139,51 @@ if __name__=="__main__":
 
     # rwf_config = {
     #     'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames',
-    #     'split': 'train/Fight',
-    #     'video': '_6-B11R9FJM_0',#'_2RYnSFPD_U_0',
+    #     'split': 'train/NonFight',
+    #     'video': '1ahhhDBQHxg_0',#'_2RYnSFPD_U_0',
     #     'p_d_path': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/RWF-2000'
     # }
     # config = rwf_config
     # persons_detections_path = config['p_d_path']+'/{}/{}.json'.format(config['split'],config['video'])
     # person_detections = JSON_2_videoDetections(persons_detections_path)
     # frames = np.linspace(0, 149, 25,dtype=np.int16).tolist()
+    # # frames = np.linspace(0, 149, dtype=np.int16).tolist()
     # print('random frames: ', frames)
 
-    # extract_tubes_from_video(config['dataset_root'],
-    #                             person_detections,
-    #                             frames,
-    #                             {'wait': 2000}
+    # TUBE_BUILD_CONFIG['dataset_root'] = config['dataset_root']
+    # TUBE_BUILD_CONFIG['person_detections'] = person_detections
+
+    # extract_tubes_from_video(frames,
+    #                             {'wait': 1000}
     #                             )
     
-    #PROCESS ALL DATASET
-    # rwf_config = {
-    #     'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames',
-    #     'path_in':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/RWF-2000',
-    #     'path_out':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/RWF-2000-3',
-    #     'splits':['train/Fight', 'train/NonFight', 'val/Fight', 'val/NonFight'],
+    ########################################PROCESS ALL DATASET
+    rwf_config = {
+        'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames',
+        'path_in':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/RWF-2000',
+        'path_out':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/RWF-2000-25frames-motion-maps',
+        'splits':['train/Fight', 'train/NonFight', 'val/Fight', 'val/NonFight'],
+        'start_frame':0,
+        'seg_len': 150
+    }
+    frames = np.linspace(0, 149, 25,dtype=np.int16).tolist()
+    config = rwf_config
+    TUBE_BUILD_CONFIG['dataset_root'] = config['dataset_root']
+    for sp in config['splits']:
+        extract_tubes_from_dataset(dataset_persons_detections_path=os.path.join(config['path_in'], sp),
+                                    folder_out=os.path.join(config['path_out'], sp),
+                                    frames=frames)
+    ########################################
+    # hockey_config = {
+    #     'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/HockeyFightsDATASET/frames',
+    #     'path_in':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/hockey',
+    #     'path_out':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/hockey2',
+    #     'splits':['violence', 'nonviolence'],
     #     'start_frame':0,
     #     'seg_len': 150
     # }
-    # frames = np.linspace(0, 149, 25,dtype=np.int16).tolist()
-    # config = rwf_config
+    # frames = np.linspace(0, 39, 25,dtype=np.int16).tolist()
+    # config = hockey_config
     # for sp in config['splits']:
     #     extract_tubes_from_dataset(dataset_persons_detections_path=os.path.join(config['path_in'], sp),
     #                                 folder_out=os.path.join(config['path_out'], sp),
@@ -295,22 +191,4 @@ if __name__=="__main__":
     #                                 # start_frame=config['start_frame'],
     #                                 # seg_len=config['seg_len']
     #                                 frames=frames)
-    
-    hockey_config = {
-        'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/HockeyFightsDATASET/frames',
-        'path_in':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/hockey',
-        'path_out':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/hockey2',
-        'splits':['violence', 'nonviolence'],
-        'start_frame':0,
-        'seg_len': 150
-    }
-    frames = np.linspace(0, 39, 25,dtype=np.int16).tolist()
-    config = hockey_config
-    for sp in config['splits']:
-        extract_tubes_from_dataset(dataset_persons_detections_path=os.path.join(config['path_in'], sp),
-                                    folder_out=os.path.join(config['path_out'], sp),
-                                    dataset_root=config['dataset_root'],
-                                    # start_frame=config['start_frame'],
-                                    # seg_len=config['seg_len']
-                                    frames=frames)
 
