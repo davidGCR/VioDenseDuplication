@@ -63,7 +63,7 @@ def load_make_dataset(dataset_name, train=True, cv_split=1, home_path='', catego
             root=os.path.join(home_path, 'RWF-2000/frames'),#'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames', 
             train=train,
             category=category, 
-            path_annotations=os.path.join(home_path, 'ActionTubes/RWF-2000-2'),
+            path_annotations=os.path.join(home_path, 'ActionTubes/RWF-2000-25frames-motion-maps'),
             shuffle=shuffle)#'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/Tubes/RWF-2000')
 
     elif dataset_name == HOCKEY_DATASET:
@@ -229,7 +229,6 @@ def data_with_tubes(config: Config, make_dataset_train, make_dataset_val):
         # }
     }
     train_dataset = TubeDataset(frames_per_tube=config.frames_per_tube, 
-                            min_frames_per_tube=8,
                             make_function=make_dataset_train,
                             max_num_tubes=config.num_tubes,
                             train=True,
@@ -246,7 +245,6 @@ def data_with_tubes(config: Config, make_dataset_train, make_dataset_val):
                         drop_last=True
                         )
     val_dataset = TubeDataset(frames_per_tube=config.frames_per_tube, 
-                            min_frames_per_tube=8, 
                             make_function=make_dataset_val,
                             max_num_tubes=config.num_tubes,
                             train=False,
@@ -334,22 +332,22 @@ if __name__=='__main__':
         model='TwoStreamVD_Binary_CFam',#'TwoStreamVD_Binary',#'i3d-roi',i3d+roi+fc
         model_config=TWO_STREAM_CFAM_CONFIG,
         head=BINARY,
-        dataset=HOCKEY_DATASET,
-        num_cv=3,
+        dataset=RWF_DATASET,
+        num_cv=1,
         input_type='rgb',
         device=get_torch_device(),
         num_epoch=100,
         criterion='BCE',
-        optimizer='Adadelta',
-        learning_rate=0.001, #0.001 for adagrad
-        train_batch=4,
-        val_batch=4,
-        num_tubes=4,
+        optimizer='SGD',
+        learning_rate=0.0001, #0.001 for adagrad
+        train_batch=8,
+        val_batch=8,
+        num_tubes=2,
         tube_sampling_random=True,
-        frames_per_tube=4, 
+        frames_per_tube=8, 
         save_every=10,
         freeze=False,
-        additional_info='TWO_STREAM_CFAM_CONFIG+otherTrack+RWF-2000-pretrain-alldata',
+        additional_info='TWO_STREAM_CFAM_CONFIG+RWF-2000-25frames-motion-maps',
         home_path=HOME_UBUNTU,
         num_workers=4
     )
@@ -357,7 +355,7 @@ if __name__=='__main__':
     # config.pretrained_model='/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt'
     # config.pretrained_model = '/media/david/datos/Violence DATA/VioNet_pth/rwf_trained/save_at_epoch-127.chk'
     # config.restore_training = True
-    # config.checkpoint_path = '/media/david/datos/Violence DATA/VioNet_pth/rwf-2000_model(TwoStreamVD_Binary_CFam)_head(regression)_stream(rgb)_cv(1)_epochs(100)_num_tubes(4)_framesXtube(16)_tub_sampl_rand(True)_optimizer(Adadelta)_lr(0.001)_note(TWO_STREAM_CFAM_CONFIG+otherTrack+tubes3+alldata+RWF-2000-2)/save_at_epoch-99.chk'
+    # config.checkpoint_path = '/media/david/datos/Violence DATA/VioNet_pth/restoredFromDrive/save_at_epoch-49.chk'
     # config.checkpoint_path = os.path.join(config.home_path,
     #                                       PATH_CHECKPOINT,
     #                                       'SpTmpDetector_rwf-2000_model(binary)_stream(rgb)_cv(1)_epochs(200)_note(restorefrom97epoch)',

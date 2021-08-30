@@ -58,8 +58,8 @@ def train(_loader, _epoch, _model, _criterion, _optimizer, _device, _config, _ac
     train_acc = accuracies.avg
     print(
         'Epoch: [{}]\t'
-        'Loss(train): {loss.avg:.4f}\t'
-        'Acc(train): {acc.avg:.3f}'.format(_epoch, loss=losses, acc=accuracies)
+        'Loss(train): {loss:.4f}\t'
+        'Acc(train): {acc:.3f}'.format(_epoch, loss=train_loss, acc=train_acc)
     )
     return train_loss, train_acc
 
@@ -89,14 +89,14 @@ def val(_loader, _epoch, _model, _criterion, _device, _config, _accuracy_fn):
 
         losses.update(loss.item(), outputs.shape[0])
         accuracies.update(acc, outputs.shape[0])
-
-    print(
-        'Epoch: [{}]\t'
-        'Loss(val): {loss.avg:.4f}\t'
-        'Acc(val): {acc.avg:.3f}'.format(_epoch, loss=losses, acc=accuracies)
-    )
     val_loss = losses.avg
     val_acc = accuracies.avg
+    print(
+        'Epoch: [{}]\t'
+        'Loss(val): {loss:.4f}\t'
+        'Acc(val): {acc:.3f}'.format(_epoch, loss=val_loss, acc=val_acc)
+    )
+    
 
     return val_loss, val_acc
 

@@ -6,8 +6,7 @@ import numpy as np
 
 class TubeCrop(object):
     def __init__(self, 
-                    tube_len=16, 
-                    min_tube_len=8, 
+                    tube_len=16,
                     central_frame=True, 
                     max_num_tubes=4, 
                     train=True,
@@ -18,7 +17,6 @@ class TubeCrop(object):
         Args:
         """
         self.tube_len = tube_len
-        self.min_tube_len = min_tube_len
         self.central_frame = central_frame
         self.max_num_tubes = max_num_tubes
         self.train = train
@@ -27,25 +25,25 @@ class TubeCrop(object):
         self.random = random
 
     def __call__(self, tubes: list, tube_path: str):
-        # assert len(tubes) >= 1, "No tubes in video!!!==>{}".format(tube_path)
-        if len(tubes)==0:
-            # rdn_frames = random.sample(list(range(65,90)),self.tube_len)
-            rdn_frames = np.linspace(0,39,25, dtype=np.int16).tolist()
-            c = rdn_frames[int(len(rdn_frames)/2)]
-            rdn_frames = list(range(c-int(self.tube_len/2), c+int(self.tube_len/2)))
+        assert len(tubes) >= 1, "No tubes in video!!!==>{}".format(tube_path)
+        # if len(tubes)==0:
+        #     # rdn_frames = random.sample(list(range(65,90)),self.tube_len)
+        #     rdn_frames = np.linspace(0,39,25, dtype=np.int16).tolist()
+        #     c = rdn_frames[int(len(rdn_frames)/2)]
+        #     rdn_frames = list(range(c-int(self.tube_len/2), c+int(self.tube_len/2)))
             
-            tubes = [{
-                'frames': ['frame{}.jpg'.format(i+1) for i in rdn_frames],
-                'foundAt': rdn_frames,
-                'boxes':[np.asarray([82,
-                                    82,
-                                    122,
-                                    122,
-                                    0.1]) for i in rdn_frames],
-                'score':0,
-                'id':1,
-                'len':1
-            }]
+        #     tubes = [{
+        #         'frames': ['frame{}.jpg'.format(i+1) for i in rdn_frames],
+        #         'foundAt': rdn_frames,
+        #         'boxes':[np.asarray([82,
+        #                             82,
+        #                             122,
+        #                             122,
+        #                             0.1]) for i in rdn_frames],
+        #         'score':0,
+        #         'id':1,
+        #         'len':1
+        #     }]
 
         segments = []
         boxes = []
