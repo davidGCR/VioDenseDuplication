@@ -63,7 +63,7 @@ def load_make_dataset(dataset_name, train=True, cv_split=1, home_path='', catego
             root=os.path.join(home_path, 'RWF-2000/frames'),#'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames', 
             train=train,
             category=category, 
-            path_annotations=os.path.join(home_path, 'ActionTubes/RWF-2000-25frames-motion-maps'),
+            path_annotations=os.path.join(home_path, 'ActionTubes/RWF-2000-150frames-motion-maps2'),
             shuffle=shuffle)#'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/Tubes/RWF-2000')
 
     elif dataset_name == HOCKEY_DATASET:
@@ -143,7 +143,10 @@ def main(config: Config, MIL=False):
                                     momentum=0.9,
                                     weight_decay=1e-3)
     
-    criterion = nn.CrossEntropyLoss().to(config.device)
+    if config.criterion == 'CEL':
+        criterion = nn.CrossEntropyLoss().to(config.device)
+    elif config.criterion == 'BCE':
+        criterion = nn.BCELoss().to(config.device)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer,
         verbose=True,
@@ -337,17 +340,17 @@ if __name__=='__main__':
         input_type='rgb',
         device=get_torch_device(),
         num_epoch=100,
-        criterion='BCE',
-        optimizer='SGD',
-        learning_rate=0.0001, #0.001 for adagrad
+        criterion='CEL',
+        optimizer='Adadelta',
+        learning_rate=0.001, #0.001 for adagrad
         train_batch=8,
         val_batch=8,
-        num_tubes=2,
+        num_tubes=4,
         tube_sampling_random=True,
-        frames_per_tube=8, 
+        frames_per_tube=16, 
         save_every=10,
         freeze=False,
-        additional_info='TWO_STREAM_CFAM_CONFIG+RWF-2000-25frames-motion-maps',
+        additional_info='TWO_STREAM_CFAM_CONFIG+RWF-2000-150frames-motion-maps2-centralframe',
         home_path=HOME_UBUNTU,
         num_workers=4
     )

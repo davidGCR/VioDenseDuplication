@@ -46,13 +46,13 @@ def i3d_video_transf():
                             GroupRandomScaleCenterCrop(size=sample_size),
                             GroupRandomHorizontalFlip(),
                             ToTensor(),
-                            norm
+                            # norm
                             # transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
                         ]),
         'val': Compose([
                             GroupRandomScaleCenterCrop(size=sample_size),
                             ToTensor(),
-                            norm
+                            # norm
                         ])
     }
     return T
