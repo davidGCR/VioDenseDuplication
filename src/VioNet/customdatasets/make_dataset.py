@@ -470,53 +470,62 @@ def JSON_2_tube(json_file):
         decodedArray = sorted(decodedArray, key = lambda i: i['id'])
         return decodedArray
 
-if __name__=="__main__":
-    make_func = MakeRWF2000(root='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames', 
-                    train=True,
-                    path_annotations='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/RWF-2000-2',
-                    category=2)
-    paths, labels, annotations = make_func()
-    print("paths: ", len(paths))
-    print("labels: ",len(labels))
-    print("annotations: ",len(annotations))
-
-    print("no tubes in: ")
-    without_tube=[]
+def _avg_num_tubes(annotations):
+    video_num_tubes=[]
+    num_tubes=[]
     for ann in annotations:
         tubes = JSON_2_tube(ann)
-        if len(tubes)==0:
-            # print(len(tubes))
-            without_tube.append(ann)
+        video_num_tubes.append((ann, len(tubes)))
+        num_tubes.append(len(tubes))
     
-    with open('3without_tube_{}.txt'.format('train' if make_func.train else 'val'), 'w') as filehandle:
-        filehandle.writelines("%s\n" % t for t in without_tube)
+    def Average(lst):
+        return sum(lst) / len(lst)
+    
+    print('Avg num_tubes: ', Average(num_tubes))
+    
+if __name__=="__main__":
+    # make_func = MakeRWF2000(root='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames', 
+    #                 train=False,
+    #                 path_annotations='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/RWF-2000-150frames-motion-maps2',
+    #                 category=2)
+    # paths, labels, annotations = make_func()
+    # print("paths: ", len(paths))
+    # print("labels: ",len(labels))
+    # print("annotations: ",len(annotations))
+
+    # _avg_num_tubes(annotations)
+
+    # print("no tubes in: ")
+    # without_tube=[]
+    # for ann in annotations:
+    #     tubes = JSON_2_tube(ann)
+    #     if len(tubes)==0:
+    #         # print(len(tubes))
+    #         without_tube.append(ann)
+    
+    # with open('3without_tube_{}.txt'.format('train' if make_func.train else 'val'), 'w') as filehandle:
+    #     filehandle.writelines("%s\n" % t for t in without_tube)
 
     # tubes = JSON_2_tube('/media/david/datos/Violence DATA/ActionTubes/RWF-2000/train/Fight/C8wt47cphU8_0.json')
     # print("tubes: ",len(tubes))
 
-    # video_num_tubes=[]
-    # num_tubes=[]
-    # for ann in annotations:
-    #     tubes = JSON_2_tube(ann)
-    #     video_num_tubes.append((ann, len(tubes)))
-    #     num_tubes.append(len(tubes))
+    
     
     # with open('2videos_num_tubes_{}.txt'.format('train' if make_func.train else 'val'), 'w') as filehandle:
     #     filehandle.writelines("{},{}\n".format(t[0], t[1]) for t in video_num_tubes)
 
-    # def Average(lst):
-    #     return sum(lst) / len(lst)
     
-    # print('Avg num_tubes: ', Average(num_tubes))
 
-    # make_func = MakeHockeyDataset(root='/media/david/datos/Violence DATA/DATASETS/HockeyFightsDATASET/frames', 
-    #                 train=False,
-    #                 cv_split_annotation_path='/media/david/datos/Violence DATA/VioDB/hockey_jpg1.json',
-    #                 path_annotations='/media/david/datos/Violence DATA/ActionTubes/hockey')
-    # paths, labels, annotations = make_func()
-    # print("paths: ", paths[0:10], len(paths))
-    # print("labels: ", labels[0:10], len(labels))
-    # print("annotations: ", annotations[0:10], len(annotations))
+    make_func = MakeHockeyDataset(root='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/HockeyFightsDATASET/frames', 
+                    train=False,
+                    cv_split_annotation_path='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/VioNetDB-splits/hockey_jpg1.json',
+                    path_annotations='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/hockey-40frames-motion-maps')
+    paths, labels, annotations = make_func()
+    print("paths: ", len(paths))
+    print("labels: ", len(labels))
+    print("annotations: ", len(annotations))
+
+    _avg_num_tubes(annotations)
 
     # m = MakeUCFCrime2Local(root='/Volumes/TOSHIBA EXT/DATASET/AnomalyCRIMEALL/UCFCrime2Local/frames',
     #                         annotation_path='/Volumes/TOSHIBA EXT/DATASET/AnomalyCRIMEALL/UCFCrime2Local/readme',

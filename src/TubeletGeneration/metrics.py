@@ -63,13 +63,17 @@ if __name__=='__main__':
     from VioNet.customdatasets.ucfcrime2local_dataset import UCFCrime2LocalVideoDataset
     #### videos
     # video = 'Stealing091(245-468)'#--224'
-    video = 'Arrest002(257-536)'
+    # video = 'Arrest003(1435-2089)' #655 
+    # video = 'Arrest005(282-890)' #
+    # video = 'Arrest025(334-701)' #368
+    # video = 'Assault018(52-71)'  #20
+    video = 'Assault049(377-426)' #50
     video_dataset = UCFCrime2LocalVideoDataset(
         path='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/UCFCrime2LocalClips/anomaly/{}'.format(video),
         sp_annotation='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/CrimeViolence2LocalDATASET/Txt annotations-longVideos/{}.txt'.format(video.split('(')[0]),
         p_detections='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/ucfcrime2local/anomaly/{}.json'.format(video),
         transform=transforms.ToTensor(),
-        clip_len=280,
+        clip_len=50,
         clip_temporal_stride=5
     )
 
@@ -104,13 +108,15 @@ if __name__=='__main__':
 
     for clip, frames, gt in video_dataset:
         print('--',clip, len(clip), frames.size())
-        # for g in gt:
-        #     print(g)
+        for g in gt:
+            print(g)
         
         person_detections = JSON_2_videoDetections(video_dataset.p_detections)
         lps_split = extract_tubes_from_video(
                                 clip,
-                                # {'wait': 100}
+                                {'wait': 1000},
+                                debug=False,
+                                gt=gt
                                 )
         le = loc_error_tube_gt(lps_split[0], gt)
         print('localization error: ', le)

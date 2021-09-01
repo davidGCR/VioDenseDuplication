@@ -84,50 +84,97 @@ def extract_tubes_from_dataset(dataset_persons_detections_path, folder_out, fram
 
     return num_live_paths
 
-def extract_tubes_from_video(frames, plot=None):
+def extract_tubes_from_video(frames, plot=None, debug=False, gt=None):
     segmentator = MotionSegmentation(MOTION_SEGMENTATION_CONFIG)
     tube_builder = IncrementalLinking(TUBE_BUILD_CONFIG)
-    live_paths = tube_builder(frames, segmentator, plot, False)
-    print('live_paths: ', len(live_paths))
+    live_paths = tube_builder(frames, segmentator, plot, debug, gt)
+    
+    # tube_2_JSON(output_path='tube_test3.json', tube=live_paths)
     # for lp in live_paths:
     #     print(lp['score'])
     # CountFrequency([{
     #     'path': '',
     #     'num': len(live_paths)
     #     }])
+    return  live_paths
 
+def plot_video_tube(tube_json):
+    tubes = JSON_2_tube(tube_json)
+    print(tubes)
+    video_folder_path = '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames'
+    video_name = tube_json.split('/')[-1][:-5]
+
+    video_folder_path = os.path.join(video_folder_path,'train/Fight',video_name)
+    one_tube = tubes[0]
+    for i in range(len(one_tube['frames_name'])):
+        frame_path = os.path.join(video_folder_path, one_tube['frames_name'][i])
+        frame_box = one_tube['boxes'][i]
+        image = cv2.imread(frame_path, cv2.IMREAD_COLOR)
+        print('iamge shape: ', image.shape)
+        x1,y1,x2,y2 = np.array(frame_box[:4]).astype(int)
+        cv2.rectangle(image,
+                    (x1, y1),
+                    (x2, y2),
+                    (255,0,0),
+                    2)
+        cv2.imshow(one_tube['frames_name'][i], image)
+        key = cv2.waitKey(100)#pauses for 3 seconds before fetching next image
+        if key == 27:#if ESC is pressed, exit loop
+            cv2.destroyAllWindows()
+
+def rwf_one_video_test():
+    rwf_config = {
+        'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames',
+        'split': 'train/Fight',
+        'video': 'OAfV0xPIhZw_2',#'dt8YUGoOSgQ_0',#'C8wt47cphU8_1',#'_2RYnSFPD_U_0',
+        'p_d_path': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/RWF-2000'
+    }
+    config = rwf_config
+    persons_detections_path = config['p_d_path']+'/{}/{}.json'.format(config['split'],config['video'])
+    person_detections = JSON_2_videoDetections(persons_detections_path)
+    frames = np.linspace(0, 149,dtype=np.int16).tolist()
+    # frames = np.linspace(0, 149, dtype=np.int16).tolist()
+    print('random frames: ', frames)
+
+    TUBE_BUILD_CONFIG['dataset_root'] = config['dataset_root']
+    TUBE_BUILD_CONFIG['person_detections'] = person_detections
+
+    live_paths = extract_tubes_from_video(
+        frames,
+        plot={'wait': 100},
+        debug=False
+        )
+    
+    print('live_paths: ', len(live_paths))
+    print(live_paths[0])
+
+def hockey_one_video_test():
+    hockey_config = {
+        'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/HockeyFightsDATASET/frames',
+        'split': 'violence',
+        'video': '1',
+        'p_d_path': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/hockey'
+    }
+    config = hockey_config
+    persons_detections_path = config['p_d_path']+'/{}/{}.json'.format(config['split'],config['video'])
+    person_detections = JSON_2_videoDetections(persons_detections_path)
+    frames = np.linspace(0, 39,dtype=np.int16).tolist()
+    # frames = np.linspace(0, 149, dtype=np.int16).tolist()
+    print('random frames: ', frames)
+
+    TUBE_BUILD_CONFIG['dataset_root'] = config['dataset_root']
+    TUBE_BUILD_CONFIG['person_detections'] = person_detections
+
+    live_paths = extract_tubes_from_video(
+        frames,
+        plot={'wait': 1000},
+        debug=True
+        )
+    
+    print('live_paths: ', len(live_paths))
 
 if __name__=="__main__":
-    # vname = "-1l5631l3fg_2"
-    # decodedArray = JSON_2_videoDetections("/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/RWF-2000/train/Fight/{}.json".format(vname))
-    # decodedArray = JSON_2_videoDetections("/media/david/datos/Violence DATA/PersonDetections/RWF-2000/train/Fight/{}.json".format(vname))
-    # print("decodedArray: ", type(decodedArray), len(decodedArray), decodedArray[0])
-    # plot_image_detections(decodedArray, "/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames")
-    
-    # dataset_root = '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames'
-    # dataset_root = '/media/david/datos/Violence DATA/RWF-2000/frames'
-    # split = 'train/Fight'
-    # video = 'rn7Qjaj9_1'
-    # persons_detections_path = '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/RWF-2000/{}/{}.json'.format(split,video)
-    # person_detections = JSON_2_videoDetections(persons_detections_path)
-    # frames = list(range(65,90))
-    # extract_tubes_from_video(dataset_root,
-    #                         person_detections,
-    #                         frames,
-    #                         None#{'wait': 1000}
-    #                         )
-
-
-    # tube_2_JSON(output_path=vname+'.json', tube=live_paths)
-    # print('Paths ---live_paths[lp][frames_name]=', [lp['frames_name'] for lp in live_paths])
-    # print('Paths ---live_paths[lp][frames_name]=', [(len(lp['boxes']), lp['len']) for lp in live_paths])
-    # print('Live Paths Final:', len(live_paths))
-   
-    # tubes = JSON_2_tube('/media/david/datos/Violence DATA/Tubes/RWF-2000/train/Fight/_6-B11R9FJM_2.json')
-    # print(len(tubes))
-    # print(tubes[0])
-
-
+    # plot_video_tube('/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/RWF-2000-150frames-motion-maps2/train/Fight/OAfV0xPIhZw_2.json')
     #ONE VIDEO test
     # ucfcrime2local_config = {
     #     'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/UCFCrime2LocalClips',
@@ -136,59 +183,39 @@ if __name__=="__main__":
     #     'p_d_path': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/ucfcrime2local'
     # }
     # config=ucfcrime2local_config
-
+    ########################################ONE VIDEO
+   
+    hockey_one_video_test()
+    ########################################PROCESS ALL DATASET
     # rwf_config = {
     #     'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames',
-    #     'split': 'train/NonFight',
-    #     'video': '1ahhhDBQHxg_0',#'_2RYnSFPD_U_0',
-    #     'p_d_path': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/RWF-2000'
+    #     'path_in':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/RWF-2000',
+    #     'path_out':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/RWF-2000-150frames-motion-maps2',
+    #     'splits':['train/Fight', 'train/NonFight', 'val/Fight', 'val/NonFight'],
+    #     'start_frame':0,
+    #     'seg_len': 150
     # }
+    # frames = np.linspace(0, 149,dtype=np.int16).tolist()
     # config = rwf_config
-    # persons_detections_path = config['p_d_path']+'/{}/{}.json'.format(config['split'],config['video'])
-    # person_detections = JSON_2_videoDetections(persons_detections_path)
-    # frames = np.linspace(0, 149, 25,dtype=np.int16).tolist()
-    # # frames = np.linspace(0, 149, dtype=np.int16).tolist()
-    # print('random frames: ', frames)
-
     # TUBE_BUILD_CONFIG['dataset_root'] = config['dataset_root']
-    # TUBE_BUILD_CONFIG['person_detections'] = person_detections
-
-    # extract_tubes_from_video(frames,
-    #                             {'wait': 1000}
-    #                             )
-    
-    ########################################PROCESS ALL DATASET
-    rwf_config = {
-        'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames',
-        'path_in':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/RWF-2000',
-        'path_out':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/RWF-2000-25frames-motion-maps',
-        'splits':['train/Fight', 'train/NonFight', 'val/Fight', 'val/NonFight'],
-        'start_frame':0,
-        'seg_len': 150
-    }
-    frames = np.linspace(0, 149, 25,dtype=np.int16).tolist()
-    config = rwf_config
-    TUBE_BUILD_CONFIG['dataset_root'] = config['dataset_root']
-    for sp in config['splits']:
-        extract_tubes_from_dataset(dataset_persons_detections_path=os.path.join(config['path_in'], sp),
-                                    folder_out=os.path.join(config['path_out'], sp),
-                                    frames=frames)
+    # for sp in config['splits']:
+    #     extract_tubes_from_dataset(dataset_persons_detections_path=os.path.join(config['path_in'], sp),
+    #                                 folder_out=os.path.join(config['path_out'], sp),
+    #                                 frames=frames)
     ########################################
     # hockey_config = {
     #     'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/HockeyFightsDATASET/frames',
     #     'path_in':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/hockey',
-    #     'path_out':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/hockey2',
+    #     'path_out':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/hockey-40frames-motion-maps',
     #     'splits':['violence', 'nonviolence'],
     #     'start_frame':0,
     #     'seg_len': 150
     # }
-    # frames = np.linspace(0, 39, 25,dtype=np.int16).tolist()
+    # frames = np.linspace(0, 39,dtype=np.int16).tolist()
     # config = hockey_config
+    # TUBE_BUILD_CONFIG['dataset_root'] = config['dataset_root']
     # for sp in config['splits']:
     #     extract_tubes_from_dataset(dataset_persons_detections_path=os.path.join(config['path_in'], sp),
     #                                 folder_out=os.path.join(config['path_out'], sp),
-    #                                 dataset_root=config['dataset_root'],
-    #                                 # start_frame=config['start_frame'],
-    #                                 # seg_len=config['seg_len']
     #                                 frames=frames)
 
