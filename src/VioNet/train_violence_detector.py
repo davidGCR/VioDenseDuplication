@@ -71,7 +71,7 @@ def load_make_dataset(dataset_name, train=True, cv_split=1, home_path='', catego
             root=os.path.join(home_path, 'HockeyFightsDATASET/frames'), #'/content/DATASETS/HockeyFightsDATASET/frames'
             train=train,
             cv_split_annotation_path=os.path.join(home_path, 'VioNetDB-splits/hockey_jpg{}.json'.format(cv_split)), #'/content/DATASETS/VioNetDB-splits/hockey_jpg{}.json'
-            path_annotations=os.path.join(home_path, 'ActionTubes/hockey2'),
+            path_annotations=os.path.join(home_path, 'ActionTubes/hockey-40frames-motion-maps'),
             )#'/content/DATASETS/ActionTubes/hockey'
     return make_dataset
 
@@ -109,6 +109,7 @@ def main(config: Config, MIL=False):
     elif config.model == 'TwoStreamVD_Binary_CFam':
         model = TwoStreamVD_Binary_CFam(config.model_config).to(device)
         if config.model_config['load_weigths'] is not None:
+            print('Loading model from checkpoint...')
             model, _, _, _, _ = load_checkpoint(
                 model, 
                 config.device,
@@ -335,7 +336,7 @@ if __name__=='__main__':
         model='TwoStreamVD_Binary_CFam',#'TwoStreamVD_Binary',#'i3d-roi',i3d+roi+fc
         model_config=TWO_STREAM_CFAM_CONFIG,
         head=BINARY,
-        dataset=RWF_DATASET,
+        dataset=HOCKEY_DATASET,
         num_cv=1,
         input_type='rgb',
         device=get_torch_device(),
@@ -350,7 +351,7 @@ if __name__=='__main__':
         frames_per_tube=16, 
         save_every=10,
         freeze=False,
-        additional_info='TWO_STREAM_CFAM_CONFIG+RWF-2000-150frames-motion-maps2-centralframe',
+        additional_info='TWO_STREAM_CFAM_CONFIG+hockey-40frames-motion-maps-centralframe-corrected',
         home_path=HOME_UBUNTU,
         num_workers=4
     )
