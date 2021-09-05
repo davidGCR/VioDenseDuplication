@@ -45,7 +45,7 @@ class Config:
             tube_sampling_random=True,
             frames_per_tube=16,
             num_workers=4,
-            criterion='MIL',
+            criterion='CEL',
             model_config=None
     ):
 
@@ -117,13 +117,13 @@ class Config:
         self.head = head
         self.tube_sampling_random = tube_sampling_random
         self.num_workers = num_workers
-        # self.criterion = criterion
+        self.criterion = criterion
         self.frames_per_tube = frames_per_tube
         self.model_config = model_config
         self.log = self.log_name()
     
     def log_name(self):
-        log = "{}_model({})_head({})_stream({})_cv({})_epochs({})_num_tubes({})_framesXtube({})_tub_sampl_rand({})_optimizer({})_lr({})_note({})".format(
+        log = "{}_model({})_head({})_stream({})_cv({})_epochs({})_num_tubes({})_framesXtube({})_tub_sampl_rand({})_criterion({})_optimizer({})_lr({})_note({})".format(
             self.dataset,
             self.model,
             self.head,
@@ -133,6 +133,7 @@ class Config:
             self.num_tubes,
             self.frames_per_tube,
             self.tube_sampling_random,
+            self.criterion,
             self.optimizer,
             self.learning_rate,
             self.additional_info
