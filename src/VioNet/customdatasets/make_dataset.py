@@ -138,6 +138,7 @@ class MakeRLVDDataset():
         video_names = []
         video_labels = []
         annotations = []
+        num_frames = []
 
         for key, val in data['database'].items():
             if val['subset'] == split:
@@ -151,18 +152,21 @@ class MakeRLVDDataset():
                 assert os.path.isdir(folder), "Folder:{} does not exist!!!".format(folder)
                 video_names.append(folder)
                 video_labels.append(label)
+                n = os.listdir(folder)
+                n = [img for img in n if '.jpg' in img]
+                num_frames.append(len(n))
                 if self.path_annotations:
                     ann_file = os.path.join(self.path_annotations, cl, v_name+'.json')
                     assert os.path.isfile(ann_file), "Annotation file:{} does not exist!!!".format(ann_file)
                     annotations.append(ann_file)
 
-        return video_names, video_labels, annotations
+        return video_names, video_labels, annotations, num_frames
     
     def __call__(self):
         data = self.load_annotation_data()
         split = self.split()
-        paths, labels, annotations = self.get_video_names_and_labels(data, split)
-        return paths, labels, annotations
+        paths, labels, annotations, num_frames = self.get_video_names_and_labels(data, split)
+        return paths, labels, annotations, num_frames
 
 
         
@@ -617,11 +621,13 @@ if __name__=="__main__":
                     train=False,
                     cv_split_annotation_path='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/VioNetDB-splits/RealLifeViolenceDataset1.json',
                     path_annotations='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/RealLifeViolenceDataset')
-    paths, labels, annotations = make_func()
+    paths, labels, annotations, num_frames = make_func()
     print("paths: ", len(paths))
     print("labels: ", len(labels))
     print("annotations: ", len(annotations))
+    print("num_frames: ", len(num_frames))
 
     print(paths[33:40])
     print(labels[33:40])
     print(annotations[33:40])
+    print(num_frames[33:40])
