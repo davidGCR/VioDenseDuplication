@@ -115,6 +115,56 @@ class MakeHockeyDataset():
         paths, labels, annotations = self.get_video_names_and_labels(data, split)
         return paths, labels, annotations
 
+class MakeRLVDDataset():
+    def __init__(self, root, train, cv_split_annotation_path, path_annotations=None):
+        self.root = root
+        self.train = train
+        self.path_annotations = path_annotations
+        self.cv_split_annotation_path = cv_split_annotation_path
+        # self.split = split
+        # self.F_TAG = "Fight"
+        # self.NF_TAG = "NonFight"
+        self.classes = ["NonViolence","Violence"]
+    
+    def split(self):
+        split = "training" if self.train else "validation"
+        return split
+    
+    def load_annotation_data(self):
+        with open(self.cv_split_annotation_path, 'r') as data_file:
+            return json.load(data_file)
+    
+    def get_video_names_and_labels(self, data, split):
+        video_names = []
+        video_labels = []
+        annotations = []
+
+        for key, val in data['database'].items():
+            if val['subset'] == split:
+                label = val['annotations']['label']
+                cl = 'Violence' if label=='fi' else 'NonViolence'
+
+                label = 0 if label=='no' else 1
+                # v_name = re.findall(r'\d+', key)[0]
+                v_name = key
+                folder = os.path.join(self.root, cl, v_name)
+                assert os.path.isdir(folder), "Folder:{} does not exist!!!".format(folder)
+                video_names.append(folder)
+                video_labels.append(label)
+                if self.path_annotations:
+                    ann_file = os.path.join(self.path_annotations, cl, v_name+'.json')
+                    assert os.path.isfile(ann_file), "Annotation file:{} does not exist!!!".format(ann_file)
+                    annotations.append(ann_file)
+
+        return video_names, video_labels, annotations
+    
+    def __call__(self):
+        data = self.load_annotation_data()
+        split = self.split()
+        paths, labels, annotations = self.get_video_names_and_labels(data, split)
+        return paths, labels, annotations
+
+
         
 CATEGORY_ALL = 2
 CATEGORY_POS = 1
@@ -482,6 +532,18 @@ def _avg_num_tubes(annotations):
         return sum(lst) / len(lst)
     
     print('Avg num_tubes: ', Average(num_tubes))
+
+def _get_num_tubes(annotations, make_func):
+    video_num_tubes=[]
+    num_tubes=[]
+    for ann in annotations:
+        tubes = JSON_2_tube(ann)
+        video_num_tubes.append((ann, len(tubes)))
+        num_tubes.append(len(tubes))
+    with open('hockey_num_tubes_{}.txt'.format('train' if make_func.train else 'val'), 'w') as filehandle:
+        filehandle.writelines("{},{}\n".format(t[0], t[1]) for t in video_num_tubes)
+    
+   
     
 if __name__=="__main__":
     # make_func = MakeRWF2000(root='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames', 
@@ -510,22 +572,19 @@ if __name__=="__main__":
     # print("tubes: ",len(tubes))
 
     
-    
-    # with open('2videos_num_tubes_{}.txt'.format('train' if make_func.train else 'val'), 'w') as filehandle:
-    #     filehandle.writelines("{},{}\n".format(t[0], t[1]) for t in video_num_tubes)
+    ###################################################################################################################################
+    # make_func = MakeHockeyDataset(root='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/HockeyFightsDATASET/frames', 
+    #                 train=True,
+    #                 cv_split_annotation_path='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/VioNetDB-splits/hockey_jpg1.json',
+    #                 path_annotations='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/hockey-40frames-motion-maps')
+    # paths, labels, annotations = make_func()
+    # print("paths: ", len(paths))
+    # print("labels: ", len(labels))
+    # print("annotations: ", len(annotations))
 
-    
-
-    make_func = MakeHockeyDataset(root='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/HockeyFightsDATASET/frames', 
-                    train=False,
-                    cv_split_annotation_path='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/VioNetDB-splits/hockey_jpg1.json',
-                    path_annotations='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/hockey-40frames-motion-maps')
-    paths, labels, annotations = make_func()
-    print("paths: ", len(paths))
-    print("labels: ", len(labels))
-    print("annotations: ", len(annotations))
-
-    _avg_num_tubes(annotations)
+    # _avg_num_tubes(annotations)
+    # _get_num_tubes(annotations, make_func)
+    ###################################################################################################################################
 
     # m = MakeUCFCrime2Local(root='/Volumes/TOSHIBA EXT/DATASET/AnomalyCRIMEALL/UCFCrime2Local/frames',
     #                         annotation_path='/Volumes/TOSHIBA EXT/DATASET/AnomalyCRIMEALL/UCFCrime2Local/readme',
@@ -552,3 +611,17 @@ if __name__=="__main__":
 
     # anns = m.ground_truth_boxes(paths[idx],annotations[idx])
     # m.plot(paths[idx], anns)
+
+    ###################################################################################################################################
+    make_func = MakeRLVDDataset(root='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RealLifeViolenceDataset/frames', 
+                    train=False,
+                    cv_split_annotation_path='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/VioNetDB-splits/RealLifeViolenceDataset1.json',
+                    path_annotations='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/RealLifeViolenceDataset')
+    paths, labels, annotations = make_func()
+    print("paths: ", len(paths))
+    print("labels: ", len(labels))
+    print("annotations: ", len(annotations))
+
+    print(paths[33:40])
+    print(labels[33:40])
+    print(annotations[33:40])

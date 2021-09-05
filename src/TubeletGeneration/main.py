@@ -39,7 +39,7 @@ def get_videos_from_num_tubes(my_list, num_tubes):
             videos.append(dcc['path'])
     return videos
 
-def extract_tubes_from_dataset(dataset_persons_detections_path, folder_out, frames):
+def extract_tubes_from_dataset(dataset_persons_detections_path, folder_out, frames=None):
     
     """
         Args:
@@ -61,19 +61,22 @@ def extract_tubes_from_dataset(dataset_persons_detections_path, folder_out, fram
             continue
 
         person_detections = JSON_2_videoDetections("{}/{}".format(dataset_persons_detections_path, video_folder))
+        if frames == None:
+            frames = np.linspace(0, len(person_detections)-1, dtype=np.int16).tolist()
         TUBE_BUILD_CONFIG['person_detections'] = person_detections
         segmentator = MotionSegmentation(MOTION_SEGMENTATION_CONFIG)
         tube_builder = IncrementalLinking(TUBE_BUILD_CONFIG)
 
-        live_paths = tube_builder(frames, segmentator, None, False)
+        live_paths = tube_builder(frames, segmentator)
         print('live_paths: ', len(live_paths))
+        
         # num_live_paths.append({
         #     'path': dataset_persons_detections_path,
         #     'num': len(live_paths)
         #     })
 
         tube_2_JSON(output_path=os.path.join(folder_out, video_folder), tube=live_paths)
-        
+        frames = None
     
         
     # CountFrequency(num_live_paths)
@@ -84,10 +87,10 @@ def extract_tubes_from_dataset(dataset_persons_detections_path, folder_out, fram
 
     return num_live_paths
 
-def extract_tubes_from_video(frames, plot=None, debug=False, gt=None):
+def extract_tubes_from_video(frames, gt=None):
     segmentator = MotionSegmentation(MOTION_SEGMENTATION_CONFIG)
     tube_builder = IncrementalLinking(TUBE_BUILD_CONFIG)
-    live_paths = tube_builder(frames, segmentator, plot, debug, gt)
+    live_paths = tube_builder(frames, segmentator, gt)
     
     # tube_2_JSON(output_path='tube_test3.json', tube=live_paths)
     # for lp in live_paths:
@@ -125,8 +128,8 @@ def plot_video_tube(tube_json):
 def rwf_one_video_test():
     rwf_config = {
         'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames',
-        'split': 'train/Fight',
-        'video': 'OAfV0xPIhZw_2',#'dt8YUGoOSgQ_0',#'C8wt47cphU8_1',#'_2RYnSFPD_U_0',
+        'split': 'train/NonFight',
+        'video': 'JxpNuQop_0',#'dt8YUGoOSgQ_0',#'C8wt47cphU8_1',#'_2RYnSFPD_U_0',
         'p_d_path': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/RWF-2000'
     }
     config = rwf_config
@@ -140,9 +143,7 @@ def rwf_one_video_test():
     TUBE_BUILD_CONFIG['person_detections'] = person_detections
 
     live_paths = extract_tubes_from_video(
-        frames,
-        plot={'wait': 100},
-        debug=False
+        frames
         )
     
     print('live_paths: ', len(live_paths))
@@ -152,7 +153,7 @@ def hockey_one_video_test():
     hockey_config = {
         'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/HockeyFightsDATASET/frames',
         'split': 'violence',
-        'video': '1',
+        'video': '320',
         'p_d_path': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/hockey'
     }
     config = hockey_config
@@ -166,9 +167,30 @@ def hockey_one_video_test():
     TUBE_BUILD_CONFIG['person_detections'] = person_detections
 
     live_paths = extract_tubes_from_video(
-        frames,
-        plot={'wait': 1000},
-        debug=True
+        frames
+        )
+    
+    print('live_paths: ', len(live_paths))
+
+def rlvs_one_video_test():
+    hockey_config = {
+        'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RealLifeViolenceDataset/frames',
+        'split': 'NonViolence',
+        'video': 'NV_311',#'V_683',
+        'p_d_path': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/RealLifeViolenceDataset'
+    }
+    config = hockey_config
+    persons_detections_path = config['p_d_path']+'/{}/{}.json'.format(config['split'],config['video'])
+    person_detections = JSON_2_videoDetections(persons_detections_path)
+    frames = np.linspace(0, len(person_detections)-1,dtype=np.int16).tolist()
+    # frames = np.linspace(0, 149, dtype=np.int16).tolist()
+    print('random frames: ', frames)
+
+    TUBE_BUILD_CONFIG['dataset_root'] = config['dataset_root']
+    TUBE_BUILD_CONFIG['person_detections'] = person_detections
+
+    live_paths = extract_tubes_from_video(
+        frames
         )
     
     print('live_paths: ', len(live_paths))
@@ -184,8 +206,10 @@ if __name__=="__main__":
     # }
     # config=ucfcrime2local_config
     ########################################ONE VIDEO
-   
-    hockey_one_video_test()
+    # rwf_one_video_test()
+    # hockey_one_video_test()
+    
+    # rlvs_one_video_test()
     ########################################PROCESS ALL DATASET
     # rwf_config = {
     #     'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames',
@@ -218,4 +242,21 @@ if __name__=="__main__":
     #     extract_tubes_from_dataset(dataset_persons_detections_path=os.path.join(config['path_in'], sp),
     #                                 folder_out=os.path.join(config['path_out'], sp),
     #                                 frames=frames)
+
+    ########################################
+    rlvs_config = {
+        'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RealLifeViolenceDataset/frames',
+        'path_in':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/RealLifeViolenceDataset',
+        'path_out':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/RealLifeViolenceDataset',
+        'splits':['Violence', 'NonViolence']
+    }
+    frames = None
+    
+    config = rlvs_config
+    TUBE_BUILD_CONFIG['dataset_root'] = config['dataset_root']
+    for sp in config['splits']:
+        
+        extract_tubes_from_dataset(dataset_persons_detections_path=os.path.join(config['path_in'], sp),
+                                    folder_out=os.path.join(config['path_out'], sp),
+                                    frames=frames)
 

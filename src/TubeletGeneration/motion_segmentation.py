@@ -342,8 +342,12 @@ class MotionSegmentation:
         sort_index.tolist()
         # print('sort_index: ', sort_index)
         sorted_components = [components[idx] for idx in sort_index]
-        # print('sorted_components: ', sorted_components[-k])
+        
         best_k_components = sorted_components[-k:]
+        for i, b in enumerate(best_k_components):
+            best_k_components[-i]['id'] = i
+
+        # print('best_k_components: ', best_k_components)
         return best_k_components
 
     def motion_from_background_substraction(self, frames):
@@ -399,12 +403,14 @@ class MotionSegmentation:
 
         return im_without_mov, image_componets, best_components
 
-    def motion_di_online(self, images, img_paths, debug=False, save_folder=None):
-        wait = self.config['plot_wait']
-        # print('-----segment: ', segment, 'len: ', len(segment))
-        # img_paths, images = self.read_segment(segment)
+    def motion_di_online(self, images, img_paths):
+        plot = self.config['plot_config']['plot']
+        wait = self.config['plot_config']['wait']
+        save_results = self.config['plot_config']['save_results']
+        save_folder = self.config['plot_config']['save_folder']
+
+        # print(img_paths)
         #Motion image
-        
         dyn_image = self.tmp_transform(img_paths)
         dyn_image_raw = dyn_image.copy()
         dyn_image_equ, centers = self.color_quantization(dyn_image, self.config['num_clusters_color_quantization'])
@@ -426,12 +432,17 @@ class MotionSegmentation:
         dyn_image = dyn_image_equ
         dyn_image_norm = self.normalize(dyn_image)
 
-        if debug:
-            cv2.imshow('dyn_image', dyn_image_raw)
-            cv2.imshow('dyn_image_equ', dyn_image_equ)
-            cv2.imshow('dyn_image_norm', dyn_image_norm)
-            cv2.imshow('brightest_image', brightest_image)
-            if save_folder is not None:
+        if plot:
+            # cv2.imshow('dyn_image', dyn_image_raw)
+            # cv2.imshow('dyn_image_equ', dyn_image_equ)
+            # cv2.imshow('dyn_image_norm', dyn_image_norm)
+            # cv2.imshow('brightest_image', brightest_image)
+            results_0 = [dyn_image_raw, dyn_image_equ, np.uint8(dyn_image_norm), brightest_image]
+            # dtypes = [i.dtype for i in results_0]
+            # print('dtypes: ', dtypes)
+            cv2.imshow('results0', cv2.hconcat(results_0))
+
+            if save_results:
                 if not os.path.isdir(save_folder):
                     os.mkdir(save_folder)
                 cv2.imwrite(save_folder + '/{}.jpg'.format('dyn_image'), dyn_image)
@@ -443,34 +454,36 @@ class MotionSegmentation:
             if key == 27:#if ESC is pressed, exit loop
                 cv2.destroyAllWindows() 
        
-        
-        # if isinstance(images, np.array):
-        #     im_without_mov, image_componets, best_components = self.non_motion_suppresion(images, dyn_image_norm, bright_pixels, dark_pixels)
-            # return best_components
         if isinstance(images, list):
-            motion_regions_map = {
-                'frames':[],
-                'm_regions': []
-            }
+            motion_regions_map = []
             # motion_tube = []
             for idx, im in enumerate(images):
-                # im = np.array(im)
+                frame_name = img_paths[idx].split('/')[-1]
+                # print('---',frame_name)
                 raw_image = im.copy()
                 im_without_mov, image_componets, best_components = self.non_motion_suppresion(im, dyn_image_norm, bright_pixels, dark_pixels)
-                # print('best_components: ', len(best_components))
-                if len(best_components)>0:
-                    best_motion_region = best_components[0]
-                    motion_regions_map['frames'].append(img_paths[idx].split('/')[-1])
-                    motion_regions_map['m_regions'].append(best_motion_region)
-                    # print('best_motion_region: ', best_motion_region['x1'],best_motion_region['y1'],best_motion_region['x2'],best_motion_region['x2'])
-                # else:
-                #     motion_regions_map['frames'].append(img_paths[idx].split('/')[-1])
-                #     motion_regions_map['m_regions'].append(best_motion_region)
+                mr = {
+                    'frame': frame_name,
+                    'top_k_m_regions': best_components
+                }
+                # print('{} m_regions in frame {}: \n {}'.format(len(best_components), frame_name, mr))
+                motion_regions_map.append(mr)
+                # if len(best_components)>0:
+                #     # best_motion_region = best_components[0]
+                #     # motion_regions_map['top_1_m_region'].append(best_motion_region)
+                #     motion_regions_map['frames'].append(frame_name)
+                #     print('{} m_regions in frame {}'.format(len(best_components), motion_regions_map['frames'][-1]))
+                #     # for b_m_r in best_components:
+                #     #     motion_regions_map['top_k_m_regions'].append()
+                #     motion_regions_map['top_k_m_regions'].append(best_components)
+                #     # print('best_motion_region: ', best_motion_region['x1'],best_motion_region['y1'],best_motion_region['x2'],best_motion_region['x2'])
+                # # else:
+                # #     motion_regions_map['frames'].append(img_paths[idx].split('/')[-1])
+                # #     motion_regions_map['m_regions'].append(best_motion_region)
 
-
-                if debug:
+                if plot:
                     frame_name = img_paths[idx].split('/')[-1][:-4]
-                    cv2.imshow('frame_name', im)
+                    # cv2.imshow('frame_name', im)
                     for bc in best_components:
                         # print('bc: ', bc)
                         cv2.rectangle(
@@ -479,27 +492,33 @@ class MotionSegmentation:
                             (int(bc['x2']), int(bc['y2'])), 
                             color['deep pink'], 
                             3)
-                    
-                    if save_folder is not None:
+                        cv2.putText(image_componets, str(bc['id']), (int(bc['x1']),int(bc['y1']) - 7), cv2.FONT_ITALIC, 0.5, color['deep pink'], 3)
+                    # cv2.imshow(frame_name + '_components', image_componets)
+                    cv2.imshow('_without_mov', im_without_mov)
+                    results_1 = [im, image_componets]
+                    # dtypes = [i.dtype for i in results_1]
+                    # print('dtypes2: ', dtypes)
+                    cv2.imshow('results', cv2.hconcat(results_1))
+                    if save_results:
                         cv2.imshow(frame_name + '_components', image_componets)
                         cv2.imshow(frame_name + '_without_mov', im_without_mov)
                         cv2.imwrite(save_folder + '/{}.jpg'.format(frame_name), raw_image)
                         cv2.imwrite(save_folder + '/{}.jpg'.format(frame_name + '_components'), image_componets)
                         cv2.imwrite(save_folder + '/{}.jpg'.format(frame_name + '_without_mov'), 255*im_without_mov)
-                    else:
-                        cv2.imshow('_components', image_componets)
-                        cv2.imshow('_without_mov', im_without_mov)
+                    # else:
+                    #     cv2.imshow('_components', image_componets)
+                    #     cv2.imshow('_without_mov', im_without_mov)
 
                     key = cv2.waitKey(wait)
                     if key == 27:#if ESC is pressed, exit loop
                         cv2.destroyAllWindows()
 
             # cv2.imshow('thresh1', thresh1)
-            if debug:
+            if plot:
                 key = cv2.waitKey(wait)
                 if key == 27:#if ESC is pressed, exit loop
                     cv2.destroyAllWindows() 
-            
+            # print('total  motion regions: ', len(motion_regions_map['top_k_m_regions']))
             return motion_regions_map
 
 
@@ -578,8 +597,8 @@ class MotionSegmentation:
         motion_map['boxes_from_polygons']=boxes_from_polygons
         return motion_map
 
-    def __call__(self, images, img_paths, debug, save_folder):
-        motion_map = self.motion_di_online(images, img_paths, debug, save_folder)
+    def __call__(self, images, img_paths):
+        motion_map = self.motion_di_online(images, img_paths)
         # motion_map = self.motion_from_dynamic_images(frames)
         # motion_map = self.motion_from_background_substraction(frames)
         return motion_map
