@@ -203,16 +203,16 @@ def data_with_tubes(config: Config, make_dataset_train, make_dataset_val):
             'spatial_transform': i3d_video_transf()['train'],
             'temporal_transform': None
         },
-        'input_2': {
-            'type': 'rgb',
-            'spatial_transform': resnet_transf()['train'],
-            'temporal_transform': None
-        }
         # 'input_2': {
-        #     'type': 'dynamic-image',
-        #     'spatial_transform': resnet_di_transf()['train'],
+        #     'type': 'rgb',
+        #     'spatial_transform': resnet_transf()['train'],
         #     'temporal_transform': None
         # }
+        'input_2': {
+            'type': 'dynamic-image',
+            'spatial_transform': resnet_di_transf()['train'],
+            'temporal_transform': None
+        }
     }
 
     TWO_STREAM_INPUT_val = {
@@ -221,16 +221,16 @@ def data_with_tubes(config: Config, make_dataset_train, make_dataset_val):
             'spatial_transform': i3d_video_transf()['val'],
             'temporal_transform': CenterCrop(size=16, stride=1, input_type='rgb')
         },
-        'input_2': {
-            'type': 'rgb',
-            'spatial_transform': resnet_transf()['val'],
-            'temporal_transform': None
-        }
         # 'input_2': {
-        #     'type': 'dynamic-image',
-        #     'spatial_transform': resnet_di_transf()['val'],
+        #     'type': 'rgb',
+        #     'spatial_transform': resnet_transf()['val'],
         #     'temporal_transform': None
         # }
+        'input_2': {
+            'type': 'dynamic-image',
+            'spatial_transform': resnet_di_transf()['val'],
+            'temporal_transform': None
+        }
     }
     train_dataset = TubeDataset(frames_per_tube=config.frames_per_tube, 
                             make_function=make_dataset_train,
@@ -337,7 +337,7 @@ if __name__=='__main__':
         model_config=TWO_STREAM_CFAM_CONFIG,
         head=BINARY,
         dataset=HOCKEY_DATASET,
-        num_cv=1,
+        num_cv=3,
         input_type='rgb',
         device=get_torch_device(),
         num_epoch=100,
@@ -348,10 +348,10 @@ if __name__=='__main__':
         val_batch=8,
         num_tubes=4,
         tube_sampling_random=True,
-        frames_per_tube=16, 
+        frames_per_tube=8, 
         save_every=10,
         freeze=False,
-        additional_info='TWO_STREAM_CFAM_CONFIG+hockey-40frames-motion-maps-centralframe-corrected',
+        additional_info='TWO_STREAM_CFAM_CONFIG+dynImg',
         home_path=HOME_UBUNTU,
         num_workers=4
     )

@@ -29,8 +29,8 @@ def main():
     # data_path = Path("/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/hmdb51_org")
     # out_path = Path("/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/frames")
     
-    data_path = Path("/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RealLifeViolenceDataset/video")
-    out_path = Path("/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RealLifeViolenceDataset/frames")
+    data_path = Path("/media/david/datos/Violence DATA/RealLifeViolenceDataset/video")
+    out_path = Path("/media/david/datos/Violence DATA/RealLifeViolenceDataset/frames")
     ext_ = ['*.avi', '*.mp4']
 
     if not os.path.isdir(out_path):
@@ -53,8 +53,8 @@ def main():
         # Iterate over each video in the category and extract the frames.
         video_paths = subfolder.glob(ext_[1])
         for video_path in video_paths:
-            # Create an output folder for that video's frames.
-            out_frame_folder = out_category_subfolder / video_path.stem
+            # Create an output folder for that video's frames.   
+            out_frame_folder = out_category_subfolder / video_path.st em
 
             if out_frame_folder.exists():
                 continue

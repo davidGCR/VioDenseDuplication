@@ -20,6 +20,7 @@ class DynamicImage():
         #     _, v = os.path.split(p)
         #     print(v)
         frames = [imread(p) for p in pths]
+        # frames = [np.array(imread(p)) for p in pths]
         return frames
 
     def __call__(self, frames):
@@ -31,7 +32,18 @@ class DynamicImage():
         seqLen = len(frames)
         if seqLen < 2:
             print('No se puede crear DI con solo un frames ...', seqLen)
-        frames = np.stack(frames, axis=0)
+        
+        # print(len(frames))
+        # for f in frames:
+        #     print('--', f.shape)
+        try:
+            frames = np.stack(frames, axis=0)
+        except Exception as e:
+            print("Oops!", e.__class__, "occurred.")
+            print(len(frames))
+            for f in frames:
+                print('--', f.size)
+
         fw = np.zeros(seqLen)  
         for i in range(seqLen): #frame by frame
             fw[i] = np.sum(np.divide((2 * np.arange(i + 1, seqLen + 1) - seqLen - 1), np.arange(i + 1, seqLen + 1)))

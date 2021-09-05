@@ -283,3 +283,5 @@ VioNet_tensorboard_log
 src/MyTrainedModels
 src/VioNet/weights
 *.avi
+.env3/
+.env/

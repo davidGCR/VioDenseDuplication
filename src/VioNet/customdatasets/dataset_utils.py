@@ -14,9 +14,12 @@ def PIL2tensor(img):
 def PIL2numpy(img):
     return np.array(img)
 
-def imread(path):
+def imread(path, resize=None):
     with Image.open(path) as img:
-        return img.convert('RGB')
+        image = img.convert('RGB')
+        if resize is not None:
+            image = image.resize(resize)
+        return image
 
 def JSON_2_tube(json_file):
     """

@@ -100,7 +100,10 @@ class TubeDataset(data.Dataset):
         elif self.config['input_2']['type'] == 'dynamic-image':
             tt = DynamicImage()
             frames_paths = [self.build_frame_name(path, i) for i in frames] #rwf
-            shot_images = [imread(img_path) for img_path in frames_paths]
+            shot_images = [np.array(imread(img_path, resize=(224,224))) for img_path in frames_paths]
+            # shot_images = [s.reshape((224,224,3)) for s in shot_images]
+            # sizes = [s.shape for s in shot_images]
+            # print('sizes: ', sizes)
             # img = self.spatial_transform(tt(shot_images)) if self.spatial_transform else tt(shot_images)
             key_frame = tt(shot_images)
         raw_key_frame = key_frame.copy()
