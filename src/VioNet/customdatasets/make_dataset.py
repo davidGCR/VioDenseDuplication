@@ -376,9 +376,10 @@ import cv2
 
 
 class MakeUCFCrime2LocalClips():
-    def __init__(self, root, path_annotations, abnormal):
+    def __init__(self, root, path_annotations, path_person_detections, abnormal):
         self.root = root
         self.path_annotations = path_annotations
+        self.path_person_detections = path_person_detections
         self.classes = ['normal', 'anomaly'] #Robbery,Stealing
         self.subclasses = ['Arrest', 'Assault'] #Robbery,Stealing
         self.abnormal = abnormal
@@ -394,6 +395,9 @@ class MakeUCFCrime2LocalClips():
         annotation = annotation[0]
         # print('annotation: ',annotation)
         return os.path.join(self.path_annotations, annotation)
+
+    # def __annotation_p_detections__(self, folder_path):
+
     
     def ground_truth_boxes(self, video_folder, ann_path):
         frames = os.listdir(video_folder)
@@ -488,12 +492,25 @@ class MakeUCFCrime2LocalClips():
         root_anomaly = os.path.join(self.root, self.classes[1])
         root_normal = os.path.join(self.root, self.classes[0])
 
+        # root_anomaly_p_detections = os.path.join(self.path_person_detections, self.classes[1])
+        
         if self.abnormal:
             abnormal_paths = self.__get_list__(root_anomaly)
             paths = abnormal_paths
             annotations_anomaly = [self.__annotation__(pt) for pt in abnormal_paths]
             annotations = annotations_anomaly
             labels = [1]*len(abnormal_paths)
+            annotations_p_detections = []
+            num_frames = []
+            for ap in abnormal_paths:
+                assert os.path.isdir(ap), 'Folder does not exist!!!'
+                n = len(os.listdir(ap))
+                num_frames.append(n)
+                sp = ap.split('/')
+                p_path = os.path.join(self.path_person_detections, sp[-2], sp[-1]+'.json')
+                assert os.path.isfile(p_path), 'P_annotation does not exist!!!'
+                annotations_p_detections.append(p_path)
+
         else:
             normal_paths = self.__get_list__(root_normal)
             normal_paths = [path for path in normal_paths if "Normal" in path]
@@ -501,11 +518,17 @@ class MakeUCFCrime2LocalClips():
             annotations_normal = [None]*len(normal_paths)
             annotations = annotations_normal
             labels = [0]*len(normal_paths)
+            annotations_p_detections = [None]*len(normal_paths)
+            num_frames = []
+            for ap in normal_paths:
+                assert os.path.isdir(ap), 'Folder does not exist!!!'
+                n = len(os.listdir(ap))
+                num_frames.append(n)
         # paths = abnormal_paths + normal_paths
         # annotations = annotations_anomaly + annotations_normal
         # labels = [1]*len(abnormal_paths) + [0]*len(normal_paths)
         
-        return paths, labels, annotations
+        return paths, labels, annotations, annotations_p_detections, num_frames
         
 
 from collections import Counter
@@ -551,8 +574,8 @@ def _get_num_tubes(annotations, make_func):
     
 if __name__=="__main__":
     # make_func = MakeRWF2000(root='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames', 
-    #                 train=False,
-    #                 path_annotations='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/RWF-2000-150frames-motion-maps2',
+    #                 train=True,
+    #                 path_annotations='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/final/rwf',
     #                 category=2)
     # paths, labels, annotations = make_func()
     # print("paths: ", len(paths))
@@ -578,9 +601,9 @@ if __name__=="__main__":
     
     ###################################################################################################################################
     # make_func = MakeHockeyDataset(root='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/HockeyFightsDATASET/frames', 
-    #                 train=True,
+    #                 train=False,
     #                 cv_split_annotation_path='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/VioNetDB-splits/hockey_jpg1.json',
-    #                 path_annotations='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/hockey-40frames-motion-maps')
+    #                 path_annotations='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/final/hockey')
     # paths, labels, annotations = make_func()
     # print("paths: ", len(paths))
     # print("labels: ", len(labels))
@@ -626,8 +649,9 @@ if __name__=="__main__":
     print("labels: ", len(labels))
     print("annotations: ", len(annotations))
     print("num_frames: ", len(num_frames))
+    _avg_num_tubes(annotations)
 
-    print(paths[33:40])
-    print(labels[33:40])
-    print(annotations[33:40])
-    print(num_frames[33:40])
+    # print(paths[33:40])
+    # print(labels[33:40])
+    # print(annotations[33:40])
+    # print(num_frames[33:40])

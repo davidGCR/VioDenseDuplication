@@ -125,11 +125,36 @@ def plot_video_tube(tube_json):
         if key == 27:#if ESC is pressed, exit loop
             cv2.destroyAllWindows()
 
+def plot_create_save_dirs(config):
+    TUBE_BUILD_CONFIG['plot_config']['debug_mode'] = False
+    TUBE_BUILD_CONFIG['plot_config']['plot_wait_tubes'] = 1000
+    TUBE_BUILD_CONFIG['plot_config']['plot_wait_2'] = 20
+    TUBE_BUILD_CONFIG['plot_config']['save_results'] = False
+
+    save_folder = os.path.join(
+        '/Users/davidchoqueluqueroman/Downloads/TubeGenerationExamples',
+        config['split'],
+        config['video']
+        )
+    if not os.path.isdir(save_folder):
+        os.makedirs(save_folder)
+
+    save_folder_debug = os.path.join(save_folder, 'debug')
+    if not os.path.isdir(save_folder_debug):
+        os.makedirs(save_folder_debug)
+    TUBE_BUILD_CONFIG['plot_config']['save_folder_debug'] = save_folder_debug
+
+    TUBE_BUILD_CONFIG['plot_config']['plot_tubes'] = True
+    save_folder_final = os.path.join(save_folder, 'final')
+    if not os.path.isdir(save_folder_final):
+        os.makedirs(save_folder_final)
+    TUBE_BUILD_CONFIG['plot_config']['save_folder_final'] = save_folder_final
+
 def rwf_one_video_test():
     rwf_config = {
         'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames',
-        'split': 'train/NonFight',
-        'video': 'JxpNuQop_0',#'dt8YUGoOSgQ_0',#'C8wt47cphU8_1',#'_2RYnSFPD_U_0',
+        'split': 'train/Fight',
+        'video': 'u1r8f71c_3',#'dt8YUGoOSgQ_0',#'C8wt47cphU8_1',#'_2RYnSFPD_U_0',
         'p_d_path': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/RWF-2000'
     }
     config = rwf_config
@@ -141,6 +166,10 @@ def rwf_one_video_test():
 
     TUBE_BUILD_CONFIG['dataset_root'] = config['dataset_root']
     TUBE_BUILD_CONFIG['person_detections'] = person_detections
+
+    # plot_create_save_dirs(config)
+    TUBE_BUILD_CONFIG['plot_config']['plot_tubes'] = True
+    TUBE_BUILD_CONFIG['plot_config']['debug_mode'] = True
 
     live_paths = extract_tubes_from_video(
         frames
@@ -163,6 +192,8 @@ def hockey_one_video_test():
     # frames = np.linspace(0, 149, dtype=np.int16).tolist()
     print('random frames: ', frames)
 
+    plot_create_save_dirs(config)
+
     TUBE_BUILD_CONFIG['dataset_root'] = config['dataset_root']
     TUBE_BUILD_CONFIG['person_detections'] = person_detections
 
@@ -175,8 +206,8 @@ def hockey_one_video_test():
 def rlvs_one_video_test():
     hockey_config = {
         'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RealLifeViolenceDataset/frames',
-        'split': 'NonViolence',
-        'video': 'NV_311',#'V_683',
+        'split': 'Violence',
+        'video': 'V_683',#'V_683',
         'p_d_path': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/RealLifeViolenceDataset'
     }
     config = hockey_config
@@ -188,6 +219,8 @@ def rlvs_one_video_test():
 
     TUBE_BUILD_CONFIG['dataset_root'] = config['dataset_root']
     TUBE_BUILD_CONFIG['person_detections'] = person_detections
+
+    plot_create_save_dirs(config)
 
     live_paths = extract_tubes_from_video(
         frames
@@ -211,26 +244,26 @@ if __name__=="__main__":
     
     # rlvs_one_video_test()
     ########################################PROCESS ALL DATASET
-    # rwf_config = {
-    #     'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames',
-    #     'path_in':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/RWF-2000',
-    #     'path_out':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/RWF-2000-150frames-motion-maps2',
-    #     'splits':['train/Fight', 'train/NonFight', 'val/Fight', 'val/NonFight'],
-    #     'start_frame':0,
-    #     'seg_len': 150
-    # }
-    # frames = np.linspace(0, 149,dtype=np.int16).tolist()
-    # config = rwf_config
-    # TUBE_BUILD_CONFIG['dataset_root'] = config['dataset_root']
-    # for sp in config['splits']:
-    #     extract_tubes_from_dataset(dataset_persons_detections_path=os.path.join(config['path_in'], sp),
-    #                                 folder_out=os.path.join(config['path_out'], sp),
-    #                                 frames=frames)
-    ########################################
+    rwf_config = {
+        'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames',
+        'path_in':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/RWF-2000',
+        'path_out':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/final/rwf',
+        'splits':['train/Fight', 'train/NonFight', 'val/Fight', 'val/NonFight'],
+        'start_frame':0,
+        'seg_len': 150
+    }
+    frames = np.linspace(0, 149,dtype=np.int16).tolist()
+    config = rwf_config
+    TUBE_BUILD_CONFIG['dataset_root'] = config['dataset_root']
+    for sp in config['splits']:
+        extract_tubes_from_dataset(dataset_persons_detections_path=os.path.join(config['path_in'], sp),
+                                    folder_out=os.path.join(config['path_out'], sp),
+                                    frames=frames)
+    ############################################################################################################
     # hockey_config = {
     #     'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/HockeyFightsDATASET/frames',
     #     'path_in':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/hockey',
-    #     'path_out':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/hockey-40frames-motion-maps',
+    #     'path_out':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/final/hockey',
     #     'splits':['violence', 'nonviolence'],
     #     'start_frame':0,
     #     'seg_len': 150
@@ -243,20 +276,20 @@ if __name__=="__main__":
     #                                 folder_out=os.path.join(config['path_out'], sp),
     #                                 frames=frames)
 
-    ########################################
-    rlvs_config = {
-        'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RealLifeViolenceDataset/frames',
-        'path_in':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/RealLifeViolenceDataset',
-        'path_out':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/RealLifeViolenceDataset',
-        'splits':['Violence', 'NonViolence']
-    }
-    frames = None
+    ############################################################################################################
+    # rlvs_config = {
+    #     'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RealLifeViolenceDataset/frames',
+    #     'path_in':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/RealLifeViolenceDataset',
+    #     'path_out':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/RealLifeViolenceDataset',
+    #     'splits':['Violence', 'NonViolence']
+    # }
+    # frames = None
     
-    config = rlvs_config
-    TUBE_BUILD_CONFIG['dataset_root'] = config['dataset_root']
-    for sp in config['splits']:
+    # config = rlvs_config
+    # TUBE_BUILD_CONFIG['dataset_root'] = config['dataset_root']
+    # for sp in config['splits']:
         
-        extract_tubes_from_dataset(dataset_persons_detections_path=os.path.join(config['path_in'], sp),
-                                    folder_out=os.path.join(config['path_out'], sp),
-                                    frames=frames)
+    #     extract_tubes_from_dataset(dataset_persons_detections_path=os.path.join(config['path_in'], sp),
+    #                                 folder_out=os.path.join(config['path_out'], sp),
+    #                                 frames=frames)
 

@@ -18,6 +18,7 @@ FEAT_EXT_RESNET = "resnet"
 
 RWF_DATASET = "rwf-2000"
 HOCKEY_DATASET = "hockey"
+RLVSD_DATASET = "RealLifeViolenceDataset"
 VIF_DATASET = "vif"
 VIO_DB_DATASETS = "VioNetDB-splits"
 VIONET_WEIGHTS = "VioNet_weights"
