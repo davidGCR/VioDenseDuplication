@@ -15,7 +15,7 @@ import torchvision.transforms as transforms
 import os
 
 #data
-from customdatasets.make_dataset import MakeRWF2000, MakeHockeyDataset
+from customdatasets.make_dataset import MakeRWF2000, MakeHockeyDataset, MakeRLVDDataset
 from customdatasets.tube_dataset import TubeDataset, my_collate, my_collate_2, OneVideoTubeDataset, TubeFeaturesDataset
 from torch.utils.data import DataLoader
 
@@ -74,7 +74,7 @@ def load_make_dataset(dataset_name, train=True, cv_split=1, home_path='', catego
             path_annotations=os.path.join(home_path, 'ActionTubes/hockey-40frames-motion-maps'),
             )
     elif dataset_name == RLVSD_DATASET:
-        make_dataset = MakeHockeyDataset(
+        make_dataset = MakeRLVDDataset(
             root=os.path.join(home_path, 'RealLifeViolenceDataset/frames'), 
             train=train,
             cv_split_annotation_path=os.path.join(home_path, 'VioNetDB-splits/RealLifeViolenceDataset{}.json'.format(cv_split)), #'/content/DATASETS/VioNetDB-splits/hockey_jpg{}.json'
@@ -343,8 +343,8 @@ if __name__=='__main__':
         model='TwoStreamVD_Binary_CFam',#'TwoStreamVD_Binary',#'i3d-roi',i3d+roi+fc
         model_config=TWO_STREAM_CFAM_CONFIG,
         head=BINARY,
-        dataset=HOCKEY_DATASET,
-        num_cv=3,
+        dataset=RLVSD_DATASET,
+        num_cv=2,
         input_type='rgb',
         device=get_torch_device(),
         num_epoch=100,
@@ -355,12 +355,12 @@ if __name__=='__main__':
         val_batch=8,
         num_tubes=4,
         tube_sampling_random=True,
-        frames_per_tube=8, 
-        save_every=10,
+        frames_per_tube=16, 
+        save_every=5,
         freeze=False,
-        additional_info='TWO_STREAM_CFAM_CONFIG+dynImg',
-        home_path=HOME_UBUNTU,
-        num_workers=4
+        additional_info='TWO_STREAM_CFAM_CONFIG',
+        home_path=HOME_COLAB,
+        num_workers=1
     )
     # config.pretrained_model = "/content/DATASETS/Pretrained_Models/DenseNetLean_Kinetics.pth"
     # config.pretrained_model='/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt'

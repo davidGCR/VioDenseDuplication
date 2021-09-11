@@ -138,7 +138,7 @@ class MakeRLVDDataset():
         video_names = []
         video_labels = []
         annotations = []
-        num_frames = []
+        # num_frames = []
 
         for key, val in data['database'].items():
             if val['subset'] == split:
@@ -154,19 +154,19 @@ class MakeRLVDDataset():
                 video_labels.append(label)
                 n = os.listdir(folder)
                 n = [img for img in n if '.jpg' in img]
-                num_frames.append(len(n))
+                # num_frames.append(len(n))
                 if self.path_annotations:
                     ann_file = os.path.join(self.path_annotations, cl, v_name+'.json')
                     assert os.path.isfile(ann_file), "Annotation file:{} does not exist!!!".format(ann_file)
                     annotations.append(ann_file)
 
-        return video_names, video_labels, annotations, num_frames
+        return video_names, video_labels, annotations
     
     def __call__(self):
         data = self.load_annotation_data()
         split = self.split()
-        paths, labels, annotations, num_frames = self.get_video_names_and_labels(data, split)
-        return paths, labels, annotations, num_frames
+        paths, labels, annotations = self.get_video_names_and_labels(data, split)
+        return paths, labels, annotations
 
 
         

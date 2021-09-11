@@ -40,7 +40,7 @@ class TubeDataset(data.Dataset):
         self.paths, self.labels, self.annotations = self.make_function()
         self.paths, self.labels, self.annotations = filter_data_without_tubelet(self.paths, self.labels, self.annotations)
 
-        self.max_video_len = 39 if dataset=='hockey' else 149
+        # self.max_video_len = 39 if dataset=='hockey' else 149
         # self.keyframe = keyframe
         # self.spatial_transform_2 = spatial_transform_2
 
@@ -50,7 +50,7 @@ class TubeDataset(data.Dataset):
                                 max_num_tubes=max_num_tubes,
                                 train=train,
                                 input_type=self.config['input_1']['type'],
-                                max_video_len=self.max_video_len,
+                                # max_video_len=self.max_video_len,
                                 random=random)
         self.max_num_tubes = max_num_tubes
     
@@ -69,6 +69,8 @@ class TubeDataset(data.Dataset):
             return os.path.join(path,'frame{}.jpg'.format(frame_number+1))
         elif self.dataset == 'hockey':
             return os.path.join(path,'frame{:03}.jpg'.format(frame_number+1))
+        elif self.dataset == 'RealLifeViolenceDataset':
+            return os.path.join(path,'{:06}.jpg'.format(frame_number))
     
     def load_input_1(self, path, seg):
         tube_images = []
@@ -137,9 +139,14 @@ class TubeDataset(data.Dataset):
         path = self.paths[index]
         label = self.labels[index]
         annotation = self.annotations[index]
-        boxes, segments, idxs = self.sampler(JSON_2_tube(annotation), annotation)
+        if self.dataset == 'RealLifeViolenceDataset':
+          max_video_len = len(os.listdir(path)) - 1
+          # print('max_video_len: ', max_video_len)
+        else:
+          max_video_len = 39 if dataset=='hockey' else 149
+        boxes, segments, idxs = self.sampler(JSON_2_tube(annotation), annotation, max_video_len)
         # print('boxes: ', boxes, len(boxes))
-        # print('segments: ', segments, len(segments))
+        # print(path,' segments: ', segments, len(segments), max_video_len)
 
         video_images = []
         num_tubes = len(segments)

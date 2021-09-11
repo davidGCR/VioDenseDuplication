@@ -11,7 +11,7 @@ class TubeCrop(object):
                     max_num_tubes=4, 
                     train=True,
                     input_type='rgb',
-                    max_video_len=40,
+                    # max_video_len=40,
                     random=True):
         """
         Args:
@@ -21,10 +21,10 @@ class TubeCrop(object):
         self.max_num_tubes = max_num_tubes
         self.train = train
         self.input_type = input_type
-        self.max_video_len = max_video_len
+        # self.max_video_len = max_video_len
         self.random = random
 
-    def __call__(self, tubes: list, tube_path: str):
+    def __call__(self, tubes: list, tube_path: str, max_video_len:int):
         assert len(tubes) >= 1, "No tubes in video!!!==>{}".format(tube_path)
         # if len(tubes)==0:
         #     # rdn_frames = random.sample(list(range(65,90)),self.tube_len)
@@ -53,7 +53,7 @@ class TubeCrop(object):
         for tube in tubes:
             if self.input_type=='rgb':
                 tmp = tube['foundAt'].copy()
-                frames_idxs = self.__centered_frames__(tube['foundAt'])
+                frames_idxs = self.__centered_frames__(tube['foundAt'], max_video_len)
                 # print('frames to load: ', frames_idxs, '-foundAt: ', tube['foundAt'])
                 # if len(tmp) < self.tube_len:
                 #     print('very short tube: ', tube_path, frames_idxs, 'foundAt: ', tube['foundAt'])
@@ -92,7 +92,7 @@ class TubeCrop(object):
         
         return boxes, segments, idxs
     
-    def __centered_frames__(self, tube_frames_idxs: list):
+    def __centered_frames__(self, tube_frames_idxs: list, max_video_len: int):
         if len(tube_frames_idxs) == self.tube_len: 
             return tube_frames_idxs
         if len(tube_frames_idxs) > self.tube_len:
@@ -119,9 +119,9 @@ class TubeCrop(object):
             if out[0]<0:
                 most_neg = abs(out[0])
                 out = [i+most_neg for i in out]
-            elif tube_frames_idxs[center_idx]+int(self.tube_len/2) > self.max_video_len:
-                start = tube_frames_idxs[center_idx]-(self.tube_len-(self.max_video_len-tube_frames_idxs[center_idx]))+1
-                end = self.max_video_len+1
+            elif tube_frames_idxs[center_idx]+int(self.tube_len/2) > max_video_len:
+                start = tube_frames_idxs[center_idx]-(self.tube_len-(max_video_len-tube_frames_idxs[center_idx]))+1
+                end = max_video_len+1
                 out = list(range(start,end))
             tube_frames_idxs = out
             return tube_frames_idxs
