@@ -140,10 +140,11 @@ class TubeDataset(data.Dataset):
         label = self.labels[index]
         annotation = self.annotations[index]
         if self.dataset == 'RealLifeViolenceDataset':
-          max_video_len = len(os.listdir(path)) - 1
-          # print('max_video_len: ', max_video_len)
-        else:
-          max_video_len = 39 if dataset=='hockey' else 149
+            max_video_len = len(os.listdir(path)) - 1
+        elif self.dataset=='hockey':
+            max_video_len = 39
+        elif self.dataset=='rwf-2000':
+            max_video_len = 149
         boxes, segments, idxs = self.sampler(JSON_2_tube(annotation), annotation, max_video_len)
         # print('boxes: ', boxes, len(boxes))
         # print(path,' segments: ', segments, len(segments), max_video_len)

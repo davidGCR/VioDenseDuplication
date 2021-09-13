@@ -63,7 +63,7 @@ def load_make_dataset(dataset_name, train=True, cv_split=1, home_path='', catego
             root=os.path.join(home_path, 'RWF-2000/frames'),
             train=train,
             category=category, 
-            path_annotations=os.path.join(home_path, 'ActionTubes/RWF-2000-150frames-motion-maps2'),
+            path_annotations=os.path.join(home_path, 'ActionTubes/final/rwf'),
             shuffle=shuffle)
 
     elif dataset_name == HOCKEY_DATASET:
@@ -71,7 +71,7 @@ def load_make_dataset(dataset_name, train=True, cv_split=1, home_path='', catego
             root=os.path.join(home_path, 'HockeyFightsDATASET/frames'), 
             train=train,
             cv_split_annotation_path=os.path.join(home_path, 'VioNetDB-splits/hockey_jpg{}.json'.format(cv_split)), #'/content/DATASETS/VioNetDB-splits/hockey_jpg{}.json'
-            path_annotations=os.path.join(home_path, 'ActionTubes/hockey-40frames-motion-maps'),
+            path_annotations=os.path.join(home_path, 'ActionTubes/final/hockey'),
             )
     elif dataset_name == RLVSD_DATASET:
         make_dataset = MakeRLVDDataset(
