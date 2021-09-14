@@ -37,10 +37,13 @@ class TubeDataset(data.Dataset):
         self.frames_per_tube = frames_per_tube
         # self.spatial_transform = spatial_transform
         self.make_function = make_function
-        self.paths, self.labels, self.annotations = self.make_function()
+        if dataset == 'RealLifeViolenceDataset':
+            self.paths, self.labels, self.annotations, self.num_frames = self.make_function()
+        else:
+            self.paths, self.labels, self.annotations = self.make_function()
         self.paths, self.labels, self.annotations = filter_data_without_tubelet(self.paths, self.labels, self.annotations)
 
-        self.max_video_len = 39 if dataset=='hockey' else 149
+        # self.max_video_len = 39 if dataset=='hockey' else 149
         # self.keyframe = keyframe
         # self.spatial_transform_2 = spatial_transform_2
 
@@ -50,7 +53,7 @@ class TubeDataset(data.Dataset):
                                 max_num_tubes=max_num_tubes,
                                 train=train,
                                 input_type=self.config['input_1']['type'],
-                                max_video_len=self.max_video_len,
+                                # max_video_len=self.max_video_len,
                                 random=random)
         self.max_num_tubes = max_num_tubes
     
@@ -69,6 +72,8 @@ class TubeDataset(data.Dataset):
             return os.path.join(path,'frame{}.jpg'.format(frame_number+1))
         elif self.dataset == 'hockey':
             return os.path.join(path,'frame{:03}.jpg'.format(frame_number+1))
+        elif self.dataset == 'RealLifeViolenceDataset':
+            return os.path.join(path,'{:06}.jpg'.format(frame_number))
     
     def load_input_1(self, path, seg):
         tube_images = []
@@ -137,16 +142,20 @@ class TubeDataset(data.Dataset):
         path = self.paths[index]
         label = self.labels[index]
         annotation = self.annotations[index]
-        boxes, segments, idxs = self.sampler(JSON_2_tube(annotation), annotation)
+        if self.dataset == 'hockey':
+            boxes, segments, idxs = self.sampler(JSON_2_tube(annotation), annotation, max_video_len=39)
+        elif self.dataset == 'rwf-2000':
+            boxes, segments, idxs = self.sampler(JSON_2_tube(annotation), annotation, max_video_len=149)
+        elif self.dataset == 'RealLifeViolenceDataset':
+            # n_f = self.num_frames[index]
+            n_f = len(os.listdir(path))
+            boxes, segments, idxs = self.sampler(JSON_2_tube(annotation), annotation, max_video_len=n_f-1)
         # print('boxes: ', boxes, len(boxes))
-        # print('segments: ', segments, len(segments))
+            # print('path: ', path, '-segments:', segments, len(segments), n_f, len(os.listdir(path)))
 
         video_images = []
         num_tubes = len(segments)
         for seg in segments:
-            # tube_images = self.load_tube_images(path, seg)
-            # if self.spatial_transform:
-            #     tube_images = self.spatial_transform(tube_images)
             tube_images, _ = self.load_input_1(path, seg)
             video_images.append(torch.stack(tube_images, dim=0))
         

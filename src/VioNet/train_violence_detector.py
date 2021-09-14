@@ -15,7 +15,7 @@ import torchvision.transforms as transforms
 import os
 
 #data
-from customdatasets.make_dataset import MakeRWF2000, MakeHockeyDataset
+from customdatasets.make_dataset import MakeRWF2000, MakeHockeyDataset, MakeRLVDDataset
 from customdatasets.tube_dataset import TubeDataset, my_collate, my_collate_2, OneVideoTubeDataset, TubeFeaturesDataset
 from torch.utils.data import DataLoader
 
@@ -73,6 +73,14 @@ def load_make_dataset(dataset_name, train=True, cv_split=1, home_path='', catego
             cv_split_annotation_path=os.path.join(home_path, 'VioNetDB-splits/hockey_jpg{}.json'.format(cv_split)), #'/content/DATASETS/VioNetDB-splits/hockey_jpg{}.json'
             path_annotations=os.path.join(home_path, 'ActionTubes/hockey-40frames-motion-maps'),
             )#'/content/DATASETS/ActionTubes/hockey'
+    elif dataset_name == RLSV_DATASET:
+        make_dataset = MakeRLVDDataset(
+            root=os.path.join(home_path, 'RealLifeViolenceDataset/frames'),
+            train=train,
+            cv_split_annotation_path=os.path.join(home_path, 'VioNetDB-splits/RealLifeViolenceDataset{}.json'.format(cv_split)),
+            path_annotations=os.path.join(home_path, 'ActionTubes/RealLifeViolenceDataset')
+        )
+
     return make_dataset
 
 def main(config: Config, MIL=False):
@@ -203,16 +211,16 @@ def data_with_tubes(config: Config, make_dataset_train, make_dataset_val):
             'spatial_transform': i3d_video_transf()['train'],
             'temporal_transform': None
         },
-        # 'input_2': {
-        #     'type': 'rgb',
-        #     'spatial_transform': resnet_transf()['train'],
-        #     'temporal_transform': None
-        # }
         'input_2': {
-            'type': 'dynamic-image',
-            'spatial_transform': resnet_di_transf()['train'],
+            'type': 'rgb',
+            'spatial_transform': resnet_transf()['train'],
             'temporal_transform': None
         }
+        # 'input_2': {
+        #     'type': 'dynamic-image',
+        #     'spatial_transform': resnet_di_transf()['train'],
+        #     'temporal_transform': None
+        # }
     }
 
     TWO_STREAM_INPUT_val = {
@@ -221,16 +229,16 @@ def data_with_tubes(config: Config, make_dataset_train, make_dataset_val):
             'spatial_transform': i3d_video_transf()['val'],
             'temporal_transform': CenterCrop(size=16, stride=1, input_type='rgb')
         },
-        # 'input_2': {
-        #     'type': 'rgb',
-        #     'spatial_transform': resnet_transf()['val'],
-        #     'temporal_transform': None
-        # }
         'input_2': {
-            'type': 'dynamic-image',
-            'spatial_transform': resnet_di_transf()['val'],
+            'type': 'rgb',
+            'spatial_transform': resnet_transf()['val'],
             'temporal_transform': None
         }
+        # 'input_2': {
+        #     'type': 'dynamic-image',
+        #     'spatial_transform': resnet_di_transf()['val'],
+        #     'temporal_transform': None
+        # }
     }
     train_dataset = TubeDataset(frames_per_tube=config.frames_per_tube, 
                             make_function=make_dataset_train,
@@ -336,8 +344,8 @@ if __name__=='__main__':
         model='TwoStreamVD_Binary_CFam',#'TwoStreamVD_Binary',#'i3d-roi',i3d+roi+fc
         model_config=TWO_STREAM_CFAM_CONFIG,
         head=BINARY,
-        dataset=HOCKEY_DATASET,
-        num_cv=3,
+        dataset=RLSV_DATASET,
+        num_cv=2,
         input_type='rgb',
         device=get_torch_device(),
         num_epoch=100,
@@ -348,7 +356,7 @@ if __name__=='__main__':
         val_batch=8,
         num_tubes=4,
         tube_sampling_random=True,
-        frames_per_tube=8, 
+        frames_per_tube=16, 
         save_every=10,
         freeze=False,
         additional_info='TWO_STREAM_CFAM_CONFIG+dynImg',

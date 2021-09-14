@@ -153,7 +153,7 @@ class MakeRLVDDataset():
                 video_names.append(folder)
                 video_labels.append(label)
                 n = os.listdir(folder)
-                n = [img for img in n if '.jpg' in img]
+                # n = [img for img in n if '.jpg' in img]
                 num_frames.append(len(n))
                 if self.path_annotations:
                     ann_file = os.path.join(self.path_annotations, cl, v_name+'.json')
