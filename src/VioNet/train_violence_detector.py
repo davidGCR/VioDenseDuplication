@@ -60,27 +60,26 @@ def matplotlib_imshow(img, one_channel=False):
 def load_make_dataset(dataset_name, train=True, cv_split=1, home_path='', category=2, shuffle=False):
     if dataset_name == RWF_DATASET:
         make_dataset = MakeRWF2000(
-            root=os.path.join(home_path, 'RWF-2000/frames'),#'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames', 
+            root=os.path.join(home_path, 'RWF-2000/frames'),
             train=train,
             category=category, 
-            path_annotations=os.path.join(home_path, 'ActionTubes/RWF-2000-150frames-motion-maps2'),
-            shuffle=shuffle)#'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/Tubes/RWF-2000')
+            path_annotations=os.path.join(home_path, 'ActionTubes/final/rwf'),
+            shuffle=shuffle)
 
     elif dataset_name == HOCKEY_DATASET:
         make_dataset = MakeHockeyDataset(
-            root=os.path.join(home_path, 'HockeyFightsDATASET/frames'), #'/content/DATASETS/HockeyFightsDATASET/frames'
+            root=os.path.join(home_path, 'HockeyFightsDATASET/frames'), 
             train=train,
             cv_split_annotation_path=os.path.join(home_path, 'VioNetDB-splits/hockey_jpg{}.json'.format(cv_split)), #'/content/DATASETS/VioNetDB-splits/hockey_jpg{}.json'
-            path_annotations=os.path.join(home_path, 'ActionTubes/hockey-40frames-motion-maps'),
-            )#'/content/DATASETS/ActionTubes/hockey'
-    elif dataset_name == RLSV_DATASET:
+            path_annotations=os.path.join(home_path, 'ActionTubes/final/hockey'),
+            )
+    elif dataset_name == RLVSD_DATASET:
         make_dataset = MakeRLVDDataset(
-            root=os.path.join(home_path, 'RealLifeViolenceDataset/frames'),
+            root=os.path.join(home_path, 'RealLifeViolenceDataset/frames'), 
             train=train,
-            cv_split_annotation_path=os.path.join(home_path, 'VioNetDB-splits/RealLifeViolenceDataset{}.json'.format(cv_split)),
-            path_annotations=os.path.join(home_path, 'ActionTubes/RealLifeViolenceDataset')
-        )
-
+            cv_split_annotation_path=os.path.join(home_path, 'VioNetDB-splits/RealLifeViolenceDataset{}.json'.format(cv_split)), #'/content/DATASETS/VioNetDB-splits/hockey_jpg{}.json'
+            path_annotations=os.path.join(home_path, 'ActionTubes/RealLifeViolenceDataset'),
+            )
     return make_dataset
 
 def main(config: Config, MIL=False):
@@ -344,7 +343,7 @@ if __name__=='__main__':
         model='TwoStreamVD_Binary_CFam',#'TwoStreamVD_Binary',#'i3d-roi',i3d+roi+fc
         model_config=TWO_STREAM_CFAM_CONFIG,
         head=BINARY,
-        dataset=RLSV_DATASET,
+        dataset=RLVSD_DATASET,
         num_cv=2,
         input_type='rgb',
         device=get_torch_device(),
@@ -359,9 +358,9 @@ if __name__=='__main__':
         frames_per_tube=16, 
         save_every=10,
         freeze=False,
-        additional_info='TWO_STREAM_CFAM_CONFIG+dynImg',
-        home_path=HOME_UBUNTU,
-        num_workers=4
+        additional_info='TWO_STREAM_CFAM_CONFIG',
+        home_path=HOME_COLAB,
+        num_workers=1
     )
     # config.pretrained_model = "/content/DATASETS/Pretrained_Models/DenseNetLean_Kinetics.pth"
     # config.pretrained_model='/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt'

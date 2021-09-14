@@ -1,5 +1,7 @@
 import os
 import sys
+
+from numpy import c_
 sys.path.insert(1, '/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/AVSS2019/src')
 sys.path.insert(1, '/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/AVSS2019/src/TubeletGeneration')
 
@@ -95,13 +97,13 @@ class UCFCrime2LocalVideoDataset(data.Dataset):
         self, 
         path,
         sp_annotation,
-        p_detections,
+        # p_detections,
         transform=None,
         clip_len=25,
         clip_temporal_stride=1):
         self.path = path
         self.sp_annotation = sp_annotation
-        self.p_detections = p_detections
+        # self.p_detections = p_detections
         self.transform = transform
         self.clip_len = clip_len
         self.clip_temporal_stride = clip_temporal_stride
@@ -139,7 +141,7 @@ class UCFCrime2LocalVideoDataset(data.Dataset):
         for ip in image_paths:
             img = self.transform(imread(ip)) if self.transform else imread(ip)
             images.append(img)
-        print('len(images): ', len(images), type(images[0]))
+        # print('len(images): ', len(images), type(images[0]))
         images = torch.stack(images, dim=0)
         return image_names, images
     

@@ -21,13 +21,15 @@ TUBE_BUILD_CONFIG = {
     'temporal_window': 5,
     'min_iou_close_persons': 0.3,
     'jumpgap': 5,
+    'min_window_len': 3,
     'plot_config':{
         'debug_mode': False,
-        'plot': False,
-        'plot_wait_1': 1000,
-        'plot_wait_2':1000,
+        'plot_tubes': False,
+        'plot_wait_tubes': 100,
+        'plot_wait_2':100,
         'save_results': False,
-        'save_folder': None
+        'save_folder_debug': None,
+        'save_folder_final': None,
     }
     
 }

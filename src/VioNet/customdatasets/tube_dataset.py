@@ -142,16 +142,15 @@ class TubeDataset(data.Dataset):
         path = self.paths[index]
         label = self.labels[index]
         annotation = self.annotations[index]
-        if self.dataset == 'hockey':
-            boxes, segments, idxs = self.sampler(JSON_2_tube(annotation), annotation, max_video_len=39)
-        elif self.dataset == 'rwf-2000':
-            boxes, segments, idxs = self.sampler(JSON_2_tube(annotation), annotation, max_video_len=149)
-        elif self.dataset == 'RealLifeViolenceDataset':
-            # n_f = self.num_frames[index]
-            n_f = len(os.listdir(path))
-            boxes, segments, idxs = self.sampler(JSON_2_tube(annotation), annotation, max_video_len=n_f-1)
+        if self.dataset == 'RealLifeViolenceDataset':
+            max_video_len = len(os.listdir(path)) - 1
+        elif self.dataset=='hockey':
+            max_video_len = 39
+        elif self.dataset=='rwf-2000':
+            max_video_len = 149
+        boxes, segments, idxs = self.sampler(JSON_2_tube(annotation), annotation, max_video_len)
         # print('boxes: ', boxes, len(boxes))
-            # print('path: ', path, '-segments:', segments, len(segments), n_f, len(os.listdir(path)))
+        # print(path,' segments: ', segments, len(segments), max_video_len)
 
         video_images = []
         num_tubes = len(segments)
