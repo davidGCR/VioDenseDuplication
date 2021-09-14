@@ -24,7 +24,7 @@ class TubeCrop(object):
         # self.max_video_len = max_video_len
         self.random = random
 
-    def __call__(self, tubes: list, tube_path: str, max_video_len:int):
+    def __call__(self, tubes: list, tube_path: str, max_video_len: int):
         assert len(tubes) >= 1, "No tubes in video!!!==>{}".format(tube_path)
         # if len(tubes)==0:
         #     # rdn_frames = random.sample(list(range(65,90)),self.tube_len)
@@ -53,7 +53,7 @@ class TubeCrop(object):
         for tube in tubes:
             if self.input_type=='rgb':
                 tmp = tube['foundAt'].copy()
-                frames_idxs = self.__centered_frames__(tube['foundAt'], max_video_len)
+                frames_idxs = self.__centered_frames__(tube['foundAt'],max_video_len)
                 # print('frames to load: ', frames_idxs, '-foundAt: ', tube['foundAt'])
                 # if len(tmp) < self.tube_len:
                 #     print('very short tube: ', tube_path, frames_idxs, 'foundAt: ', tube['foundAt'])

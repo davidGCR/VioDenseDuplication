@@ -37,7 +37,10 @@ class TubeDataset(data.Dataset):
         self.frames_per_tube = frames_per_tube
         # self.spatial_transform = spatial_transform
         self.make_function = make_function
-        self.paths, self.labels, self.annotations = self.make_function()
+        if dataset == 'RealLifeViolenceDataset':
+            self.paths, self.labels, self.annotations, self.num_frames = self.make_function()
+        else:
+            self.paths, self.labels, self.annotations = self.make_function()
         self.paths, self.labels, self.annotations = filter_data_without_tubelet(self.paths, self.labels, self.annotations)
 
         # self.max_video_len = 39 if dataset=='hockey' else 149
@@ -152,9 +155,6 @@ class TubeDataset(data.Dataset):
         video_images = []
         num_tubes = len(segments)
         for seg in segments:
-            # tube_images = self.load_tube_images(path, seg)
-            # if self.spatial_transform:
-            #     tube_images = self.spatial_transform(tube_images)
             tube_images, _ = self.load_input_1(path, seg)
             video_images.append(torch.stack(tube_images, dim=0))
         
