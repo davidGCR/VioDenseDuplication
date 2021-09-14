@@ -1,6 +1,6 @@
 import sys
-# sys.path.insert(1, '/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/AVSS2019/src/VioNet')
-sys.path.insert(1, '/media/david/datos/PAPERS-SOURCE_CODE/VioDenseDuplication/src/VioNet')
+sys.path.insert(1, '/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/AVSS2019/src/VioNet')
+# sys.path.insert(1, '/media/david/datos/PAPERS-SOURCE_CODE/VioDenseDuplication/src/VioNet')
 import torch
 from torch import nn
 from models.i3d import InceptionI3d
@@ -364,8 +364,6 @@ class TwoStreamVD_Binary_CFam(nn.Module):
             self.classifier = nn.Conv2d(out_channels, 2, kernel_size=1, bias=False)
         elif self.config['head'] == 'regression':
             self.classifier = nn.Conv2d(out_channels, 1, kernel_size=1, bias=False)
-
-
     
     def weight_init(self):
         for layer in self.classifier:
@@ -463,6 +461,49 @@ class TwoStreamVD_Binary_CFam(nn.Module):
 
         return x
 
+class ResNet2D_Stream(nn.Module):
+    def __init__(self, config=TWO_STREAM_CFAM_CONFIG):
+        super(ResNet2D_Stream, self).__init__()
+        self.with_roipool = config['with_roipool']
+        self.config = config
+        self._2d_stream = Backbone2DResNet(
+            config['2d_backbone'],
+            config['base_out_layer'],
+            num_trainable_layers=config['num_trainable_layers'])
+        
+        if self.with_roipool:
+            self.roi_pool_2d = RoIAlign(output_size=config['roi_layer_output'],
+                                        spatial_scale=config['roi_spatial_scale'],
+                                        sampling_ratio=0,
+                                        aligned=True
+                                        )
+        self.avg_pool_2d = nn.AdaptiveAvgPool2d((1,1))
+        self.fc = nn.Linear(in_features=1024, out_features=2)
+    
+    def forward(self, x1, bbox=None, num_tubes=1):
+        batch, c, h, w = x1.size()
+        x_2d = self._2d_stream(x1) #torch.Size([2, 1024, 14, 14])
+        print('output_2dbackbone: ', x_2d.size())
+        if self.with_roipool:
+            batch = int(batch/num_tubes)
+            x_2d = self.roi_pool_2d(x_2d, bbox)
+            print('2d after roipool: ', x_2d.size())
+        
+        _, c1, w1, h1 = x_2d.size()
+        x_2d = x_2d.view(batch, num_tubes, c1, w1, h1)
+        x_2d = x_2d.max(dim=1).values
+        print('2d after max: ', x_2d.size())
+
+        x_2d = self.avg_pool_2d(x_2d)
+        print('2d after avg_pool_2d: ', x_2d.size())
+        
+        x_2d = torch.flatten(x_2d, 1)
+        print('2d after flatten: ', x_2d.size())
+        x_2d = self.fc(x_2d)
+
+        return x_2d
+        
+        
 
 
 
@@ -470,31 +511,44 @@ if __name__=='__main__':
     
     print('------- ViolenceDetector --------')
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    # model = TwoStreamVD_Binary().to(device)
-    model = TwoStreamVD_Binary_CFam(config=TWO_STREAM_CFAM_CONFIG).to(device)
-    # model = ViolenceDetectorRegression(aggregate=True).to(device)
-    batch = 2
-    tubes = 4
-    input_1 = torch.rand(batch*tubes,3,8,224,224).to(device)
-    input_2 = torch.rand(batch*tubes,3,224,224).to(device)
+    # model = TwoStreamVD_Binary_CFam(config=TWO_STREAM_CFAM_CONFIG).to(device)
+    # # model = ViolenceDetectorRegression(aggregate=True).to(device)
+    # batch = 2
+    # tubes = 4
+    # input_1 = torch.rand(batch*tubes,3,8,224,224).to(device)
+    # input_2 = torch.rand(batch*tubes,3,224,224).to(device)
 
-    rois = torch.rand(batch*tubes, 5).to(device)
-    rois[0] = torch.tensor([0,  62.5481,  49.0223, 122.0747, 203.4146]).to(device)#torch.tensor([1, 14, 16, 66, 70]).to(device)
-    rois[1] = torch.tensor([1, 34, 14, 85, 77]).to(device)
-    rois[2] = torch.tensor([1, 34, 14, 85, 77]).to(device)
-    rois[3] = torch.tensor([1, 34, 14, 85, 77]).to(device)
-    rois[4] = torch.tensor([1, 34, 14, 85, 77]).to(device)
-    rois[5] = torch.tensor([1, 34, 14, 85, 77]).to(device)
-    rois[6] = torch.tensor([1, 34, 14, 85, 77]).to(device)
-    rois[7] = torch.tensor([1, 34, 14, 85, 77]).to(device)
+    # rois = torch.rand(batch*tubes, 5).to(device)
+    # rois[0] = torch.tensor([0,  62.5481,  49.0223, 122.0747, 203.4146]).to(device)#torch.tensor([1, 14, 16, 66, 70]).to(device)
+    # rois[1] = torch.tensor([1, 34, 14, 85, 77]).to(device)
+    # rois[2] = torch.tensor([1, 34, 14, 85, 77]).to(device)
+    # rois[3] = torch.tensor([1, 34, 14, 85, 77]).to(device)
+    # rois[4] = torch.tensor([1, 34, 14, 85, 77]).to(device)
+    # rois[5] = torch.tensor([1, 34, 14, 85, 77]).to(device)
+    # rois[6] = torch.tensor([1, 34, 14, 85, 77]).to(device)
+    # rois[7] = torch.tensor([1, 34, 14, 85, 77]).to(device)
 
-    output = model(input_1, input_2, rois, tubes)
+    # output = model(input_1, input_2, rois, tubes)
     # output = model(input_1, input_2, None, None)
     # output = model(input_1, rois, tubes)
-    print('output: ', output.size())
+    # print('output: ', output.size())
     
     # regressor = ViolenceDetectorRegression().to(device)
     # input_1 = torch.rand(batch*tubes,3,16,224,224).to(device)
     # output = regressor(input_1, rois, tubes)
     # print('output: ', output.size())
 
+    model = ResNet2D_Stream(config=TWO_STREAM_CFAM_CONFIG).to(device)
+    batch = 2
+    tubes = 3
+    input_2 = torch.rand(batch*tubes,3,224,224).to(device)
+    rois = torch.rand(batch*tubes, 5).to(device)
+    rois[0] = torch.tensor([0, 34, 14, 85, 77]).to(device)
+    rois[1] = torch.tensor([1, 34, 14, 85, 77]).to(device)
+    rois[0] = torch.tensor([2, 34, 14, 85, 77]).to(device)
+    rois[1] = torch.tensor([3, 34, 14, 85, 77]).to(device)
+    rois[0] = torch.tensor([4, 34, 14, 85, 77]).to(device)
+    rois[1] = torch.tensor([5, 34, 14, 85, 77]).to(device)
+
+    output = model(input_2, rois, tubes)
+    print('output: ', output.size())
