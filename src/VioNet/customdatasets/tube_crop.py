@@ -63,13 +63,15 @@ class TubeCrop(object):
                 bbox = self.__central_bbox__(tube['boxes'], tube['id']+1)
                 boxes.append(bbox)
                 segments.append(frames_idxs)
-        # print('segments: ', segments,len(segments))
+        # print('frames_idxs: ', frames_idxs,len(frames_idxs))
+        # print('--segments: ', segments,len(segments), ' boxes:', len(boxes))
         idxs = range(len(boxes))
         if self.max_num_tubes != 0 and len(boxes) > self.max_num_tubes:
             if self.random:
                 idxs = random.sample(range(len(boxes)), self.max_num_tubes)
                 boxes = list(itemgetter(*idxs)(boxes))
                 segments = list(itemgetter(*idxs)(segments))
+                segments = [segments] if self.max_num_tubes==1 else segments
                 # if self.train:
                 #     idxs = random.sample(range(len(boxes)), self.max_num_tubes)
                 #     boxes = list(itemgetter(*idxs)(boxes))
@@ -80,15 +82,16 @@ class TubeCrop(object):
                 #     boxes = boxes[m-int(self.max_num_tubes/2) : m+int(self.max_num_tubes/2)]
                 #     segments = segments[m-int(self.max_num_tubes/2) : m+int(self.max_num_tubes/2)]
             else:
-                # print(tubes)
-                # tubes = sorted(tubes, key = lambda i: i['score'], reverse=True)
                 boxes = boxes[0:self.max_num_tubes]
                 segments = segments[0:self.max_num_tubes]
+        
+        if len(boxes)==1:
+            boxes[0] = torch.unsqueeze(boxes[0], 0)
+        # print('boxes: ', boxes, len(boxes), boxes[0].size())
         for id,box in enumerate(boxes):
             boxes[id][0,0] = id
 
-        # if len(boxes) == 0:    
-        #     return None, None, None
+        # print('----segments: ', segments,len(segments))
         
         return boxes, segments, idxs
     
