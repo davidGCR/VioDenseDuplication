@@ -357,7 +357,7 @@ if __name__=='__main__':
         val_batch=8,
         num_tubes=4,
         tube_sampling_random=True,
-        frames_per_tube=16, 
+        frames_per_tube=32, 
         save_every=10,
         freeze=False,
         additional_info='TWO_STREAM_CFAM_CONFIG+finalRWF',
@@ -367,13 +367,13 @@ if __name__=='__main__':
     # config.pretrained_model = "/content/DATASETS/Pretrained_Models/DenseNetLean_Kinetics.pth"
     # config.pretrained_model='/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt'
     # config.pretrained_model = '/media/david/datos/Violence DATA/VioNet_pth/rwf_trained/save_at_epoch-127.chk'
-    config.restore_training = True
+    # config.restore_training = True
     # config.pretrained_model = ''
     # config.checkpoint_path = '/media/david/datos/Violence DATA/VioNet_pth/restoredFromDrive/save_at_epoch-49.chk'
-    config.checkpoint_path = os.path.join(config.home_path,
-                                          PATH_CHECKPOINT,
-                                          'rwf-2000_model(TwoStreamVD_Binary_CFam)_head(binary)_stream(rgb)_cv(1)_epochs(100)_num_tubes(4)_framesXtube(16)_tub_sampl_rand(True)_criterion(CEL)_optimizer(Adadelta)_lr(0.001)_note(TWO_STREAM_CFAM_CONFIG+finalRWF)',
-                                          'save_at_epoch-29.chk')
+    # config.checkpoint_path = os.path.join(config.home_path,
+    #                                       PATH_CHECKPOINT,
+    #                                       'rwf-2000_model(TwoStreamVD_Binary_CFam)_head(binary)_stream(rgb)_cv(1)_epochs(100)_num_tubes(4)_framesXtube(16)_tub_sampl_rand(True)_criterion(CEL)_optimizer(Adadelta)_lr(0.001)_note(TWO_STREAM_CFAM_CONFIG+finalRWF)',
+    #                                       'save_at_epoch-29.chk')
     torch.autograd.set_detect_anomaly(True)
     main(config, MIL=False)
     # MIL_training(config)
