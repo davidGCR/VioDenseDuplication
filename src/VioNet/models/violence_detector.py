@@ -1,6 +1,6 @@
 import sys
 sys.path.insert(1, '/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/AVSS2019/src/VioNet')
-# sys.path.insert(1, '/media/david/datos/PAPERS-SOURCE_CODE/VioDenseDuplication/src/VioNet')
+sys.path.insert(1, '/media/david/datos/PAPERS-SOURCE_CODE/VioDenseDuplication/src/VioNet')
 import torch
 from torch import nn
 from models.i3d import InceptionI3d
@@ -478,7 +478,8 @@ class ResNet2D_Stream(nn.Module):
                                         aligned=True
                                         )
         self.avg_pool_2d = nn.AdaptiveAvgPool2d((1,1))
-        self.fc = nn.Linear(in_features=1024, out_features=2)
+        self.fc = nn.Conv2d(1024, 2, kernel_size=1, bias=False)
+        # self.fc = nn.Linear(in_features=1024, out_features=2)
     
     def forward(self, x1, bbox=None, num_tubes=1):
         batch, c, h, w = x1.size()
@@ -487,19 +488,23 @@ class ResNet2D_Stream(nn.Module):
         if self.with_roipool:
             batch = int(batch/num_tubes)
             x_2d = self.roi_pool_2d(x_2d, bbox)
-            print('2d after roipool: ', x_2d.size())
+            # print('2d after roipool: ', x_2d.size())
         
         _, c1, w1, h1 = x_2d.size()
         x_2d = x_2d.view(batch, num_tubes, c1, w1, h1)
         x_2d = x_2d.max(dim=1).values
-        print('2d after max: ', x_2d.size())
+        # print('2d after max: ', x_2d.size())
 
         x_2d = self.avg_pool_2d(x_2d)
-        print('2d after avg_pool_2d: ', x_2d.size())
+        # print('2d after avg_pool_2d: ', x_2d.size())
         
-        x_2d = torch.flatten(x_2d, 1)
-        print('2d after flatten: ', x_2d.size())
+        # x_2d = torch.flatten(x_2d, 1)
+        # print('2d after flatten: ', x_2d.size())
+
+
         x_2d = self.fc(x_2d)
+        # print('2d after fc: ', x_2d.size())
+        x_2d = torch.squeeze(x_2d)
 
         return x_2d
         
