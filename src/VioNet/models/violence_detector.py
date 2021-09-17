@@ -483,7 +483,7 @@ class ResNet2D_Stream(nn.Module):
     def forward(self, x1, bbox=None, num_tubes=1):
         batch, c, h, w = x1.size()
         x_2d = self._2d_stream(x1) #torch.Size([2, 1024, 14, 14])
-        print('output_2dbackbone: ', x_2d.size())
+        # print('output_2dbackbone: ', x_2d.size())
         if self.with_roipool:
             batch = int(batch/num_tubes)
             x_2d = self.roi_pool_2d(x_2d, bbox)
