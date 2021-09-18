@@ -36,7 +36,7 @@ from models.mil_loss import MIL
 from models.violence_detector import *
 
 from model_transformations import *
-from lib.train_script import train, val, train_regressor
+from lib.train_script import train, val, train_regressor, train_2d_branch, val_2d_branch
 from lib.train_2it_script import train_2it, val_2it
 from lib.accuracy import *
 from VioNet.customdatasets.vio_db import ViolenceDataset
@@ -123,6 +123,9 @@ def main(config: Config, MIL=False):
                 None,
                 config.model_config['load_weigths']
                 )
+        params = model.parameters()
+    elif config.model == 'ResNet2D_Stream':
+        model = ResNet2D_Stream(config.model_config).to(device)
         params = model.parameters()
 
     if MIL:
@@ -342,7 +345,7 @@ def data_without_tubes(config: Config, make_dataset_train, make_dataset_val):
 
 if __name__=='__main__':
     config = Config(
-        model='TwoStreamVD_Binary_CFam',#'TwoStreamVD_Binary',#'i3d-roi',i3d+roi+fc
+        model='TwoStreamVD_Binary_CFam',#'TwoStreamVD_Binary_CFam',#'TwoStreamVD_Binary',#'i3d-roi',i3d+roi+fc
         model_config=TWO_STREAM_CFAM_CONFIG,
         head=BINARY,
         dataset=RWF_DATASET,
@@ -360,7 +363,7 @@ if __name__=='__main__':
         frames_per_tube=32, 
         save_every=10,
         freeze=False,
-        additional_info='TWO_STREAM_CFAM_CONFIG+finalRWF',
+        additional_info='',
         home_path=HOME_UBUNTU,
         num_workers=4
     )
