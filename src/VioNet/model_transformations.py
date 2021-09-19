@@ -83,12 +83,15 @@ def resnet_transf():
     return T  
 
 def resnet_di_transf():
-    mean = [0.5002, 0.5001, 0.5001]
-    std = [0.0799, 0.0795, 0.0796]
+    # mean = [0.5002, 0.5001, 0.5001]
+    # std = [0.0799, 0.0795, 0.0796]
 
     #old
     # mean = [0.49778724, 0.49780366, 0.49776983]
     # std = [0.09050678, 0.09017131, 0.0898702 ]
+
+    mean = [0.485, 0.456, 0.406]
+    std = [0.229, 0.224, 0.225]
     norm = transforms.Normalize(mean=mean, std=std)  
     input_size = (224,224)
     T = {

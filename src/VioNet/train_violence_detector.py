@@ -153,6 +153,12 @@ def main(config: Config, MIL=False):
                                     lr=config.learning_rate,
                                     momentum=0.9,
                                     weight_decay=1e-3)
+    elif config.optimizer == 'Adam':
+        optimizer = torch.optim.Adam(
+            params, 
+            lr=config.learning_rate, 
+            eps=1e-3, 
+            amsgrad=True)            
     
     if config.criterion == 'CEL':
         criterion = nn.CrossEntropyLoss().to(config.device)
@@ -215,16 +221,16 @@ def data_with_tubes(config: Config, make_dataset_train, make_dataset_val):
             'spatial_transform': i3d_video_transf()['train'],
             'temporal_transform': None
         },
-        'input_2': {
-            'type': 'rgb',
-            'spatial_transform': resnet_transf()['train'],
-            'temporal_transform': None
-        }
         # 'input_2': {
-        #     'type': 'dynamic-image',
-        #     'spatial_transform': resnet_di_transf()['train'],
+        #     'type': 'rgb',
+        #     'spatial_transform': resnet_transf()['train'],
         #     'temporal_transform': None
         # }
+        'input_2': {
+            'type': 'dynamic-image',
+            'spatial_transform': resnet_di_transf()['train'],
+            'temporal_transform': None
+        }
     }
 
     TWO_STREAM_INPUT_val = {
@@ -233,16 +239,16 @@ def data_with_tubes(config: Config, make_dataset_train, make_dataset_val):
             'spatial_transform': i3d_video_transf()['val'],
             'temporal_transform': CenterCrop(size=16, stride=1, input_type='rgb')
         },
-        'input_2': {
-            'type': 'rgb',
-            'spatial_transform': resnet_transf()['val'],
-            'temporal_transform': None
-        }
         # 'input_2': {
-        #     'type': 'dynamic-image',
-        #     'spatial_transform': resnet_di_transf()['val'],
+        #     'type': 'rgb',
+        #     'spatial_transform': resnet_transf()['val'],
         #     'temporal_transform': None
         # }
+        'input_2': {
+            'type': 'dynamic-image',
+            'spatial_transform': resnet_di_transf()['val'],
+            'temporal_transform': None
+        }
     }
     train_dataset = TubeDataset(frames_per_tube=config.frames_per_tube, 
                             make_function=make_dataset_train,
@@ -356,14 +362,14 @@ if __name__=='__main__':
         criterion='CEL',
         optimizer='Adadelta',
         learning_rate=0.001, #0.001 for adagrad
-        train_batch=8,
-        val_batch=8,
+        train_batch=4,
+        val_batch=4,
         num_tubes=4,
         tube_sampling_random=True,
-        frames_per_tube=32, 
+        frames_per_tube=8, 
         save_every=10,
         freeze=False,
-        additional_info='',
+        additional_info='dynamic-image2',
         home_path=HOME_UBUNTU,
         num_workers=4
     )
