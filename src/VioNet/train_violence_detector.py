@@ -169,6 +169,7 @@ def main(config: Config, MIL=False):
     start_epoch = 0
     ##Restore training
     if config.restore_training:
+        print('Restoring training from: ', config.checkpoint_path)
         model, optimizer, epochs, last_epoch, last_loss = load_checkpoint(model, config.device, optimizer, config.checkpoint_path)
         start_epoch = last_epoch+1
         # config.num_epoch = epochs
@@ -360,16 +361,16 @@ if __name__=='__main__':
         device=get_torch_device(),
         num_epoch=100,
         criterion='CEL',
-        optimizer='Adadelta',
+        optimizer='Adam',
         learning_rate=0.001, #0.001 for adagrad
-        train_batch=4,
-        val_batch=4,
+        train_batch=8,
+        val_batch=8,
         num_tubes=4,
         tube_sampling_random=True,
-        frames_per_tube=8, 
-        save_every=10,
+        frames_per_tube=16, 
+        save_every=5,
         freeze=False,
-        additional_info='dynamic-image2',
+        additional_info='with-dynamic-images',
         home_path=HOME_UBUNTU,
         num_workers=4
     )
@@ -377,7 +378,7 @@ if __name__=='__main__':
     # config.pretrained_model='/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt'
     # config.pretrained_model = '/media/david/datos/Violence DATA/VioNet_pth/rwf_trained/save_at_epoch-127.chk'
     # config.restore_training = True
-    # config.pretrained_model = ''
+    # config.checkpoint_path = '/media/david/datos/Violence DATA/VioNet_pth/rwf-2000_model(TwoStreamVD_Binary_CFam)_head(binary)_stream(rgb)_cv(1)_epochs(100)_num_tubes(4)_framesXtube(8)_tub_sampl_rand(True)_criterion(CEL)_optimizer(Adadelta)_lr(0.001)_note()/save_at_epoch-9.chk'
     # config.checkpoint_path = '/media/david/datos/Violence DATA/VioNet_pth/restoredFromDrive/save_at_epoch-49.chk'
     # config.checkpoint_path = os.path.join(config.home_path,
     #                                       PATH_CHECKPOINT,

@@ -37,10 +37,11 @@ class TubeDataset(data.Dataset):
         self.frames_per_tube = frames_per_tube
         # self.spatial_transform = spatial_transform
         self.make_function = make_function
-        if dataset == 'RealLifeViolenceDataset':
-            self.paths, self.labels, self.annotations, self.num_frames = self.make_function()
-        else:
-            self.paths, self.labels, self.annotations = self.make_function()
+        # if dataset == 'RealLifeViolenceDataset':
+        #     self.paths, self.labels, self.annotations, self.num_frames = self.make_function()
+        # else:
+        #     self.paths, self.labels, self.annotations = self.make_function()
+        self.paths, self.labels, self.annotations = self.make_function()
         self.paths, self.labels, self.annotations = filter_data_without_tubelet(self.paths, self.labels, self.annotations)
 
         # self.max_video_len = 39 if dataset=='hockey' else 149
@@ -111,6 +112,7 @@ class TubeDataset(data.Dataset):
             # print('sizes: ', sizes)
             # img = self.spatial_transform(tt(shot_images)) if self.spatial_transform else tt(shot_images)
             key_frame = tt(shot_images)
+            # print('key_frame: ', type(key_frame))
         raw_key_frame = key_frame.copy()
         if self.config['input_2']['spatial_transform']:
             key_frame = self.config['input_2']['spatial_transform'](key_frame)
@@ -195,6 +197,10 @@ class TubeDataset(data.Dataset):
         # return path, label, annotation, frames_names, boxes, video_images
         if self.config['input_2'] is not None:
             key_frames = torch.stack(key_frames, dim=0)
+            if torch.isnan(key_frames).any().item():
+                print('Detected Nan at: ', path)
+            if torch.isinf(key_frames).any().item():
+                print('Detected Inf at: ', path)
             # print('key_frames: ', key_frames.size())
             # print('video_images: ', video_images.size())
             return boxes, video_images, label, num_tubes, path, key_frames
