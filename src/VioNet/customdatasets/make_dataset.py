@@ -550,15 +550,21 @@ def JSON_2_tube(json_file):
 def _avg_num_tubes(annotations):
     video_num_tubes=[]
     num_tubes=[]
+    tube_lengths = []
     for ann in annotations:
         tubes = JSON_2_tube(ann)
         video_num_tubes.append((ann, len(tubes)))
         num_tubes.append(len(tubes))
+        for tube in tubes:
+            # print('tube[len]:', tube['len'], len(tube['boxes']), len(tube['foundAt']))
+            l = 16 if tube['len']>16 else tube['len']
+            tube_lengths.append(tube['len'])
     
     def Average(lst):
         return sum(lst) / len(lst)
     
     print('Avg num_tubes: ', Average(num_tubes))
+    print('Avg len_tubes: ', Average(tube_lengths))
 
 def _get_num_tubes(annotations, make_func):
     video_num_tubes=[]
@@ -573,16 +579,16 @@ def _get_num_tubes(annotations, make_func):
    
     
 if __name__=="__main__":
-    # make_func = MakeRWF2000(root='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames', 
-    #                 train=True,
-    #                 path_annotations='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/final/rwf',
-    #                 category=2)
-    # paths, labels, annotations = make_func()
-    # print("paths: ", len(paths))
-    # print("labels: ",len(labels))
-    # print("annotations: ",len(annotations))
+    make_func = MakeRWF2000(root='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames', 
+                    train=True,
+                    path_annotations='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/final/rwf',
+                    category=2)
+    paths, labels, annotations = make_func()
+    print("paths: ", len(paths))
+    print("labels: ",len(labels))
+    print("annotations: ",len(annotations))
 
-    # _avg_num_tubes(annotations)
+    _avg_num_tubes(annotations)
 
     # print("no tubes in: ")
     # without_tube=[]
@@ -640,16 +646,16 @@ if __name__=="__main__":
     # m.plot(paths[idx], anns)
 
     ###################################################################################################################################
-    make_func = MakeRLVDDataset(root='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RealLifeViolenceDataset/frames', 
-                    train=False,
-                    cv_split_annotation_path='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/VioNetDB-splits/RealLifeViolenceDataset1.json',
-                    path_annotations='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/RealLifeViolenceDataset')
-    paths, labels, annotations, num_frames = make_func()
-    print("paths: ", len(paths))
-    print("labels: ", len(labels))
-    print("annotations: ", len(annotations))
-    print("num_frames: ", len(num_frames))
-    _avg_num_tubes(annotations)
+    # make_func = MakeRLVDDataset(root='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RealLifeViolenceDataset/frames', 
+    #                 train=False,
+    #                 cv_split_annotation_path='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/VioNetDB-splits/RealLifeViolenceDataset1.json',
+    #                 path_annotations='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/RealLifeViolenceDataset')
+    # paths, labels, annotations, num_frames = make_func()
+    # print("paths: ", len(paths))
+    # print("labels: ", len(labels))
+    # print("annotations: ", len(annotations))
+    # print("num_frames: ", len(num_frames))
+    # _avg_num_tubes(annotations)
 
     # print(paths[33:40])
     # print(labels[33:40])

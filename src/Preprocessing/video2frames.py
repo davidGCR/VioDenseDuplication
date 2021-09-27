@@ -54,7 +54,7 @@ def main():
         video_paths = subfolder.glob(ext_[1])
         for video_path in video_paths:
             # Create an output folder for that video's frames.   
-            out_frame_folder = out_category_subfolder / video_path.st em
+            out_frame_folder = out_category_subfolder / video_path.st
 
             if out_frame_folder.exists():
                 continue

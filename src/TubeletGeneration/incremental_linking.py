@@ -351,7 +351,7 @@ class IncrementalLinking:
             #get current temporal window
             w = self.get_temporal_window(t, windows)
             
-            # print('frame: {} , window: {}'.format(t, w))
+            # print('fname: {}, frame_idx: {} , window: {}'.format(self.video_detections[t]['fname'], t, w))
             if w == None:
                 continue
             img_paths, images = self.read_segment(w)
@@ -586,34 +586,66 @@ class IncrementalLinking:
             else:
                 live_paths = []
         
-        self.fill_gaps(live_paths)
+        # self.fill_gaps(live_paths)
         
         
         if plot:
             self.plot_tubes(frames, None, live_paths, self.config['plot_config']['plot_wait_tubes'], gt, self.config['plot_config']['save_folder_final'])
         return live_paths
     
+    # def fill_gaps(self, live_paths):
+    #     for i in range(len(live_paths)):
+    #         lp = live_paths[i]
+
+    #         start = int(re.search(r'\d+', lp['frames_name'][0]).group())
+    #         end = int(re.search(r'\d+', lp['frames_name'][-1]).group())
+
+    #         # full_path = list(range(lp['foundAt'][0],lp['foundAt'][-1]+1))
+    #         full_path = list(range(start, end))
+
+    #         real_numbers = [int(re.search(r'\d+', name).group()) for name in lp['frames_name']]
+    #         # diff = list(set(full_path) ^ set(lp['foundAt']))
+    #         diff = list(set(full_path) ^ set(real_numbers))
+    #         diff.sort()
+    #         # print('diff:',diff)
+    #         for d in diff:
+    #             idx = d - lp['foundAt'][0]
+    #             # print('idx:',idx)
+    #             #avg box
+    #             b1 = lp['boxes'][idx-1]
+    #             b2 = lp['boxes'][idx]
+    #             avg_box = list(np.mean(np.array([b1,b2]), axis=0))
+    #             lp['boxes'].insert(idx, avg_box)
+    #             lp['foundAt'].insert(idx, d)
+    #             lp['frames_name'].insert(idx, 'frame{}.jpg'.format(d+1))
+    #             lp['len'] = lp['len'] + 1
+    #             lp['lastfound'] -= 1
+
     def fill_gaps(self, live_paths):
         for i in range(len(live_paths)):
             lp = live_paths[i]
-            full_path = list(range(lp['foundAt'][0],lp['foundAt'][-1]+1))
-            diff = list(set(full_path) ^ set(lp['foundAt']))
+
+            start = int(re.search(r'\d+', lp['frames_name'][0]).group())
+            end = int(re.search(r'\d+', lp['frames_name'][-1]).group())
+            full_path = list(range(start, end))
+
+            real_numbers = [int(re.search(r'\d+', name).group()) for name in lp['frames_name']]
+            diff = list(set(full_path) ^ set(real_numbers))
             diff.sort()
             # print('diff:',diff)
-            for d in diff:
-                idx = d - lp['foundAt'][0]
+            for i, d in enumerate(diff):
+                idx = real_numbers.index(d)
                 # print('idx:',idx)
                 #avg box
                 b1 = lp['boxes'][idx-1]
                 b2 = lp['boxes'][idx]
                 avg_box = list(np.mean(np.array([b1,b2]), axis=0))
                 lp['boxes'].insert(idx, avg_box)
-                lp['foundAt'].insert(idx, d)
-                lp['frames_name'].insert(idx, 'frame{}.jpg'.format(d+1))
-                lp['len'] = lp['len'] + 1
-                lp['lastfound'] -= 1
-                # lp['score'] +=  lp['boxes'][idx,4]
-
+                lp['foundAt'].insert(idx, lp['foundAt']+1)
+                #TO DO
+                # lp['frames_name'].insert(idx, 'frame{}.jpg'.format(d+1))
+                # lp['len'] = lp['len'] + 1
+                # lp['lastfound'] -= 1
 
     def plot_frame(
         self, 
