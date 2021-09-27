@@ -361,7 +361,7 @@ if __name__=='__main__':
         device=get_torch_device(),
         num_epoch=100,
         criterion='CEL',
-        optimizer='Adam',
+        optimizer='Adadelta',
         learning_rate=0.001, #0.001 for adagrad
         train_batch=8,
         val_batch=8,
