@@ -34,6 +34,7 @@ class BackboneI3D(nn.Module):
       state_dict = torch.load(load_model_path)
       self.backbone.load_state_dict(state_dict,  strict=False)
     if freeze:
+      print('Freezing 3d branch!!!')
       for param in self.backbone.parameters():
           param.requires_grad = False
   

@@ -36,7 +36,7 @@ from models.mil_loss import MIL
 from models.violence_detector import *
 
 from model_transformations import *
-from lib.train_script import train, val, train_regressor
+from lib.train_script import train, val, train_regressor, train_2d_branch, val_2d_branch
 from lib.train_2it_script import train_2it, val_2it
 from lib.accuracy import *
 from VioNet.customdatasets.vio_db import ViolenceDataset
@@ -124,6 +124,9 @@ def main(config: Config, MIL=False):
                 config.model_config['load_weigths']
                 )
         params = model.parameters()
+    elif config.model == 'ResNet2D_Stream':
+        model = ResNet2D_Stream(config.model_config).to(device)
+        params = model.parameters()
 
     if MIL:
         MIL_training(config, model, train_loader)
@@ -150,6 +153,12 @@ def main(config: Config, MIL=False):
                                     lr=config.learning_rate,
                                     momentum=0.9,
                                     weight_decay=1e-3)
+    elif config.optimizer == 'Adam':
+        optimizer = torch.optim.Adam(
+            params, 
+            lr=config.learning_rate, 
+            eps=1e-3, 
+            amsgrad=True)            
     
     if config.criterion == 'CEL':
         criterion = nn.CrossEntropyLoss().to(config.device)
@@ -160,6 +169,7 @@ def main(config: Config, MIL=False):
     start_epoch = 0
     ##Restore training
     if config.restore_training:
+        print('Restoring training from: ', config.checkpoint_path)
         model, optimizer, epochs, last_epoch, last_loss = load_checkpoint(model, config.device, optimizer, config.checkpoint_path)
         start_epoch = last_epoch+1
         # config.num_epoch = epochs
@@ -212,16 +222,16 @@ def data_with_tubes(config: Config, make_dataset_train, make_dataset_val):
             'spatial_transform': i3d_video_transf()['train'],
             'temporal_transform': None
         },
-        'input_2': {
-            'type': 'rgb',
-            'spatial_transform': resnet_transf()['train'],
-            'temporal_transform': None
-        }
         # 'input_2': {
-        #     'type': 'dynamic-image',
-        #     'spatial_transform': resnet_di_transf()['train'],
+        #     'type': 'rgb',
+        #     'spatial_transform': resnet_transf()['train'],
         #     'temporal_transform': None
         # }
+        'input_2': {
+            'type': 'dynamic-image',
+            'spatial_transform': resnet_di_transf()['train'],
+            'temporal_transform': None
+        }
     }
 
     TWO_STREAM_INPUT_val = {
@@ -230,16 +240,16 @@ def data_with_tubes(config: Config, make_dataset_train, make_dataset_val):
             'spatial_transform': i3d_video_transf()['val'],
             'temporal_transform': CenterCrop(size=16, stride=1, input_type='rgb')
         },
-        'input_2': {
-            'type': 'rgb',
-            'spatial_transform': resnet_transf()['val'],
-            'temporal_transform': None
-        }
         # 'input_2': {
-        #     'type': 'dynamic-image',
-        #     'spatial_transform': resnet_di_transf()['val'],
+        #     'type': 'rgb',
+        #     'spatial_transform': resnet_transf()['val'],
         #     'temporal_transform': None
         # }
+        'input_2': {
+            'type': 'dynamic-image',
+            'spatial_transform': resnet_di_transf()['val'],
+            'temporal_transform': None
+        }
     }
     train_dataset = TubeDataset(frames_per_tube=config.frames_per_tube, 
                             make_function=make_dataset_train,
@@ -342,7 +352,7 @@ def data_without_tubes(config: Config, make_dataset_train, make_dataset_val):
 
 if __name__=='__main__':
     config = Config(
-        model='TwoStreamVD_Binary_CFam',#'TwoStreamVD_Binary',#'i3d-roi',i3d+roi+fc
+        model='TwoStreamVD_Binary_CFam',#'TwoStreamVD_Binary_CFam',#'TwoStreamVD_Binary',#'i3d-roi',i3d+roi+fc
         model_config=TWO_STREAM_CFAM_CONFIG,
         head=BINARY,
         dataset=RWF_DATASET,
@@ -351,16 +361,16 @@ if __name__=='__main__':
         device=get_torch_device(),
         num_epoch=100,
         criterion='CEL',
-        optimizer='Adadelta',
+        optimizer='Adam',
         learning_rate=0.001, #0.001 for adagrad
         train_batch=8,
         val_batch=8,
         num_tubes=4,
         tube_sampling_random=True,
-        frames_per_tube=32, 
-        save_every=10,
+        frames_per_tube=16, 
+        save_every=5,
         freeze=False,
-        additional_info='TWO_STREAM_CFAM_CONFIG+finalRWF',
+        additional_info='with-dynamic-images',
         home_path=HOME_UBUNTU,
         num_workers=4
     )
@@ -368,7 +378,7 @@ if __name__=='__main__':
     # config.pretrained_model='/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt'
     # config.pretrained_model = '/media/david/datos/Violence DATA/VioNet_pth/rwf_trained/save_at_epoch-127.chk'
     # config.restore_training = True
-    # config.pretrained_model = ''
+    # config.checkpoint_path = '/media/david/datos/Violence DATA/VioNet_pth/rwf-2000_model(TwoStreamVD_Binary_CFam)_head(binary)_stream(rgb)_cv(1)_epochs(100)_num_tubes(4)_framesXtube(8)_tub_sampl_rand(True)_criterion(CEL)_optimizer(Adadelta)_lr(0.001)_note()/save_at_epoch-9.chk'
     # config.checkpoint_path = '/media/david/datos/Violence DATA/VioNet_pth/restoredFromDrive/save_at_epoch-49.chk'
     # config.checkpoint_path = os.path.join(config.home_path,
     #                                       PATH_CHECKPOINT,
