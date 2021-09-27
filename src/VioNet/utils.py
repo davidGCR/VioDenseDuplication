@@ -3,7 +3,7 @@ import csv
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-
+import re
 
 class AverageMeter(object):
     def __init__(self):
@@ -75,7 +75,6 @@ def load_checkpoint(model, device, optimizer, path):
 
     return model, optimizer, epochs, last_epoch, loss
 
-import re
 def atoi(text):
             return int(text) if text.isdigit() else text
 
@@ -132,6 +131,9 @@ class colors:
  
 # print(colors.bg.green, "SKk", colors.fg.red, "Amartya")
 # print(colors.bg.lightgrey, "SKk", colors.fg.red, "Amartya")
+
+def get_number_from_string(f_name):
+    return int(re.search(r'\d+', f_name).group())
 
 if __name__== '__main__':
     device = get_torch_device()

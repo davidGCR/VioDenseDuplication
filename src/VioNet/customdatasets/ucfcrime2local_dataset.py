@@ -193,16 +193,17 @@ if __name__=='__main__':
     # print(ann)
     # print(video_clips)
 
-    video_dataset = UCFCrime2LocalVideoDataset(
-        path='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/UCFCrime2LocalClips/anomaly/Stealing091(245-468)',
-        sp_annotation='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/CrimeViolence2LocalDATASET/Txt annotations-longVideos/Stealing091.txt',
-        p_detections='',
-        transform=transforms.ToTensor(),
-        clip_len=25,
-        clip_temporal_stride=5
-    )
+    # video_dataset = UCFCrime2LocalVideoDataset(
+    #     path='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime2Local/UCFCrime2LocalClips/anomaly/Stealing091(245-468)',
+    #     sp_annotation='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/CrimeViolence2LocalDATASET/Txt annotations-longVideos/Stealing091.txt',
+    #     p_detections='',
+    #     transform=transforms.ToTensor(),
+    #     clip_len=25,
+    #     clip_temporal_stride=5
+    # )
 
-    for clip, frames, gt in video_dataset:
-        print('--',clip, len(clip), frames.size())
-        for g in gt:
-            print(g)
+    # for clip, frames, gt in video_dataset:
+    #     print('--',clip, len(clip), frames.size())
+    #     for g in gt:
+    #         print(g)
+    print()
