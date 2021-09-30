@@ -51,7 +51,7 @@ TWO_STREAM_CFAM_CONFIG = {
     'backbone_name':'i3d', #i3d, 3dresnet
     'final_endpoint':'Mixed_4e',#'Mixed_5b', #Mixed_4e, so far, only for i3d
     'with_roipool': True,
-    'head': 'binary',
+    'head': 'regression',
     'roi_layer_output':8,
     'roi_with_temporal_pool':True,
     'roi_spatial_scale':16,

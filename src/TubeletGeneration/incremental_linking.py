@@ -297,7 +297,7 @@ class IncrementalLinking:
         img_paths = []
         images = []
         for f in segment:
-            # print('f inm segment: ', f)
+            # print('f inm segment: ', f, len(self.video_detections))
             split = self.video_detections[f]['split']
             video = self.video_detections[f]['video']
             frame = self.video_detections[f]['fname']
@@ -351,7 +351,7 @@ class IncrementalLinking:
             #get current temporal window
             w = self.get_temporal_window(t, windows)
             
-            # print('fname: {}, frame_idx: {} , window: {}'.format(self.video_detections[t]['fname'], t, w))
+            # print('fname: {}, frame_idx: {} , window: {}'.format(t, t, w))
             if w == None:
                 continue
             img_paths, images = self.read_segment(w)

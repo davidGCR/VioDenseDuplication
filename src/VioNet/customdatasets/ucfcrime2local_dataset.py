@@ -16,6 +16,7 @@ from VioNet.dataset import video_loader
 from VioNet.utils import natural_sort
 from operator import itemgetter
 from VioNet.customdatasets.dataset_utils import imread
+import numpy as np
 
 class UCFCrime2LocalDataset(data.Dataset):
     """
@@ -100,7 +101,8 @@ class UCFCrime2LocalVideoDataset(data.Dataset):
         # p_detections,
         transform=None,
         clip_len=25,
-        clip_temporal_stride=1):
+        clip_temporal_stride=1,
+        tubes=None):
         self.path = path
         self.sp_annotation = sp_annotation
         # self.p_detections = p_detections
@@ -111,6 +113,7 @@ class UCFCrime2LocalVideoDataset(data.Dataset):
         self.clips = self.get_video_clips(self.path)
         self.video_name = path.split('/')[-1]
         self.clase = path.split('/')[-2]
+        self.tubes = tubes
     
     def __len__(self):
         return len(self.clips)
@@ -171,11 +174,51 @@ class UCFCrime2LocalVideoDataset(data.Dataset):
         
         return annotations
     
+    def __centered_frames__(self, tube_frames_idxs, tube_len, max_video_len):
+        if len(tube_frames_idxs) == tube_len: 
+            return tube_frames_idxs
+        if len(tube_frames_idxs) > tube_len:
+            n = len(tube_frames_idxs)
+            m = int(n/2)
+            arr = np.array(tube_frames_idxs)
+            centered_array = arr[m-int(tube_len/2) : m+int(tube_len/2)]
+            return centered_array.tolist()
+        if len(tube_frames_idxs) < tube_len: #padding
+            print('padding...')
+            center_idx = int(len(tube_frames_idxs)/2)
+            
+            start = tube_frames_idxs[center_idx]-int(tube_len/2)
+            end = tube_frames_idxs[center_idx]+int(tube_len/2)
+            out = list(range(start,end))
+            print('center_idx: {}, val:{}, start:{}, end:{}={}'.format(center_idx, tube_frames_idxs[center_idx], start, end, out))
+            if out[0]<0:
+                most_neg = abs(out[0])
+                out = [i+most_neg for i in out]
+            elif tube_frames_idxs[center_idx]+int(tube_len/2) > max_video_len:
+                start = tube_frames_idxs[center_idx]-(tube_len-(max_video_len-tube_frames_idxs[center_idx]))+1
+                end = max_video_len+1
+                out = list(range(start,end))
+            tube_frames_idxs = out
+            return tube_frames_idxs
+    
+    def get_center_frames(self, tubes, max_num_frames):
+        for tube in tubes:
+            real_frames = [int(re.search(r'\d+', fname).group()) for fname in tube['frames_name']]
+            print('real_: ', real_frames, len(real_frames))
+            centered_frames = self.__centered_frames__(
+                real_frames,
+                16,
+                max_num_frames
+            )
+            print('centered_frames: ', centered_frames, len(centered_frames))
+    
     def __getitem__(self, index):
         clip = self.clips[index]
         image_names, images = self.load_frames(clip)
         gt = self.load_sp_annotations(image_names, self.sp_annotation)
-        return clip, images, gt
+        # start_frame = image_names[0]
+        # end_frame = image_names[-1]
+        return clip, images, gt, len(clip), image_names
 
 if __name__=='__main__':
     # dataset = UCFCrime2LocalDataset(

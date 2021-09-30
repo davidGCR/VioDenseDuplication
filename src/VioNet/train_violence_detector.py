@@ -1,5 +1,8 @@
 
 import add_path
+
+import sys
+# sys.path.insert(1, '/media/david/datos/PAPERS-SOURCE_CODE/VioDenseDuplication/src/VioNet')
 from models.v_d_config import *
 
 from PIL import Image, ImageFile
@@ -15,8 +18,9 @@ import torchvision.transforms as transforms
 import os
 
 #data
-from customdatasets.make_dataset import MakeRWF2000, MakeHockeyDataset, MakeRLVDDataset
+from customdatasets.make_dataset import MakeRWF2000, MakeHockeyDataset, MakeRLVDDataset, MakeUCFCrime2LocalClips
 from customdatasets.tube_dataset import TubeDataset, my_collate, my_collate_2, OneVideoTubeDataset, TubeFeaturesDataset
+# from customdatasets.ucfcrime2local_dataset import UCFCrime2LocalVideoDataset
 from torch.utils.data import DataLoader
 
 from config import Config
@@ -129,7 +133,13 @@ def main(config: Config, MIL=False):
         params = model.parameters()
 
     if MIL:
-        MIL_training(config, model, train_loader)
+        val_make_dataset = MakeUCFCrime2LocalClips(
+            root='/media/david/datos/Violence DATA/UCFCrime2LocalClips/UCFCrime2LocalClips',
+            # root_normal='/Volumes/TOSHIBA EXT/DATASET/AnomalyCRIMEALL/UCFCrime2Local/frames',
+            path_annotations='/media/david/datos/Violence DATA/UCFCrime2LocalClips/Txt annotations-longVideos',
+            path_person_detections='/media/david/datos/Violence DATA/PersonDetections/ucfcrime2local',
+            abnormal=True)
+        MIL_training(config, model, train_loader, val_make_dataset)
         return 0 
     exp_config_log = config.log
     
@@ -222,16 +232,16 @@ def data_with_tubes(config: Config, make_dataset_train, make_dataset_val):
             'spatial_transform': i3d_video_transf()['train'],
             'temporal_transform': None
         },
-        # 'input_2': {
-        #     'type': 'rgb',
-        #     'spatial_transform': resnet_transf()['train'],
-        #     'temporal_transform': None
-        # }
         'input_2': {
-            'type': 'dynamic-image',
-            'spatial_transform': resnet_di_transf()['train'],
+            'type': 'rgb',
+            'spatial_transform': resnet_transf()['train'],
             'temporal_transform': None
         }
+        # 'input_2': {
+        #     'type': 'dynamic-image',
+        #     'spatial_transform': resnet_di_transf()['train'],
+        #     'temporal_transform': None
+        # }
     }
 
     TWO_STREAM_INPUT_val = {
@@ -240,16 +250,16 @@ def data_with_tubes(config: Config, make_dataset_train, make_dataset_val):
             'spatial_transform': i3d_video_transf()['val'],
             'temporal_transform': CenterCrop(size=16, stride=1, input_type='rgb')
         },
-        # 'input_2': {
-        #     'type': 'rgb',
-        #     'spatial_transform': resnet_transf()['val'],
-        #     'temporal_transform': None
-        # }
         'input_2': {
-            'type': 'dynamic-image',
-            'spatial_transform': resnet_di_transf()['val'],
+            'type': 'rgb',
+            'spatial_transform': resnet_transf()['val'],
             'temporal_transform': None
         }
+        # 'input_2': {
+        #     'type': 'dynamic-image',
+        #     'spatial_transform': resnet_di_transf()['val'],
+        #     'temporal_transform': None
+        # }
     }
     train_dataset = TubeDataset(frames_per_tube=config.frames_per_tube, 
                             make_function=make_dataset_train,
@@ -370,7 +380,7 @@ if __name__=='__main__':
         frames_per_tube=16, 
         save_every=5,
         freeze=False,
-        additional_info='with-dynamic-images',
+        additional_info='',
         home_path=HOME_UBUNTU,
         num_workers=4
     )
@@ -385,7 +395,7 @@ if __name__=='__main__':
     #                                       'rwf-2000_model(TwoStreamVD_Binary_CFam)_head(binary)_stream(rgb)_cv(1)_epochs(100)_num_tubes(4)_framesXtube(16)_tub_sampl_rand(True)_criterion(CEL)_optimizer(Adadelta)_lr(0.001)_note(TWO_STREAM_CFAM_CONFIG+finalRWF)',
     #                                       'save_at_epoch-29.chk')
     torch.autograd.set_detect_anomaly(True)
-    main(config, MIL=False)
+    main(config, MIL=True)
     # MIL_training(config)
     # extract_features(config, output_folder='/media/david/datos/Violence DATA/i3d-FeatureMaps/rwf')
     # load_features(config)

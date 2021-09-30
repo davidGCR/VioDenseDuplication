@@ -87,18 +87,12 @@ def extract_tubes_from_dataset(dataset_persons_detections_path, folder_out, fram
 
     return num_live_paths
 
-def extract_tubes_from_video(frames, gt=None):
-    segmentator = MotionSegmentation(MOTION_SEGMENTATION_CONFIG)
-    tube_builder = IncrementalLinking(TUBE_BUILD_CONFIG)
+def extract_tubes_from_video(frames, motion_seg_config, tube_build_config, gt=None):
+    # segmentator = MotionSegmentation(MOTION_SEGMENTATION_CONFIG)
+    # tube_builder = IncrementalLinking(TUBE_BUILD_CONFIG)
+    segmentator = MotionSegmentation(motion_seg_config)
+    tube_builder = IncrementalLinking(tube_build_config)
     live_paths = tube_builder(frames, segmentator, gt)
-    
-    # tube_2_JSON(output_path='tube_test3.json', tube=live_paths)
-    # for lp in live_paths:
-    #     print(lp['score'])
-    # CountFrequency([{
-    #     'path': '',
-    #     'num': len(live_paths)
-    #     }])
     return  live_paths
 
 def plot_video_tube(tube_json):

@@ -297,7 +297,7 @@
 #         if (epoch+1)%config.save_every == 0:
 #             save_checkpoint(model, config.num_epoch, epoch, optimizer,train_loss, os.path.join(chk_path_folder,"save_at_epoch-"+str(epoch)+".chk"))
 
-from VioNet.lib.train_script import train_regressor
+from VioNet.lib.train_script import train_regressor, val_regressor
 from config import Config
 from global_var import *
 from torch.utils.tensorboard import SummaryWriter
@@ -317,7 +317,7 @@ from utils import save_checkpoint, load_checkpoint
     # write to tensorboard
     # writer.add_image('four_fashion_mnist_images', img_grid)
 
-def MIL_training(config: Config, model, dataloader):
+def MIL_training(config: Config, model, dataloader, val_make_dataset):
     device = config.device
     exp_config_log = config.log
     h_p = HOME_DRIVE if config.home_path==HOME_COLAB else config.home_path
@@ -342,10 +342,7 @@ def MIL_training(config: Config, model, dataloader):
         scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[25, 50])
     elif config.optimizer == 'Adam':
         optimizer = torch.optim.Adam(model.parameters(), lr= config.learning_rate)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,
-                                                           verbose=True,
-                                                           factor=config.factor,
-                                                           min_lr=config.min_lr)
+    
     
     criterion = nn.BCELoss().to(device)
 
@@ -355,20 +352,26 @@ def MIL_training(config: Config, model, dataloader):
         model, optimizer, epochs, last_epoch, last_loss = load_checkpoint(model, config.device, optimizer, config.checkpoint_path)
         start_epoch = last_epoch+1
         # config.num_epoch = epochs
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,
+                                                           verbose=True,
+                                                           factor=config.factor,
+                                                           min_lr=config.min_lr)
 
     for epoch in range(start_epoch, config.num_epoch):
-        train_loss, train_acc = train_regressor(
-            dataloader, 
-            epoch, 
-            model, 
-            criterion, 
-            optimizer, 
-            config.device, 
-            config, 
-            None,
-            False)
+        # train_loss, train_acc = train_regressor(
+        #     dataloader, 
+        #     epoch, 
+        #     model, 
+        #     criterion, 
+        #     optimizer, 
+        #     config.device, 
+        #     config, 
+        #     None,
+        #     False)
         
-        writer.add_scalar('training loss', train_loss, epoch)
+        val_regressor(val_make_dataset)
         
-        if (epoch+1)%config.save_every == 0:
-            save_checkpoint(model, config.num_epoch, epoch, optimizer,train_loss, os.path.join(chk_path_folder,"save_at_epoch-"+str(epoch)+".chk"))
+        # writer.add_scalar('training loss', train_loss, epoch)
+        
+        # if (epoch+1)%config.save_every == 0:
+        #     save_checkpoint(model, config.num_epoch, epoch, optimizer,train_loss, os.path.join(chk_path_folder,"save_at_epoch-"+str(epoch)+".chk"))

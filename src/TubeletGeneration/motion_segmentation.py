@@ -1,5 +1,6 @@
 import sys
-sys.path.insert(1, '/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/AVSS2019/src/VioNet')
+# sys.path.insert(1, '/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/AVSS2019/src/VioNet')
+sys.path.insert(1, '/media/david/datos/PAPERS-SOURCE_CODE/VioDenseDuplication/src/TubeletGeneration')
 import transformations.temporal_transforms as ts
 import transformations.dynamic_image_transformation as tt
 import random as rng

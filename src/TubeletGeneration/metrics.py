@@ -12,7 +12,7 @@ import cv2
 import re
 import numpy as np
 import matplotlib
-from main import extract_tubes_from_video
+from tube_test import extract_tubes_from_video
 from tube_config import *
 
 from torchvision import transforms
