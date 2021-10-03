@@ -1,5 +1,6 @@
 import torch
 from utils import AverageMeter, get_number_from_string
+import numpy as np
 
 def train(_loader, _epoch, _model, _criterion, _optimizer, _device, _config, _accuracy_fn, _verbose=False):
     print('training at epoch: {}'.format(_epoch))
@@ -180,7 +181,7 @@ from TubeletGeneration.tube_config import *
 from TubeletGeneration.tube_test import extract_tubes_from_video
 from TubeletGeneration.metrics import st_iou
 
-def val_regressor(val_make_dataset):
+def val_regressor(val_make_dataset, transformations, _model, _device):
     paths, labels, annotations, annotations_p_detections, num_frames = val_make_dataset()
     i = 0
     threshold = 0.2
@@ -196,31 +197,57 @@ def val_regressor(val_make_dataset):
             sp_annotation=annotation,
             transform=transforms.ToTensor(),
             clip_len=n_frames,
-            clip_temporal_stride=5
+            clip_temporal_stride=5,
+            transformations=transformations
         )
         person_detections = JSON_2_videoDetections(annotation_p_detections)
         # print('person_detections: ', person_detections,len(person_detections))
         TUBE_BUILD_CONFIG['dataset_root'] = '/media/david/datos/Violence DATA/UCFCrime2LocalClips/UCFCrime2LocalClips'
         TUBE_BUILD_CONFIG['person_detections'] = person_detections
-        for clip, frames, gt, num_frames, frames_name in video_dataset:
-            print('frAMES: ', frames.size())
+        for clip, frames_name, gt, num_frames in video_dataset:
             lps_split = extract_tubes_from_video(
                                     clip,
                                     MOTION_SEGMENTATION_CONFIG,
                                     TUBE_BUILD_CONFIG
                                     # gt=gt
                                     )
-            real_numbers = [get_number_from_string(name) for name in lps_split[0]['frames_name']]
-            print('real frame numbers:', real_numbers)
-            # print('frames_name:', frames_name)                                                                        
-            # print('extracted tubes: ', len(lps_split), lps_split[0]['frames_name'], lps_split[0]['foundAt'], ' max_num_frames: ', lps_split[0]['foundAt'][-1])
-            video_dataset.get_center_frames(lps_split, get_number_from_string(frames_name[-1]))
-            # le = loc_error_tube_gt(lps_split[0],gt, threshold=0.5)
-            # print('localization_error: ', le)
-            stmp_iou = st_iou(lps_split[0], gt)
-            # print('stmp_iou: ', stmp_iou)
-            y_true.append('positive')
-            pred_scores.append(stmp_iou)
+            number_tubes = len(lps_split)
+            # print('\treal frame numbers all clip:', frames_name)
+            tube_scores=[]
+            for i, tube in enumerate(lps_split):
+                # print('---tube {}'.format(i+1))                      
+                tube_real_numbers = [get_number_from_string(name) for name in tube['frames_name']]
+                if tube['len']>3:
+                    # print('frames_name:', frames_name)                                                                        
+                    # print('extracted tubes: ', len(lps_split), lps_split[0]['frames_name'], lps_split[0]['foundAt'], ' max_num_frames: ', lps_split[0]['foundAt'][-1])
+                    images, bbox, keyframe = video_dataset.get_tube_data(
+                        tube, 
+                        get_number_from_string(frames_name[-1]), 
+                        get_number_from_string(frames_name[0]),
+                        0)
+                    images = images.to(_device)
+                    bbox = bbox.to(_device)
+                    keyframe = keyframe.to(_device)
+                    # le = loc_error_tube_gt(lps_split[0],gt, threshold=0.5)
+                    # print('\timages: ', images.size())
+                    # print('\tbbox: ', bbox.size())
+                    # print('\tkeyframe: ', keyframe.size())
+
+                    outs = _model(images, keyframe, bbox, 1)
+                    # print('\tSCORE: ', outs, outs.size())
+                    tube_scores.append(outs.item())
+                else:
+                    tube_scores.append(0)
+            
+            tube_scores = np.array(tube_scores)
+            print('tube_scores: ', tube_scores)
+            max_idx = np.argmax(tube_scores)
+            print('max_idx: ', max_idx)
+            
+            stmp_iou = st_iou(lps_split[max_idx], gt)
+            print('stmp_iou: ', stmp_iou)
+            # y_true.append('positive')
+            # pred_scores.append(stmp_iou)
         i+=1
 
 

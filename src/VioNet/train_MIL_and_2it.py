@@ -317,7 +317,7 @@ from utils import save_checkpoint, load_checkpoint
     # write to tensorboard
     # writer.add_image('four_fashion_mnist_images', img_grid)
 
-def MIL_training(config: Config, model, dataloader, val_make_dataset):
+def MIL_training(config: Config, model, dataloader, val_make_dataset, transformations):
     device = config.device
     exp_config_log = config.log
     h_p = HOME_DRIVE if config.home_path==HOME_COLAB else config.home_path
@@ -369,7 +369,7 @@ def MIL_training(config: Config, model, dataloader, val_make_dataset):
         #     None,
         #     False)
         
-        val_regressor(val_make_dataset)
+        val_regressor(val_make_dataset, transformations, model, config.device)
         
         # writer.add_scalar('training loss', train_loss, epoch)
         

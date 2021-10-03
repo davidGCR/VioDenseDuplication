@@ -391,7 +391,8 @@ class TwoStreamVD_Binary_CFam(nn.Module):
         if self.with_roipool:
             batch = int(batch/num_tubes)
             x_3d = self.roi_pool_3d(x_3d,bbox)#torch.Size([8, 528])
-            x_3d = torch.squeeze(x_3d)
+            x_3d = torch.squeeze(x_3d, dim=2)
+            # x_3d = torch.squeeze(x_3d)
             # print('3d after roipool: ', x_3d.size())
             x_2d = self.roi_pool_2d(x_2d, bbox)
             # print('2d after roipool: ', x_2d.size())
@@ -538,10 +539,10 @@ if __name__=='__main__':
     rois[6] = torch.tensor([1, 34, 14, 85, 77]).to(device)
     rois[7] = torch.tensor([1, 34, 14, 85, 77]).to(device)
 
-    # output = model(input_1, input_2, rois, tubes)
-    output = model(input_1, input_2, None, None)
+    output = model(input_1, input_2, rois, tubes)
+    # output = model(input_1, input_2, None, None)
     # output = model(input_1, rois, tubes)
-    print('output: ', output.size())
+    print('output: ', output, output.size())
     
     # regressor = ViolenceDetectorRegression().to(device)
     # input_1 = torch.rand(batch*tubes,3,16,224,224).to(device)

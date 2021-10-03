@@ -102,7 +102,8 @@ class UCFCrime2LocalVideoDataset(data.Dataset):
         transform=None,
         clip_len=25,
         clip_temporal_stride=1,
-        tubes=None):
+        tubes=None,
+        transformations=None):
         self.path = path
         self.sp_annotation = sp_annotation
         # self.p_detections = p_detections
@@ -114,6 +115,7 @@ class UCFCrime2LocalVideoDataset(data.Dataset):
         self.video_name = path.split('/')[-1]
         self.clase = path.split('/')[-2]
         self.tubes = tubes
+        self.transformations = transformations
     
     def __len__(self):
         return len(self.clips)
@@ -148,6 +150,17 @@ class UCFCrime2LocalVideoDataset(data.Dataset):
         images = torch.stack(images, dim=0)
         return image_names, images
     
+    def load_frames_from_numbers(self, indices):
+        image_names = ['frame{:03}.jpg'.format(n) for n in indices]
+        image_paths = [os.path.join(self.path,img_name) for img_name in image_names]
+        images = []
+        for ip in image_paths:
+            img = imread(ip)
+            images.append(img)
+        # print('len(images): ', len(images), type(images[0]))
+        # images = torch.stack(images, dim=0)
+        return image_names, images
+    
     def load_sp_annotations(self, frames, ann_path):
         frames_numbers = [int(re.findall(r'\d+', f)[0]) for f in frames]
         frames_numbers.sort()
@@ -174,7 +187,7 @@ class UCFCrime2LocalVideoDataset(data.Dataset):
         
         return annotations
     
-    def __centered_frames__(self, tube_frames_idxs, tube_len, max_video_len):
+    def __centered_frames__(self, tube_frames_idxs, tube_len, max_video_len, min_frame):
         if len(tube_frames_idxs) == tube_len: 
             return tube_frames_idxs
         if len(tube_frames_idxs) > tube_len:
@@ -184,14 +197,15 @@ class UCFCrime2LocalVideoDataset(data.Dataset):
             centered_array = arr[m-int(tube_len/2) : m+int(tube_len/2)]
             return centered_array.tolist()
         if len(tube_frames_idxs) < tube_len: #padding
-            print('padding...')
+
+            # print('padding...')
             center_idx = int(len(tube_frames_idxs)/2)
             
             start = tube_frames_idxs[center_idx]-int(tube_len/2)
             end = tube_frames_idxs[center_idx]+int(tube_len/2)
             out = list(range(start,end))
-            print('center_idx: {}, val:{}, start:{}, end:{}={}'.format(center_idx, tube_frames_idxs[center_idx], start, end, out))
-            if out[0]<0:
+            # print('center_idx: {}, val:{}, start:{}, end:{}={}'.format(center_idx, tube_frames_idxs[center_idx], start, end, out))
+            if out[0]<min_frame:
                 most_neg = abs(out[0])
                 out = [i+most_neg for i in out]
             elif tube_frames_idxs[center_idx]+int(tube_len/2) > max_video_len:
@@ -201,24 +215,59 @@ class UCFCrime2LocalVideoDataset(data.Dataset):
             tube_frames_idxs = out
             return tube_frames_idxs
     
-    def get_center_frames(self, tubes, max_num_frames):
-        for tube in tubes:
-            real_frames = [int(re.search(r'\d+', fname).group()) for fname in tube['frames_name']]
-            print('real_: ', real_frames, len(real_frames))
-            centered_frames = self.__centered_frames__(
-                real_frames,
-                16,
-                max_num_frames
-            )
-            print('centered_frames: ', centered_frames, len(centered_frames))
+    def __central_bbox__(self, tube, id):
+        width, height = 224, 224
+        if len(tube)>2:
+            central_box = tube[int(len(tube)/2)]
+        else:
+            central_box = tube[0]
+        central_box = central_box[0:4]
+        central_box = np.array([max(central_box[0], 0), max(central_box[1], 0), min(central_box[2], width - 1), min(central_box[3], height - 1)])
+        central_box = np.insert(central_box[0:4], 0, id).reshape(1,-1)
+        central_box = torch.from_numpy(central_box).float()
+        return central_box
     
+    def get_tube_data(self, tube, max_num_frames, min_frame, box_id):
+        sampled_frames_from_tubes = []
+        bboxes_from_tubes = []
+        
+        tube_real_frames = [int(re.search(r'\d+', fname).group()) for fname in tube['frames_name']]
+        print('==tube_real_frames: ', tube_real_frames, len(tube_real_frames))
+        centered_frames = self.__centered_frames__(
+            tube_real_frames,
+            16,
+            max_num_frames,
+            0
+        )
+        print('==centered_frames: ', centered_frames, len(centered_frames))
+        image_names, images = self.load_frames_from_numbers(centered_frames)
+        
+        bbox = self.__central_bbox__(tube['boxes'], box_id)
+        keyframe = images[int(len(images)/2)]
+        # keyframe = torch.unsqueeze(torch.tensor(keyframe), dim=0)
+        
+        
+        if self.transformations['input_1']['spatial_transform'] is not None:
+            images = self.transformations['input_1']['spatial_transform'](images)
+        if self.transformations['input_2']['spatial_transform'] is not None:
+            keyframe = self.transformations['input_2']['spatial_transform'](keyframe)
+
+        images = torch.stack(images)
+        images = torch.unsqueeze(images, dim=0).permute(0,2,1,3,4)
+        keyframe = torch.unsqueeze(keyframe, dim=0)
+        # print('images: ', type(images))
+
+        return images, bbox, keyframe
+
     def __getitem__(self, index):
         clip = self.clips[index]
-        image_names, images = self.load_frames(clip)
+        # image_names, images = self.load_frames(clip)
+        image_names = os.listdir(self.path)
+        image_names = natural_sort(image_names)
+        image_names = list(itemgetter(*clip)(image_names))
         gt = self.load_sp_annotations(image_names, self.sp_annotation)
-        # start_frame = image_names[0]
-        # end_frame = image_names[-1]
-        return clip, images, gt, len(clip), image_names
+        
+        return clip, image_names, gt, len(clip)
 
 if __name__=='__main__':
     # dataset = UCFCrime2LocalDataset(

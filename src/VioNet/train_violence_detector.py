@@ -139,7 +139,19 @@ def main(config: Config, MIL=False):
             path_annotations='/media/david/datos/Violence DATA/UCFCrime2LocalClips/Txt annotations-longVideos',
             path_person_detections='/media/david/datos/Violence DATA/PersonDetections/ucfcrime2local',
             abnormal=True)
-        MIL_training(config, model, train_loader, val_make_dataset)
+        TWO_STREAM_INPUT_val = {
+            'input_1': {
+                'type': 'rgb',
+                'spatial_transform': i3d_video_transf()['val'],
+                'temporal_transform': CenterCrop(size=16, stride=1, input_type='rgb')
+            },
+            'input_2': {
+                'type': 'rgb',
+                'spatial_transform': resnet_transf()['val'],
+                'temporal_transform': None
+            }
+        }
+        MIL_training(config, model, train_loader, val_make_dataset, TWO_STREAM_INPUT_val)
         return 0 
     exp_config_log = config.log
     
