@@ -179,19 +179,19 @@ from torchvision import transforms
 from TubeletGeneration.tube_utils import JSON_2_videoDetections
 from TubeletGeneration.tube_config import *
 from TubeletGeneration.tube_test import extract_tubes_from_video
-from TubeletGeneration.metrics import st_iou
+from TubeletGeneration.metrics import st_iou, precision_recall_curve
 
-def val_regressor(val_make_dataset, transformations, _model, _device):
+def val_regressor(val_make_dataset, transformations, _model, _device, _epoch):
+    print('validation at epoch: {}'.format(_epoch))
+    _model.eval()
     paths, labels, annotations, annotations_p_detections, num_frames = val_make_dataset()
-    i = 0
-    threshold = 0.2
+    # print('paths :{}, labels:{}, annotations:{}, p_detections:{}, num_frames:{}'.format(
+    #     len(paths), len(labels), len(annotations), len(annotations_p_detections), len(num_frames)))
     y_true = []
     pred_scores = []
-    for path, label, annotation, annotation_p_detections, n_frames in zip(paths, labels, annotations, annotations_p_detections, num_frames):
-        # if i > 0 :
-        #     break
-        print('{}--video:{}, num_frames: {}'.format(i+1, path, n_frames))
-        print('----annotation:{}, p_detec: {}, {}'.format(annotation, annotation_p_detections, type(annotation_p_detections)))
+    for i, (path, label, annotation, annotation_p_detections, n_frames) in enumerate(zip(paths, labels, annotations, annotations_p_detections, num_frames)):
+        # print('{}--video:{}, num_frames: {}'.format(i+1, path, n_frames))
+        # print('----annotation:{}, p_detec: {}, {}'.format(annotation, annotation_p_detections, type(annotation_p_detections)))
         video_dataset = UCFCrime2LocalVideoDataset(
             path=path,
             sp_annotation=annotation,
@@ -201,7 +201,6 @@ def val_regressor(val_make_dataset, transformations, _model, _device):
             transformations=transformations
         )
         person_detections = JSON_2_videoDetections(annotation_p_detections)
-        # print('person_detections: ', person_detections,len(person_detections))
         TUBE_BUILD_CONFIG['dataset_root'] = '/media/david/datos/Violence DATA/UCFCrime2LocalClips/UCFCrime2LocalClips'
         TUBE_BUILD_CONFIG['person_detections'] = person_detections
         for clip, frames_name, gt, num_frames in video_dataset:
@@ -212,7 +211,6 @@ def val_regressor(val_make_dataset, transformations, _model, _device):
                                     # gt=gt
                                     )
             number_tubes = len(lps_split)
-            # print('\treal frame numbers all clip:', frames_name)
             tube_scores=[]
             for i, tube in enumerate(lps_split):
                 # print('---tube {}'.format(i+1))                      
@@ -232,23 +230,45 @@ def val_regressor(val_make_dataset, transformations, _model, _device):
                     # print('\timages: ', images.size())
                     # print('\tbbox: ', bbox.size())
                     # print('\tkeyframe: ', keyframe.size())
-
-                    outs = _model(images, keyframe, bbox, 1)
+                    with torch.no_grad():
+                        outs = _model(images, keyframe, bbox, 1)
                     # print('\tSCORE: ', outs, outs.size())
                     tube_scores.append(outs.item())
                 else:
                     tube_scores.append(0)
             
             tube_scores = np.array(tube_scores)
-            print('tube_scores: ', tube_scores)
+            # print('tube_scores: ', tube_scores)
             max_idx = np.argmax(tube_scores)
-            print('max_idx: ', max_idx)
+            # print('max_idx: ', max_idx)
             
             stmp_iou = st_iou(lps_split[max_idx], gt)
-            print('stmp_iou: ', stmp_iou)
-            # y_true.append('positive')
-            # pred_scores.append(stmp_iou)
-        i+=1
+            # print('stmp_iou: ', stmp_iou)
+            y_true.append('positive')
+            pred_scores.append(stmp_iou)
+    ##
+    thresholds = [0.5, 0.2]
+    aps=[]
+    for k in range(len(thresholds)):
+        thr = np.array([thresholds[k]])
+        precisions, recalls = precision_recall_curve(y_true=y_true, 
+                                                    pred_scores=pred_scores,
+                                                    thresholds=thr)
+        recall_11 = np.linspace(0, 1, 11)
+        precisions_11 = []
+        for r in recall_11:
+            if r <= recalls[0]:
+                precisions_11.append(precisions[0])
+            else:
+                precisions_11.append(0)
+        AP = (1/11)*np.sum(precisions_11)
+        aps.append(AP)
+    print(
+        'Epoch: [{}]\t'
+        'AP@0.5(val): {:.3f}\t'
+        'AP@0.2(val): {:.3f}'.format(_epoch, aps[0], aps[1])
+    )
+    # print('AP: ', AP)
 
 
 def train_2d_branch(

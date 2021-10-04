@@ -73,12 +73,12 @@ def st_iou(tube, gt, threshold=0.5):
     T_i = max(0,min(tge,tde)-max(tgb,tdb))
     # print('min(tge,tde): (tge,tde)=({},{}) = {}'.format(tge, tde, min(tge,tde)))
     # print('max(tgb,tdb): (tgb,tdb)=({},{}) = {}'.format(tgb, tdb, max(tgb,tdb)))
-    print('T_i: {}'.format(T_i))
+    # print('T_i: {}'.format(T_i))
     if T_i>0:
         T_u = max(tge, tde) - min(tgb, tdb) + 1
-        print('T_u: {}'.format(T_u))
+        # print('T_u: {}'.format(T_u))
         T_iou = T_i/T_u
-        print('T_iou: {}'.format(T_iou))
+        # print('T_iou: {}'.format(T_iou))
         frames_gt = [box_gt['frame'] for box_gt in gt]
         frames_dt = [int(get_number_from_string(f_name)) for f_name in tube['frames_name']]
 

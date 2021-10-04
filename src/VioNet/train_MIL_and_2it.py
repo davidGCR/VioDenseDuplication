@@ -358,18 +358,18 @@ def MIL_training(config: Config, model, dataloader, val_make_dataset, transforma
                                                            min_lr=config.min_lr)
 
     for epoch in range(start_epoch, config.num_epoch):
-        # train_loss, train_acc = train_regressor(
-        #     dataloader, 
-        #     epoch, 
-        #     model, 
-        #     criterion, 
-        #     optimizer, 
-        #     config.device, 
-        #     config, 
-        #     None,
-        #     False)
+        train_loss, train_acc = train_regressor(
+            dataloader, 
+            epoch, 
+            model, 
+            criterion, 
+            optimizer, 
+            config.device, 
+            config, 
+            None,
+            False)
         
-        val_regressor(val_make_dataset, transformations, model, config.device)
+        val_regressor(val_make_dataset, transformations, model, config.device, epoch)
         
         # writer.add_scalar('training loss', train_loss, epoch)
         

@@ -381,7 +381,7 @@ if __name__=='__main__':
         num_cv=1,
         input_type='rgb',
         device=get_torch_device(),
-        num_epoch=100,
+        num_epoch=200,
         criterion='CEL',
         optimizer='Adadelta',
         learning_rate=0.001, #0.001 for adagrad
@@ -392,7 +392,7 @@ if __name__=='__main__':
         frames_per_tube=16, 
         save_every=5,
         freeze=False,
-        additional_info='',
+        additional_info='spatio-temporal-detector',
         home_path=HOME_UBUNTU,
         num_workers=4
     )

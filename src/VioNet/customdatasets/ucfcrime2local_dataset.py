@@ -232,14 +232,14 @@ class UCFCrime2LocalVideoDataset(data.Dataset):
         bboxes_from_tubes = []
         
         tube_real_frames = [int(re.search(r'\d+', fname).group()) for fname in tube['frames_name']]
-        print('==tube_real_frames: ', tube_real_frames, len(tube_real_frames))
+        # print('==tube_real_frames: ', tube_real_frames, len(tube_real_frames))
         centered_frames = self.__centered_frames__(
             tube_real_frames,
             16,
             max_num_frames,
             0
         )
-        print('==centered_frames: ', centered_frames, len(centered_frames))
+        # print('==centered_frames: ', centered_frames, len(centered_frames))
         image_names, images = self.load_frames_from_numbers(centered_frames)
         
         bbox = self.__central_bbox__(tube['boxes'], box_id)
