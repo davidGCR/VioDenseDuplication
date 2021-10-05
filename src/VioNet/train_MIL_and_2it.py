@@ -369,9 +369,22 @@ def MIL_training(config: Config, model, dataloader, val_make_dataset, transforma
             None,
             False)
         
-        val_regressor(val_make_dataset, transformations, model, config.device, epoch)
+        ap05, ap02 = val_regressor(
+            val_make_dataset, 
+            transformations, 
+            model, 
+            config.device, 
+            epoch)
+        scheduler.step(train_loss)
+        writer.add_scalar('training loss', train_loss, epoch)
+        writer.add_scalar('AP-0.5', ap05, epoch)
+        writer.add_scalar('AP-0.2', ap02, epoch)
         
-        # writer.add_scalar('training loss', train_loss, epoch)
-        
-        # if (epoch+1)%config.save_every == 0:
-        #     save_checkpoint(model, config.num_epoch, epoch, optimizer,train_loss, os.path.join(chk_path_folder,"save_at_epoch-"+str(epoch)+".chk"))
+        if (epoch+1)%config.save_every == 0:
+            save_checkpoint(
+                model, 
+                config.num_epoch, 
+                epoch, 
+                optimizer,
+                train_loss, 
+                os.path.join(chk_path_folder,"save_at_epoch-"+str(epoch)+".chk"))

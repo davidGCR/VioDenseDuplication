@@ -180,6 +180,7 @@ from TubeletGeneration.tube_utils import JSON_2_videoDetections
 from TubeletGeneration.tube_config import *
 from TubeletGeneration.tube_test import extract_tubes_from_video
 from TubeletGeneration.metrics import st_iou, precision_recall_curve
+from torch.utils.data import DataLoader
 
 def val_regressor(val_make_dataset, transformations, _model, _device, _epoch):
     print('validation at epoch: {}'.format(_epoch))
@@ -200,10 +201,15 @@ def val_regressor(val_make_dataset, transformations, _model, _device, _epoch):
             clip_temporal_stride=5,
             transformations=transformations
         )
+        val_loader = DataLoader(video_dataset,
+                        batch_size=1,
+                        shuffle=False,
+                        num_workers=4,
+                        )
         person_detections = JSON_2_videoDetections(annotation_p_detections)
         TUBE_BUILD_CONFIG['dataset_root'] = '/media/david/datos/Violence DATA/UCFCrime2LocalClips/UCFCrime2LocalClips'
         TUBE_BUILD_CONFIG['person_detections'] = person_detections
-        for clip, frames_name, gt, num_frames in video_dataset:
+        for clip, frames_name, gt, num_frames in val_loader:
             lps_split = extract_tubes_from_video(
                                     clip,
                                     MOTION_SEGMENTATION_CONFIG,
@@ -265,10 +271,10 @@ def val_regressor(val_make_dataset, transformations, _model, _device, _epoch):
         aps.append(AP)
     print(
         'Epoch: [{}]\t'
-        'AP@0.5(val): {:.3f}\t'
-        'AP@0.2(val): {:.3f}'.format(_epoch, aps[0], aps[1])
+        'AP@0.5(val): {:.4f}\t'
+        'AP@0.2(val): {:.4f}'.format(_epoch, aps[0], aps[1])
     )
-    # print('AP: ', AP)
+    return aps[0], aps[1]
 
 
 def train_2d_branch(

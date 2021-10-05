@@ -107,17 +107,17 @@ def main(config: Config, MIL=False):
    
     
     ################## Full Detector ########################
-    from models.violence_detector import ViolenceDetectorBinary
-    if config.model == 'densenet_lean_roi':
-        model, params = VioNet_densenet_lean_roi(config, config.pretrained_model)
-    elif config.model == 'i3d+roi+i3d':
-        model, params = VioNet_I3D_Roi(config, device, config.pretrained_model)
-    elif config.model == 'i3d+roi+binary':
-        model = ViolenceDetectorBinary(
-            freeze=config.freeze,
-            input_dim=528).to(device)
-        params = model.parameters()
-    elif config.model == 'TwoStreamVD_Binary_CFam':
+    # from models.violence_detector import ViolenceDetectorBinary
+    # if config.model == 'densenet_lean_roi':
+    #     model, params = VioNet_densenet_lean_roi(config, config.pretrained_model)
+    # elif config.model == 'i3d+roi+i3d':
+    #     model, params = VioNet_I3D_Roi(config, device, config.pretrained_model)
+    # elif config.model == 'i3d+roi+binary':
+    #     model = ViolenceDetectorBinary(
+    #         freeze=config.freeze,
+    #         input_dim=528).to(device)
+    #     params = model.parameters()
+    if config.model == 'TwoStreamVD_Binary_CFam' or config.model == 'MIL_TwoStreamVD_Binary_CFam':
         model = TwoStreamVD_Binary_CFam(config.model_config).to(device)
         if config.model_config['load_weigths'] is not None:
             print('Loading model from checkpoint...')
@@ -374,16 +374,16 @@ def data_without_tubes(config: Config, make_dataset_train, make_dataset_val):
 
 if __name__=='__main__':
     config = Config(
-        model='TwoStreamVD_Binary_CFam',#'TwoStreamVD_Binary_CFam',#'TwoStreamVD_Binary',#'i3d-roi',i3d+roi+fc
-        model_config=TWO_STREAM_CFAM_CONFIG,
-        head=BINARY,
+        model='MIL_TwoStreamVD_Binary_CFam',#'TwoStreamVD_Binary_CFam',#'TwoStreamVD_Binary',#'i3d-roi',i3d+roi+fc
+        model_config=MIL_TWO_STREAM_CFAM_CONFIG,
+        # head=BINARY,
         dataset=RWF_DATASET,
         num_cv=1,
-        input_type='rgb',
+        # input_type='',
         device=get_torch_device(),
         num_epoch=200,
         criterion='CEL',
-        optimizer='Adadelta',
+        optimizer='SGD',
         learning_rate=0.001, #0.001 for adagrad
         train_batch=8,
         val_batch=8,
@@ -391,8 +391,8 @@ if __name__=='__main__':
         tube_sampling_random=True,
         frames_per_tube=16, 
         save_every=5,
-        freeze=False,
-        additional_info='spatio-temporal-detector',
+        # freeze=False,
+        additional_info='',
         home_path=HOME_UBUNTU,
         num_workers=4
     )

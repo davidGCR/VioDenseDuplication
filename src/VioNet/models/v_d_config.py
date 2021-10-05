@@ -48,6 +48,29 @@ TWO_STREAM_CFAM_CONFIG_old = {
 }
 
 TWO_STREAM_CFAM_CONFIG = {
+    'name': 'TWO_STREAM_CFAM_CONFIG',
+    'backbone_name':'i3d', #i3d, 3dresnet
+    'final_endpoint':'Mixed_4e',#'Mixed_5b', #Mixed_4e, so far, only for i3d
+    'with_roipool': True,
+    'head': 'binary',
+    'roi_layer_output':8,
+    'roi_with_temporal_pool':True,
+    'roi_spatial_scale':16,
+    'roi_layer_type':'RoIAlign',
+    'pretrained_backbone_model': '/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt',
+    'freeze_3d': True,
+    '2d_backbone': 'resnet50',
+    'base_out_layer': 'layer3',
+    'num_trainable_layers': 3,
+    'CFAMBlock_in_channels': 528+1024,#528+1024,#528+1024, #832+2048
+    'CFAMBlock_out_channels': 512, #1024
+    'fc_input_dim': 8*8*512,#512#7105#145,#9280,
+    'load_weigths': None#'/media/david/datos/Violence DATA/VioNet_pth/rwf-2000_model(TwoStreamVD_Binary_CFam)_head(binary)_stream(rgb)_cv(1)_epochs(100)_num_tubes(4)_framesXtube(16)_tub_sampl_rand(True)_optimizer(Adadelta)_lr(0.001)_note(TWO_STREAM_CFAM_CONFIG+RWF-2000-150frames-motion-maps2-centralframe-corrected)/save_at_epoch-49.chk'#'/media/david/datos/Violence DATA/VioNet_pth/rwf-2000_model(TwoStreamVD_Binary_CFam)_head(binary)_stream(rgb)_cv(1)_epochs(100)_num_tubes(4)_framesXtube(16)_tub_sampl_rand(True)_optimizer(Adadelta)_lr(0.001)_note(TWO_STREAM_CFAM_CONFIG+otherTrack)/save_at_epoch-39.chk'
+    
+}
+
+MIL_TWO_STREAM_CFAM_CONFIG = {
+    'name': 'MIL_TWO_STREAM_CFAM_CONFIG',
     'backbone_name':'i3d', #i3d, 3dresnet
     'final_endpoint':'Mixed_4e',#'Mixed_5b', #Mixed_4e, so far, only for i3d
     'with_roipool': True,
@@ -65,7 +88,6 @@ TWO_STREAM_CFAM_CONFIG = {
     'CFAMBlock_out_channels': 512, #1024
     'fc_input_dim': 8*8*512,#512#7105#145,#9280,
     'load_weigths': None#'/media/david/datos/Violence DATA/VioNet_pth/rwf-2000_model(TwoStreamVD_Binary_CFam)_head(binary)_stream(rgb)_cv(1)_epochs(100)_num_tubes(4)_framesXtube(16)_tub_sampl_rand(True)_optimizer(Adadelta)_lr(0.001)_note(TWO_STREAM_CFAM_CONFIG+RWF-2000-150frames-motion-maps2-centralframe-corrected)/save_at_epoch-49.chk'#'/media/david/datos/Violence DATA/VioNet_pth/rwf-2000_model(TwoStreamVD_Binary_CFam)_head(binary)_stream(rgb)_cv(1)_epochs(100)_num_tubes(4)_framesXtube(16)_tub_sampl_rand(True)_optimizer(Adadelta)_lr(0.001)_note(TWO_STREAM_CFAM_CONFIG+otherTrack)/save_at_epoch-39.chk'
-    
 }
 
 TWO_STREAM_CFAM_NO_TUBE_CONFIG = {

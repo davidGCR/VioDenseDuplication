@@ -123,11 +123,12 @@ class Config:
         self.log = self.log_name()
     
     def log_name(self):
-        log = "{}_model({})_head({})_stream({})_cv({})_epochs({})_num_tubes({})_framesXtube({})_tub_sampl_rand({})_criterion({})_optimizer({})_lr({})_note({})".format(
+        log = "{}_model({})_config({})_cv({})_epochs({})_num_tubes({})_framesXtube({})_tub_sampl_rand({})_criterion({})_optimizer({})_lr({})_note({})".format(
             self.dataset,
             self.model,
-            self.head,
-            self.input_type,
+            self.model_config['name'],
+            # self.head,
+            # self.input_type,
             self.num_cv,
             self.num_epoch,
             self.num_tubes,
