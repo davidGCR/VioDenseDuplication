@@ -29,8 +29,13 @@ def main():
     # data_path = Path("/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/hmdb51_org")
     # out_path = Path("/Users/davidchoqueluqueroman/Documents/CODIGOS/DATASETS_Local/hmdb51/frames")
     
-    data_path = Path("/media/david/datos/Violence DATA/RealLifeViolenceDataset/video")
-    out_path = Path("/media/david/datos/Violence DATA/RealLifeViolenceDataset/frames")
+    # data_path = Path("/media/david/datos/Violence DATA/RealLifeViolenceDataset/video")
+    # out_path = Path("/media/david/datos/Violence DATA/RealLifeViolenceDataset/frames")
+
+    # data_path = Path("/Volumes/TOSHIBA EXT/DATASET/AnomalyCRIMEALL/Anomaly-Videos-All")
+    # out_path = Path("/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime/frames")
+    data_path = Path("/Volumes/TOSHIBA EXT/DATASET/AnomalyCRIMEALL/Training-Normal-Videos-Part-1")
+    out_path = Path("/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime/frames/normal")
     ext_ = ['*.avi', '*.mp4']
 
     if not os.path.isdir(out_path):
@@ -40,8 +45,10 @@ def main():
     data_path = Path(data_path)
     print(f'Loading HMDB51 data from [{data_path.resolve()}]...')
 
-    # Iterate over each category (sub-folder).
+    # Iterate over each category (sub-folder)
     categories = list(data_path.glob('*/'))
+    # classes = ['Fighting', 'Assault', 'Robbery']
+    # categories = [c for c in categories if c.parts[-1] in classes]
     print(categories, len(categories))
 
     for subfolder in categories:
@@ -54,7 +61,7 @@ def main():
         video_paths = subfolder.glob(ext_[1])
         for video_path in video_paths:
             # Create an output folder for that video's frames.   
-            out_frame_folder = out_category_subfolder / video_path.st
+            out_frame_folder = out_category_subfolder / video_path.stem
 
             if out_frame_folder.exists():
                 continue
