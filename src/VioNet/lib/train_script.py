@@ -1,4 +1,5 @@
 import torch
+from torch.utils.tensorboard.summary import video
 from utils import AverageMeter, get_number_from_string
 import numpy as np
 
@@ -201,15 +202,15 @@ def val_regressor(val_make_dataset, transformations, _model, _device, _epoch):
             clip_temporal_stride=5,
             transformations=transformations
         )
-        val_loader = DataLoader(video_dataset,
-                        batch_size=1,
-                        shuffle=False,
-                        num_workers=4,
-                        )
+        # val_loader = DataLoader(video_dataset,
+        #                 batch_size=1,
+        #                 shuffle=False,
+        #                 num_workers=4,
+        #                 )
         person_detections = JSON_2_videoDetections(annotation_p_detections)
         TUBE_BUILD_CONFIG['dataset_root'] = '/media/david/datos/Violence DATA/UCFCrime2LocalClips/UCFCrime2LocalClips'
         TUBE_BUILD_CONFIG['person_detections'] = person_detections
-        for clip, frames_name, gt, num_frames in val_loader:
+        for clip, frames_name, gt, num_frames in video_dataset:
             lps_split = extract_tubes_from_video(
                                     clip,
                                     MOTION_SEGMENTATION_CONFIG,

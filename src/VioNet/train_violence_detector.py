@@ -384,15 +384,15 @@ if __name__=='__main__':
         num_epoch=200,
         criterion='CEL',
         optimizer='SGD',
-        learning_rate=0.001, #0.001 for adagrad
+        learning_rate=0.0001, #0.001 for adagrad
         train_batch=8,
         val_batch=8,
         num_tubes=4,
         tube_sampling_random=True,
         frames_per_tube=16, 
-        save_every=5,
+        save_every=10,
         # freeze=False,
-        additional_info='',
+        additional_info='using-all-temporalinfo',
         home_path=HOME_UBUNTU,
         num_workers=4
     )
