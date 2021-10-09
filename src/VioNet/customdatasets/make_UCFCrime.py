@@ -120,11 +120,31 @@ class MakeUCFCrime():
     def get_number_from_string(self, f_name):
         return int(re.search(r'\d+', f_name).group())
 
+    def gt2tube(self, annotations_per_frame):
+        live_paths = [
+            {
+                'frames_name': [],
+                'boxes': [],
+                'len': 0,
+                'id': 0,
+                'foundAt': [],
+                'score': 1
+            }
+        ]
+        for gt in annotations_per_frame:
+            live_paths[0]['frames_name'].append(gt['frame'])
+            live_paths[0]['boxes'].append(np.array([gt['xmin'], gt['ymin'], gt['xmax'], gt['ymax'], 1]))
+            live_paths[0]['foundAt'].append(gt['frame'])
+            # live_paths[0]['frames_name'].append(gt['number'])
+            live_paths[0]['len'] += 1
+        return live_paths
+
     def __call__(self):
         abnormal_paths, normal_paths = self.__get_list__()
         paths = abnormal_paths + normal_paths
         num_frames = []
         sp_gts = []
+        gt_tubes = []
         gt_dict = self.__load_sp_ground_truth__()
         for ap in paths:
             assert os.path.isdir(ap), 'Folder does not exist!!!'
@@ -147,27 +167,29 @@ class MakeUCFCrime():
                         
                     })
                 annotations_per_frame = sorted(annotations_per_frame, key = lambda i: i['number'])
-
                 sp_gts.append(annotations_per_frame)
+                gt_tubes.append(self.gt2tube(annotations_per_frame))
             else:
                 gt = None
                 sp_gts.append(gt)
             # print('\ngt: ', sp_gts[-1])
         labels = [1]*len(abnormal_paths) + [0]*len(normal_paths)
-        return paths, labels, sp_gts, num_frames
+        return paths, labels, sp_gts, gt_tubes, num_frames
 
 if __name__=='__main__':
     make_func = MakeUCFCrime(
         root='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime/frames', 
-        sp_annotations_file='Train_annotation.pkl', 
+        sp_annotations_file='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/VioNetDB-splits/UCFCrime/Train_annotation.pkl', 
         train=True)
     
-    paths, labels, sp_gts, num_frames = make_func()
+    paths, labels, sp_gts, gt_tubes, num_frames = make_func()
     print('paths: ', len(paths), paths[0])
     print('labels: ', len(labels))
     print('sp_gts: ', len(sp_gts))
+    print('gt_tubes: ', len(gt_tubes))
     print('num_frames: ', len(num_frames))
 
     idx = 21
-    print('sp_gts[idx]: ', sp_gts[idx])
+    print('sp_gts[idx]: ', sp_gts[idx], len(sp_gts[idx]))
+    print('\ngt_tubes[idx]: ', gt_tubes[idx], len(gt_tubes[idx][0]['frames_name']))
     make_func.plot(folder_imgs=paths[idx], annotations_dict=sp_gts[idx], live_paths=[])
