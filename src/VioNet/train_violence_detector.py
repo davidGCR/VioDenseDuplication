@@ -19,23 +19,18 @@ import os
 
 #data
 from customdatasets.make_dataset import MakeRWF2000, MakeHockeyDataset, MakeRLVDDataset, MakeUCFCrime2LocalClips
+from customdatasets.make_UCFCrime import MakeUCFCrime
 from customdatasets.tube_dataset import TubeDataset, my_collate, my_collate_2, OneVideoTubeDataset, TubeFeaturesDataset
-# from customdatasets.ucfcrime2local_dataset import UCFCrime2LocalVideoDataset
 from torch.utils.data import DataLoader
 
 from config import Config
-from model import VioNet_I3D_Roi, VioNet_densenet_lean_roi
-from models.anomaly_detector import custom_objective, RegularizedLoss
-from epoch import calculate_accuracy_2, train_regressor
+from epoch import calculate_accuracy_2
 from utils import Log, save_checkpoint, load_checkpoint
 from utils import get_torch_device
-from feature_writer2 import FeaturesWriter
 from torch import nn
 from epoch import train, val
 import numpy as np
 from global_var import *
-# from configs_datasets import DefaultTrasformations
-from model_transformations import DefaultTrasformations
 from models.mil_loss import MIL
 from models.violence_detector import *
 
@@ -48,7 +43,6 @@ from VioNet.transformations.temporal_transforms import RandomCrop, CenterCrop
 from VioNet.train_MIL_and_2it import MIL_training
 
 import matplotlib.pyplot as plt
-import torchvision
 # helper function to show an image
 # (used in the `plot_classes_preds` function below)
 def matplotlib_imshow(img, one_channel=False):
@@ -84,6 +78,13 @@ def load_make_dataset(dataset_name, train=True, cv_split=1, home_path='', catego
             cv_split_annotation_path=os.path.join(home_path, 'VioNetDB-splits/RealLifeViolenceDataset{}.json'.format(cv_split)), #'/content/DATASETS/VioNetDB-splits/hockey_jpg{}.json'
             path_annotations=os.path.join(home_path, 'ActionTubes/RealLifeViolenceDataset'),
             )
+    elif dataset_name == UCFCrime_DATASET:
+        ann_file  = 'Train_annotation.pkl' if train else 'Test_annotation.pkl'
+        make_dataset = MakeUCFCrime(
+            root=os.path.join(home_path, 'UCFCrime/frames'), 
+            sp_annotations_file=os.path.join(home_path,'VioNetDB-splits/UCFCrime', ann_file), 
+            train=train)
+
     return make_dataset
 
 def main(config: Config, MIL=False):

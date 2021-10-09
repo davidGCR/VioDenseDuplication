@@ -37,12 +37,11 @@ class TubeDataset(data.Dataset):
         self.frames_per_tube = frames_per_tube
         # self.spatial_transform = spatial_transform
         self.make_function = make_function
-        # if dataset == 'RealLifeViolenceDataset':
-        #     self.paths, self.labels, self.annotations, self.num_frames = self.make_function()
-        # else:
-        #     self.paths, self.labels, self.annotations = self.make_function()
-        self.paths, self.labels, self.annotations = self.make_function()
-        self.paths, self.labels, self.annotations = filter_data_without_tubelet(self.paths, self.labels, self.annotations)
+        if dataset == 'UCFCrime':
+            self.paths, self.labels, _, self.annotations, self.num_frames = self.make_function()
+        else:
+            self.paths, self.labels, self.annotations = self.make_function()
+            self.paths, self.labels, self.annotations = filter_data_without_tubelet(self.paths, self.labels, self.annotations)
 
         # self.max_video_len = 39 if dataset=='hockey' else 149
         # self.keyframe = keyframe
@@ -137,6 +136,23 @@ class TubeDataset(data.Dataset):
                 tube_images.append(img)
         return tube_images
 
+    def load_tube_from_file(self, annotation):
+        if self.dataset == 'UCFCrime':
+            return annotation
+        else:
+            video_tubes = JSON_2_tube(annotation)
+            assert len(video_tubes) >= 1, "No tubes in video!!!==>{}".format(annotation)
+            return video_tubes
+    
+    def video_max_len(self, path):
+        if self.dataset == 'RealLifeViolenceDataset':
+            max_video_len = len(os.listdir(path)) - 1
+        elif self.dataset=='hockey':
+            max_video_len = 39
+        elif self.dataset=='rwf-2000':
+            max_video_len = 149
+        return max_video_len
+
     def __len__(self):
         return len(self.paths)
     
@@ -144,15 +160,8 @@ class TubeDataset(data.Dataset):
         path = self.paths[index]
         label = self.labels[index]
         annotation = self.annotations[index]
-        if self.dataset == 'RealLifeViolenceDataset':
-            max_video_len = len(os.listdir(path)) - 1
-        elif self.dataset=='hockey':
-            max_video_len = 39
-        elif self.dataset=='rwf-2000':
-            max_video_len = 149
-        boxes, segments, idxs = self.sampler(JSON_2_tube(annotation), annotation, max_video_len)
-        # print('boxes: ', boxes, len(boxes))
-        # print(path,' segments: ', segments, len(segments), max_video_len)
+        max_video_len = self.video_max_len(path)
+        boxes, segments, idxs = self.sampler(self.load_tube_from_file(annotation), max_video_len)
 
         video_images = []
         num_tubes = len(segments)
@@ -176,38 +185,28 @@ class TubeDataset(data.Dataset):
         if len(video_images)<self.max_num_tubes:
             bbox_id = len(video_images)
             for i in range(self.max_num_tubes-len(video_images)):
-                # video_images.append(torch.zeros_like(video_images[0]))
                 video_images.append(video_images[len(video_images)-1])
-                # boxes.append(torch.from_numpy(np.array([bbox_id+i, 0,0,223,223])).float().unsqueeze(0))
                 p_box = boxes[len(boxes)-1]
-                # p_box[0,0] = bbox_id+i
                 boxes.append(p_box)
                 if self.config['input_2'] is not None:
                     key_frames.append(key_frames[-1])
         for j,b in enumerate(boxes):
             b[0,0] = j
-            # print(b)
         boxes = torch.stack(boxes, dim=0).squeeze()
         
         if len(boxes.shape)==1:
             boxes = torch.unsqueeze(boxes, dim=0)
         
-
         video_images = torch.stack(video_images, dim=0).permute(0,2,1,3,4)
-        # return path, label, annotation, frames_names, boxes, video_images
         if self.config['input_2'] is not None:
             key_frames = torch.stack(key_frames, dim=0)
             if torch.isnan(key_frames).any().item():
                 print('Detected Nan at: ', path)
             if torch.isinf(key_frames).any().item():
                 print('Detected Inf at: ', path)
-            # print('key_frames: ', key_frames.size())
-            # print('video_images: ', video_images.size())
             return boxes, video_images, label, num_tubes, path, key_frames
         else:
             return boxes, video_images, label, num_tubes, path
-
-
 
 
 
