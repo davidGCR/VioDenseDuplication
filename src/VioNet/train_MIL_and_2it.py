@@ -350,7 +350,7 @@ def MIL_training(config: Config, model, dataloader, val_make_dataset, transforma
     ##Restore training
     if config.restore_training:
         model, optimizer, epochs, last_epoch, last_loss = load_checkpoint(model, config.device, optimizer, config.checkpoint_path)
-        start_epoch = last_epoch+1
+        # start_epoch = last_epoch+1
         # config.num_epoch = epochs
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,
                                                            verbose=True,
@@ -358,16 +358,16 @@ def MIL_training(config: Config, model, dataloader, val_make_dataset, transforma
                                                            min_lr=config.min_lr)
 
     for epoch in range(start_epoch, config.num_epoch):
-        train_loss, train_acc = train_regressor(
-            dataloader, 
-            epoch, 
-            model, 
-            criterion, 
-            optimizer, 
-            config.device, 
-            config, 
-            None,
-            False)
+        # train_loss, train_acc = train_regressor(
+        #     dataloader, 
+        #     epoch, 
+        #     model, 
+        #     criterion, 
+        #     optimizer, 
+        #     config.device, 
+        #     config, 
+        #     None,
+        #     False)
         
         ap05, ap02 = val_regressor(
             val_make_dataset, 
@@ -375,16 +375,16 @@ def MIL_training(config: Config, model, dataloader, val_make_dataset, transforma
             model, 
             config.device, 
             epoch)
-        scheduler.step(train_loss)
-        writer.add_scalar('training loss', train_loss, epoch)
+        # scheduler.step(train_loss)
+        # writer.add_scalar('training loss', train_loss, epoch)
         writer.add_scalar('AP-0.5', ap05, epoch)
         writer.add_scalar('AP-0.2', ap02, epoch)
         
-        if (epoch+1)%config.save_every == 0:
-            save_checkpoint(
-                model, 
-                config.num_epoch, 
-                epoch, 
-                optimizer,
-                train_loss, 
-                os.path.join(chk_path_folder,"save_at_epoch-"+str(epoch)+".chk"))
+        # if (epoch+1)%config.save_every == 0:
+        #     save_checkpoint(
+        #         model, 
+        #         config.num_epoch, 
+        #         epoch, 
+        #         optimizer,
+        #         train_loss, 
+        #         os.path.join(chk_path_folder,"save_at_epoch-"+str(epoch)+".chk"))

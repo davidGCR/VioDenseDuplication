@@ -381,7 +381,7 @@ if __name__=='__main__':
         num_cv=1,
         # input_type='',
         device=get_torch_device(),
-        num_epoch=200,
+        num_epoch=1,
         criterion='CEL',
         optimizer='SGD',
         learning_rate=0.0001, #0.001 for adagrad
@@ -392,15 +392,15 @@ if __name__=='__main__':
         frames_per_tube=16, 
         save_every=10,
         # freeze=False,
-        additional_info='using-all-temporalinfo',
+        additional_info='validation',
         home_path=HOME_UBUNTU,
         num_workers=4
     )
     # config.pretrained_model = "/content/DATASETS/Pretrained_Models/DenseNetLean_Kinetics.pth"
     # config.pretrained_model='/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt'
     # config.pretrained_model = '/media/david/datos/Violence DATA/VioNet_pth/rwf_trained/save_at_epoch-127.chk'
-    # config.restore_training = True
-    # config.checkpoint_path = '/media/david/datos/Violence DATA/VioNet_pth/rwf-2000_model(TwoStreamVD_Binary_CFam)_head(binary)_stream(rgb)_cv(1)_epochs(100)_num_tubes(4)_framesXtube(8)_tub_sampl_rand(True)_criterion(CEL)_optimizer(Adadelta)_lr(0.001)_note()/save_at_epoch-9.chk'
+    config.restore_training = True
+    config.checkpoint_path = '/media/david/datos/Violence DATA/VioNet_pth/rwf-2000_model(MIL_TwoStreamVD_Binary_CFam)_config(MIL_TWO_STREAM_CFAM_CONFIG)_cv(1)_epochs(200)_num_tubes(4)_framesXtube(16)_tub_sampl_rand(True)_criterion(CEL)_optimizer(SGD)_lr(0.0001)_note(using-all-temporalinfo)/save_at_epoch-199.chk'
     # config.checkpoint_path = '/media/david/datos/Violence DATA/VioNet_pth/restoredFromDrive/save_at_epoch-49.chk'
     # config.checkpoint_path = os.path.join(config.home_path,
     #                                       PATH_CHECKPOINT,

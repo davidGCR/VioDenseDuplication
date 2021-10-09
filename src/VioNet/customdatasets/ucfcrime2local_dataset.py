@@ -190,34 +190,34 @@ class UCFCrime2LocalVideoDataset(data.Dataset):
     def __centered_frames__(self, tube_frames_idxs, tube_len, max_video_len, min_frame):
         if len(tube_frames_idxs) == tube_len: 
             return tube_frames_idxs
-        else:
-            tube_frames_idxs = np.linspace(min_frame, max_video_len, 16).astype(int)
-            tube_frames_idxs = tube_frames_idxs.tolist()
-            return tube_frames_idxs
-        # if len(tube_frames_idxs) > tube_len:
-        #     n = len(tube_frames_idxs)
-        #     m = int(n/2)
-        #     arr = np.array(tube_frames_idxs)
-        #     centered_array = arr[m-int(tube_len/2) : m+int(tube_len/2)]
-        #     return centered_array.tolist()
-        # if len(tube_frames_idxs) < tube_len: #padding
-
-        #     # print('padding...')
-        #     center_idx = int(len(tube_frames_idxs)/2)
-            
-        #     start = tube_frames_idxs[center_idx]-int(tube_len/2)
-        #     end = tube_frames_idxs[center_idx]+int(tube_len/2)
-        #     out = list(range(start,end))
-        #     # print('center_idx: {}, val:{}, start:{}, end:{}={}'.format(center_idx, tube_frames_idxs[center_idx], start, end, out))
-        #     if out[0]<min_frame:
-        #         most_neg = abs(out[0])
-        #         out = [i+most_neg for i in out]
-        #     elif tube_frames_idxs[center_idx]+int(tube_len/2) > max_video_len:
-        #         start = tube_frames_idxs[center_idx]-(tube_len-(max_video_len-tube_frames_idxs[center_idx]))+1
-        #         end = max_video_len+1
-        #         out = list(range(start,end))
-        #     tube_frames_idxs = out
+        # else:
+        #     tube_frames_idxs = np.linspace(min_frame, max_video_len, 16).astype(int)
+        #     tube_frames_idxs = tube_frames_idxs.tolist()
         #     return tube_frames_idxs
+        if len(tube_frames_idxs) > tube_len:
+            n = len(tube_frames_idxs)
+            m = int(n/2)
+            arr = np.array(tube_frames_idxs)
+            centered_array = arr[m-int(tube_len/2) : m+int(tube_len/2)]
+            return centered_array.tolist()
+        if len(tube_frames_idxs) < tube_len: #padding
+
+            # print('padding...')
+            center_idx = int(len(tube_frames_idxs)/2)
+            
+            start = tube_frames_idxs[center_idx]-int(tube_len/2)
+            end = tube_frames_idxs[center_idx]+int(tube_len/2)
+            out = list(range(start,end))
+            # print('center_idx: {}, val:{}, start:{}, end:{}={}'.format(center_idx, tube_frames_idxs[center_idx], start, end, out))
+            if out[0]<min_frame:
+                most_neg = abs(out[0])
+                out = [i+most_neg for i in out]
+            elif tube_frames_idxs[center_idx]+int(tube_len/2) > max_video_len:
+                start = tube_frames_idxs[center_idx]-(tube_len-(max_video_len-tube_frames_idxs[center_idx]))+1
+                end = max_video_len+1
+                out = list(range(start,end))
+            tube_frames_idxs = out
+            return tube_frames_idxs
     
     def __central_bbox__(self, tube, id):
         width, height = 224, 224
