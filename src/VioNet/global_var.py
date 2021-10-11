@@ -27,8 +27,7 @@ VIONET_WEIGHTS = "VioNet_weights"
 UCFCrime2Local_DATASET = "UCFCrime2Local"
 UCFCrime2LocalClips_DATASET = "UCFCrime2LocalClips"
 
-DYN_IMAGE = "dynamic-image"
-RGB_FRAME = "rgb"
+
 
 
 PATH_TENSORBOARD = "VioNet_tensorboard_log"
@@ -59,3 +58,10 @@ MDIResNet = 'MDIResNet'
 
 REGRESSION = 'regression'
 BINARY = 'binary'
+
+#tube sample strategies
+MIDDLE = 'middle'
+EVENLY = 'evenly'
+
+DYN_IMAGE = "dynamic-image"
+RGB_FRAME = "rgb"

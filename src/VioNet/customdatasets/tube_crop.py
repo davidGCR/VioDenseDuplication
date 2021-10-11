@@ -4,14 +4,17 @@ import torch
 import random
 import numpy as np
 
+
+from global_var import MIDDLE, EVENLY, DYN_IMAGE, RGB_FRAME
+
 class TubeCrop(object):
     def __init__(self, 
                     tube_len=16,
                     central_frame=True, 
                     max_num_tubes=4, 
                     train=True,
-                    input_type='rgb',
-                    # max_video_len=40,
+                    input_type=RGB_FRAME,
+                    sample_strategy=MIDDLE,#'middle', #'evenly'
                     random=True):
         """
         Args:
@@ -22,6 +25,7 @@ class TubeCrop(object):
         self.train = train
         self.input_type = input_type
         self.random = random
+        self.sample_strategy = sample_strategy
 
     def __call__(self, tubes: list, max_video_len: int):
         segments = []
@@ -30,8 +34,8 @@ class TubeCrop(object):
             tubes = sorted(tubes, key = lambda i: i['len'], reverse=True)
         
         for tube in tubes:
-            if self.input_type=='rgb':
-                # tmp = tube['foundAt'].copy()
+            if self.input_type==RGB_FRAME:
+                
                 frames_idxs = self.__centered_frames__(tube['foundAt'],max_video_len)
             else:
                 frames_idxs = self.__centered_segments__()
@@ -39,11 +43,16 @@ class TubeCrop(object):
                 bbox = self.__central_bbox__(tube['boxes'], tube['id']+1)
                 boxes.append(bbox)
                 segments.append(frames_idxs)
+                # print(
+                    # 'tube[foundAt]: ', tube['foundAt'] , 
+                #         '\tsample: ', frames_idxs,
+                        # '\tbox: ',bbox)   
         idxs = range(len(boxes))
         if self.max_num_tubes != 0 and len(boxes) > self.max_num_tubes:
             if self.random:
                 idxs = random.sample(range(len(boxes)), self.max_num_tubes)
                 boxes = list(itemgetter(*idxs)(boxes))
+                # print('random boxes: ', boxes)
                 segments = list(itemgetter(*idxs)(segments))
                 segments = [segments] if self.max_num_tubes==1 else segments
                 # if self.train:
@@ -59,20 +68,29 @@ class TubeCrop(object):
                 boxes = boxes[0:self.max_num_tubes]
                 segments = segments[0:self.max_num_tubes]
         
-        if len(boxes)==1:
-            boxes[0] = torch.unsqueeze(boxes[0], 0)
+        # if len(boxes)==1:
+        #     print('boxes==1: ', boxes, boxes[0].size())
+        #     boxes[0] = torch.unsqueeze(boxes[0], 0)
+        #     print('boxes unsqueeze: ', boxes, boxes[0].size())
         for id,box in enumerate(boxes):
             boxes[id][0,0] = id
+        # print('boxes ids: ', boxes)
         return boxes, segments, idxs
     
     def __centered_frames__(self, tube_frames_idxs: list, max_video_len: int):
         if len(tube_frames_idxs) == self.tube_len: 
             return tube_frames_idxs
         if len(tube_frames_idxs) > self.tube_len:
-            n = len(tube_frames_idxs)
-            m = int(n/2)
-            arr = np.array(tube_frames_idxs)
-            centered_array = arr[m-int(self.tube_len/2) : m+int(self.tube_len/2)]
+            if self.sample_strategy == MIDDLE:
+                n = len(tube_frames_idxs)
+                m = int(n/2)
+                arr = np.array(tube_frames_idxs)
+                centered_array = arr[m-int(self.tube_len/2) : m+int(self.tube_len/2)]
+            elif self.sample_strategy == EVENLY:
+                min_frame = tube_frames_idxs[0]
+                tube_frames_idxs = np.linspace(min_frame, max_video_len, self.tube_len).astype(int)
+                tube_frames_idxs = tube_frames_idxs.tolist()
+
             return centered_array.tolist()
         if len(tube_frames_idxs) < self.tube_len: #padding
 

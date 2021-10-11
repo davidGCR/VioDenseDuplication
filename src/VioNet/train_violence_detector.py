@@ -287,7 +287,7 @@ def data_with_tubes(config: Config, make_dataset_train, make_dataset_val):
                         num_workers=config.num_workers,
                         # pin_memory=True,
                         collate_fn=my_collate,
-                        sampler=train_dataset.get_sampler(),
+                        # sampler=train_dataset.get_sampler(),
                         drop_last=True
                         )
     val_dataset = TubeDataset(frames_per_tube=config.frames_per_tube, 
@@ -301,7 +301,7 @@ def data_with_tubes(config: Config, make_dataset_train, make_dataset_val):
                         batch_size=config.val_batch,
                         # shuffle=True,
                         num_workers=config.num_workers,
-                        sampler=val_dataset.get_sampler(),
+                        # sampler=val_dataset.get_sampler(),
                         # pin_memory=True,
                         collate_fn=my_collate,
                         drop_last=True
@@ -375,40 +375,41 @@ def data_without_tubes(config: Config, make_dataset_train, make_dataset_val):
 
 if __name__=='__main__':
     config = Config(
-        model='MIL_TwoStreamVD_Binary_CFam',#'TwoStreamVD_Binary_CFam',#'TwoStreamVD_Binary',#'i3d-roi',i3d+roi+fc
-        model_config=MIL_TWO_STREAM_CFAM_CONFIG,
+        model='TwoStreamVD_Binary_CFam',#'TwoStreamVD_Binary_CFam',#'TwoStreamVD_Binary',#'i3d-roi',i3d+roi+fc
+        model_config=TWO_STREAM_CFAM_CONFIG,
         # head=BINARY,
-        dataset=RWF_DATASET,
+        dataset=UCFCrime_DATASET,
         num_cv=1,
         # input_type='',
         device=get_torch_device(),
         num_epoch=1,
         criterion='CEL',
         optimizer='SGD',
-        learning_rate=0.0001, #0.001 for adagrad
+        learning_rate=0.001, #0.001 for adagrad
         train_batch=8,
         val_batch=8,
-        num_tubes=4,
+        num_tubes=1,
         tube_sampling_random=True,
         frames_per_tube=16, 
+        tube_sample_strategy=EVENLY,
         save_every=10,
         # freeze=False,
-        additional_info='validation',
+        additional_info='',
         home_path=HOME_UBUNTU,
-        num_workers=4
+        num_workers=1
     )
     # config.pretrained_model = "/content/DATASETS/Pretrained_Models/DenseNetLean_Kinetics.pth"
     # config.pretrained_model='/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt'
     # config.pretrained_model = '/media/david/datos/Violence DATA/VioNet_pth/rwf_trained/save_at_epoch-127.chk'
-    config.restore_training = True
-    config.checkpoint_path = '/media/david/datos/Violence DATA/VioNet_pth/rwf-2000_model(MIL_TwoStreamVD_Binary_CFam)_config(MIL_TWO_STREAM_CFAM_CONFIG)_cv(1)_epochs(200)_num_tubes(4)_framesXtube(16)_tub_sampl_rand(True)_criterion(CEL)_optimizer(SGD)_lr(0.0001)_note(using-all-temporalinfo)/save_at_epoch-199.chk'
+    # config.restore_training = True
+    # config.checkpoint_path = '/media/david/datos/Violence DATA/VioNet_pth/rwf-2000_model(MIL_TwoStreamVD_Binary_CFam)_config(MIL_TWO_STREAM_CFAM_CONFIG)_cv(1)_epochs(200)_num_tubes(4)_framesXtube(16)_tub_sampl_rand(True)_criterion(CEL)_optimizer(SGD)_lr(0.0001)_note(using-all-temporalinfo)/save_at_epoch-199.chk'
     # config.checkpoint_path = '/media/david/datos/Violence DATA/VioNet_pth/restoredFromDrive/save_at_epoch-49.chk'
     # config.checkpoint_path = os.path.join(config.home_path,
     #                                       PATH_CHECKPOINT,
     #                                       'rwf-2000_model(TwoStreamVD_Binary_CFam)_head(binary)_stream(rgb)_cv(1)_epochs(100)_num_tubes(4)_framesXtube(16)_tub_sampl_rand(True)_criterion(CEL)_optimizer(Adadelta)_lr(0.001)_note(TWO_STREAM_CFAM_CONFIG+finalRWF)',
     #                                       'save_at_epoch-29.chk')
     torch.autograd.set_detect_anomaly(True)
-    main(config, MIL=True)
+    main(config, MIL=False)
     # MIL_training(config)
     # extract_features(config, output_folder='/media/david/datos/Violence DATA/i3d-FeatureMaps/rwf')
     # load_features(config)

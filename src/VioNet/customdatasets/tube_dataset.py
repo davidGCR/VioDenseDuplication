@@ -16,7 +16,7 @@ from customdatasets.dataset_utils import imread, filter_data_without_tubelet
 from customdatasets.make_dataset import MakeRWF2000
 from customdatasets.tube_crop import TubeCrop
 from transformations.dynamic_image_transformation import DynamicImage
-
+from global_var import *
 
 class TubeDataset(data.Dataset):
     """
@@ -30,15 +30,24 @@ class TubeDataset(data.Dataset):
                        train=False,
                        dataset='',
                        random=True,
-                       config=None):
+                       config=None,
+                       tube_sample_strategy=MIDDLE):
         self.config = config
         self.dataset = dataset
         # self.input_type = input_type
         self.frames_per_tube = frames_per_tube
-        # self.spatial_transform = spatial_transform
+        self.tube_sample_strategy = tube_sample_strategy
         self.make_function = make_function
         if dataset == 'UCFCrime':
             self.paths, self.labels, _, self.annotations, self.num_frames = self.make_function()
+            indices_2_remove = []
+            for index in range(len(self.paths)):
+                annotation = self.annotations[index]
+                if len(annotation) == 0:
+                    indices_2_remove.append(index)
+            self.paths = [self.paths[i] for i in range(len(self.paths)) if i not in indices_2_remove]
+            self.labels = [self.labels[i] for i in range(len(self.labels)) if i not in indices_2_remove]
+            self.annotations = [self.annotations[i] for i in range(len(self.annotations)) if i not in indices_2_remove]
         else:
             self.paths, self.labels, self.annotations = self.make_function()
             self.paths, self.labels, self.annotations = filter_data_without_tubelet(self.paths, self.labels, self.annotations)
@@ -53,7 +62,7 @@ class TubeDataset(data.Dataset):
                                 max_num_tubes=max_num_tubes,
                                 train=train,
                                 input_type=self.config['input_1']['type'],
-                                # max_video_len=self.max_video_len,
+                                sample_strategy=tube_sample_strategy,
                                 random=random)
         self.max_num_tubes = max_num_tubes
     
@@ -74,12 +83,15 @@ class TubeDataset(data.Dataset):
             return os.path.join(path,'frame{:03}.jpg'.format(frame_number+1))
         elif self.dataset == 'RealLifeViolenceDataset':
             return os.path.join(path,'{:06}.jpg'.format(frame_number))
+        elif self.dataset == 'UCFCrime':
+            return os.path.join(path,'{:06}.jpg'.format(frame_number))
     
     def load_input_1(self, path, seg):
         tube_images = []
         raw_clip_images = []
         if self.config['input_1']['type']=='rgb':
-            frames_paths = [self.build_frame_name(path, i) for i in seg] #rwf
+            frames_paths = [self.build_frame_name(path, i) for i in seg]
+            # print('frames_paths: ', frames_paths)
             for i in frames_paths:
                 img = imread(i)
                 tube_images.append(img)
@@ -144,13 +156,16 @@ class TubeDataset(data.Dataset):
             assert len(video_tubes) >= 1, "No tubes in video!!!==>{}".format(annotation)
             return video_tubes
     
-    def video_max_len(self, path):
+    def video_max_len(self, idx):
+        path = self.paths[idx]
         if self.dataset == 'RealLifeViolenceDataset':
             max_video_len = len(os.listdir(path)) - 1
         elif self.dataset=='hockey':
             max_video_len = 39
         elif self.dataset=='rwf-2000':
             max_video_len = 149
+        elif self.dataset == 'UCFCrime':
+            max_video_len = self.annotations[idx][0]['foundAt'][-1]- 1
         return max_video_len
 
     def __len__(self):
@@ -160,9 +175,10 @@ class TubeDataset(data.Dataset):
         path = self.paths[index]
         label = self.labels[index]
         annotation = self.annotations[index]
-        max_video_len = self.video_max_len(path)
+        max_video_len = self.video_max_len(index)
         boxes, segments, idxs = self.sampler(self.load_tube_from_file(annotation), max_video_len)
-
+        # print('segments_from_sampler: ', segments)
+        print('boxes_from_sampler: ', boxes)
         video_images = []
         num_tubes = len(segments)
         for seg in segments:
@@ -180,7 +196,7 @@ class TubeDataset(data.Dataset):
                 # key_frame = self.spatial_transform_2(imread(img_path)) if self.spatial_transform_2 else imread(img_path)
                 key_frame, _ = self.load_input_2(seg, path)
                 key_frames.append(key_frame)
-
+        # print('list boxes: ', boxes, len(boxes))
         
         if len(video_images)<self.max_num_tubes:
             bbox_id = len(video_images)
@@ -195,7 +211,9 @@ class TubeDataset(data.Dataset):
         boxes = torch.stack(boxes, dim=0).squeeze()
         
         if len(boxes.shape)==1:
+            
             boxes = torch.unsqueeze(boxes, dim=0)
+            # print('boxes unsqueeze: ', boxes)
         
         video_images = torch.stack(video_images, dim=0).permute(0,2,1,3,4)
         if self.config['input_2'] is not None:
@@ -243,7 +261,7 @@ def my_collate(batch):
     boxes = torch.cat(boxes,dim=0)
     for i in range(boxes.size(0)):
         boxes[i][0] = i
-        # print('-', i)
+        # print('--->', i, boxes[i])
 
     images = torch.cat(images,dim=0)
     labels = torch.tensor(labels)

@@ -46,7 +46,8 @@ class Config:
             frames_per_tube=16,
             num_workers=4,
             criterion='CEL',
-            model_config=None
+            model_config=None,
+            tube_sample_strategy=''
     ):
 
         # VioNet models
@@ -120,10 +121,11 @@ class Config:
         self.criterion = criterion
         self.frames_per_tube = frames_per_tube
         self.model_config = model_config
+        self.tube_sample_strategy = tube_sample_strategy
         self.log = self.log_name()
     
     def log_name(self):
-        log = "{}_model({})_config({})_cv({})_epochs({})_num_tubes({})_framesXtube({})_tub_sampl_rand({})_criterion({})_optimizer({})_lr({})_note({})".format(
+        log = "{}_model({})_config({})_cv({})_epochs({})_num_tubes({})_framesXtube({})_tub_sampl_rand({})_sampe_strat({})_criterion({})_optimizer({})_lr({})_note({})".format(
             self.dataset,
             self.model,
             self.model_config['name'],
@@ -134,6 +136,7 @@ class Config:
             self.num_tubes,
             self.frames_per_tube,
             self.tube_sampling_random,
+            self.tube_sample_strategy,
             self.criterion,
             self.optimizer,
             self.learning_rate,

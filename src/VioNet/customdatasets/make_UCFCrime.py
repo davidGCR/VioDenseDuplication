@@ -134,7 +134,7 @@ class MakeUCFCrime():
         for gt in annotations_per_frame:
             live_paths[0]['frames_name'].append(gt['frame'])
             live_paths[0]['boxes'].append(np.array([gt['xmin'], gt['ymin'], gt['xmax'], gt['ymax'], 1]))
-            live_paths[0]['foundAt'].append(gt['frame'])
+            live_paths[0]['foundAt'].append(gt['number'])
             # live_paths[0]['frames_name'].append(gt['number'])
             live_paths[0]['len'] += 1
         return live_paths
@@ -172,6 +172,7 @@ class MakeUCFCrime():
             else:
                 gt = None
                 sp_gts.append(gt)
+                gt_tubes.append([])
             # print('\ngt: ', sp_gts[-1])
         labels = [1]*len(abnormal_paths) + [0]*len(normal_paths)
         return paths, labels, sp_gts, gt_tubes, num_frames
