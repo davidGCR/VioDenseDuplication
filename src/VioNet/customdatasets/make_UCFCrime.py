@@ -3,6 +3,7 @@ import re
 import pickle
 import cv2
 import numpy as np
+import random
 
 class MakeUCFCrime():
     def __init__(self, root, sp_annotations_file, train):
@@ -138,7 +139,49 @@ class MakeUCFCrime():
             # live_paths[0]['frames_name'].append(gt['number'])
             live_paths[0]['len'] += 1
         return live_paths
+    
+    def gen_rand_bbox(self, size=(224,224), w_min=90, h_min=100):
+        xmin = np.random.uniform(50, size[0]/2)
+        ymin = np.random.uniform(50, size[1]/2)
+        xmax = np.random.uniform(xmin + w_min, size[0])
+        ymax = np.random.uniform(ymin + h_min, size[0])
+        # xmax = xmin + w_min
+        # ymax = ymin + h_min
+        bbox = [xmin, ymin, xmax, ymax]
+        return bbox
+    
+    def split_sequential_clips(self, frames, n_sample):
+        for i in range(0, len(frames), n_sample): 
+            yield frames[i:i + n_sample]
+    
+    def gen_temp_split(self, abnormal_path, skip=16, n_sample=16):
+        frames = os.listdir(abnormal_path)
+        raw_frames_numbers = [self.get_number_from_string(f_name) for f_name in frames]
+        raw_frames_numbers = sorted(raw_frames_numbers)
+        # if len(raw_frames_numbers)==0:
+        #     print("No frames at: ", abnormal_path)
+        # print('raw_frames_numbers len: ', len(raw_frames_numbers), abnormal_path)
+        if int(len(raw_frames_numbers)/skip)<n_sample:
+            frames_numbers = np.linspace(raw_frames_numbers[0], raw_frames_numbers[-1], n_sample).astype(int)
+        else:
+            #select frames every skip=16
+            frames_numbers = [raw_frames_numbers[i] for i in range(0,len(raw_frames_numbers), skip)]
+            #get sequential frames
+            frames_numbers = list(self.split_sequential_clips(frames_numbers, n_sample))
+            #remove short clips
+            frames_numbers = [clip for clip in frames_numbers if len(clip)>=n_sample]
+            frames_numbers = random.sample(frames_numbers, 1)[0]
+            # frames_numbers = sorted(frames_numbers)
+        # print('frames_numbers len: ', frames_numbers, len(frames_numbers))
 
+        return frames_numbers
+        
+        
+        # print('frames_numbers: ', frames_numbers, len(frames_numbers))
+
+#    No frames at:  /Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime/frames/train/normal/Normal_Videos533_x264
+#    No frames at:  /Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime/frames/train/normal/Normal_Videos425_x264
+#    No frames at:  /Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime/frames/train/normal/Normal_Videos566_x264
     def __call__(self):
         abnormal_paths, normal_paths = self.__get_list__()
         paths = abnormal_paths + normal_paths
@@ -170,9 +213,22 @@ class MakeUCFCrime():
                 sp_gts.append(annotations_per_frame)
                 gt_tubes.append(self.gt2tube(annotations_per_frame))
             else:
-                gt = None
-                sp_gts.append(gt)
-                gt_tubes.append([])
+                frames_numbers = self.gen_temp_split(ap)
+                [x1, y1, x2, y2] = self.gen_rand_bbox((224,224))
+                for fn in frames_numbers:
+                    annotations_per_frame.append({
+                        "number": fn,
+                        "frame": '{:06}.jpg'.format(fn),
+                        "xmin": x1,
+                        "ymin": y1,
+                        "xmax": x2,
+                        "ymax": y2
+                        
+                    })
+                annotations_per_frame = sorted(annotations_per_frame, key = lambda i: i['number'])
+                # gt = None
+                sp_gts.append(annotations_per_frame)
+                gt_tubes.append(self.gt2tube(annotations_per_frame))
             # print('\ngt: ', sp_gts[-1])
         labels = [1]*len(abnormal_paths) + [0]*len(normal_paths)
         return paths, labels, sp_gts, gt_tubes, num_frames
@@ -180,8 +236,8 @@ class MakeUCFCrime():
 if __name__=='__main__':
     make_func = MakeUCFCrime(
         root='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime/frames', 
-        sp_annotations_file='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/VioNetDB-splits/UCFCrime/Train_annotation.pkl', 
-        train=True)
+        sp_annotations_file='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/VioNetDB-splits/UCFCrime/Test_annotation.pkl', 
+        train=False)
     
     paths, labels, sp_gts, gt_tubes, num_frames = make_func()
     print('paths: ', len(paths), paths[0])
@@ -190,7 +246,7 @@ if __name__=='__main__':
     print('gt_tubes: ', len(gt_tubes))
     print('num_frames: ', len(num_frames))
 
-    idx = 21
+    idx = 20
     print('sp_gts[idx]: ', sp_gts[idx], len(sp_gts[idx]))
     print('\ngt_tubes[idx]: ', gt_tubes[idx], len(gt_tubes[idx][0]['frames_name']))
     make_func.plot(folder_imgs=paths[idx], annotations_dict=sp_gts[idx], live_paths=[])
