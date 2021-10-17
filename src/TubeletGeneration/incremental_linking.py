@@ -350,8 +350,6 @@ class IncrementalLinking:
         for t in frames:
             #get current temporal window
             w = self.get_temporal_window(t, windows)
-            
-            # print('fname: {}, frame_idx: {} , window: {}'.format(t, t, w))
             if w == None:
                 continue
             img_paths, images = self.read_segment(w)
@@ -397,7 +395,7 @@ class IncrementalLinking:
                     video_windows.append(current_window)
                 # else:
                     # print(current_window['frames_numbers'])
-            
+            # print('fname: {}, frame_idx: {} , window: {}, real_frame: {}'.format(t, t, w, self.video_detections[t]['fname']))
             #initialize tube building
             num_persons = self.video_detections[t]['pred_boxes'].shape[0]
             if num_persons == 0: #no persons detected in frame

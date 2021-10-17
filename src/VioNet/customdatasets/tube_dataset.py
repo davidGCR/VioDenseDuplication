@@ -166,6 +166,8 @@ class TubeDataset(data.Dataset):
             max_video_len = 149
         elif self.dataset == 'UCFCrime':
             max_video_len = self.annotations[idx][0]['foundAt'][-1]- 1
+        elif self.dataset == 'UCFCrime_Reduced':
+            max_video_len = self.annotations[idx][0]['foundAt'][-1]- 1
         return max_video_len
 
     def __len__(self):
@@ -178,7 +180,7 @@ class TubeDataset(data.Dataset):
         max_video_len = self.video_max_len(index)
         boxes, segments, idxs = self.sampler(self.load_tube_from_file(annotation), max_video_len)
         # print('segments_from_sampler: ', segments)
-        print('boxes_from_sampler: ', boxes)
+        # print('boxes_from_sampler: ', boxes)
         video_images = []
         num_tubes = len(segments)
         for seg in segments:
