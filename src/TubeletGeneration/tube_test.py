@@ -20,7 +20,7 @@ from PIL import Image, ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 import random
 from tube_config import *
-
+import yaml
 
 def CountFrequency(my_list):
     # Creating an empty dictionary
@@ -48,6 +48,8 @@ def extract_tubes_from_dataset(dataset_persons_detections_path, folder_out, fram
     videos_list = os.listdir(dataset_persons_detections_path)
     videos_list = sorted(videos_list)
     num_live_paths = []
+    # print('TUBE_BUILD_CONFIG\n', yaml.dump(TUBE_BUILD_CONFIG, sort_keys=False, default_flow_style=False))
+    # print('\nMOTION_SEGMENTATION_CONFIG\n', yaml.dump(MOTION_SEGMENTATION_CONFIG, sort_keys=False, default_flow_style=False))
     
     for i, video_folder in enumerate(videos_list):
         assert '.json' in video_folder, 'Unrecognized format!!!'
@@ -90,6 +92,8 @@ def extract_tubes_from_dataset(dataset_persons_detections_path, folder_out, fram
 def extract_tubes_from_video(frames, motion_seg_config, tube_build_config, gt=None):
     # segmentator = MotionSegmentation(MOTION_SEGMENTATION_CONFIG)
     # tube_builder = IncrementalLinking(TUBE_BUILD_CONFIG)
+
+    
     segmentator = MotionSegmentation(motion_seg_config)
     tube_builder = IncrementalLinking(tube_build_config)
     live_paths = tube_builder(frames, segmentator, gt)
@@ -227,8 +231,8 @@ def rlvs_one_video_test():
 def ucfcrime_one_video_test():
     ucf_config = {
         'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime_Reduced/frames',
-        'split': 'test/normal',
-        'video': 'Normal_Videos_879_x264',#'V_683',
+        'split': 'train/normal',
+        'video': 'Normal_Videos180_x264',#'V_683',
         'p_d_path': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/UCFCrime_Reduced'
     }
     config = ucf_config
@@ -243,6 +247,9 @@ def ucfcrime_one_video_test():
 
     plot_create_save_dirs(config)
 
+    # print('TUBE_BUILD_CONFIG\n', yaml.dump(TUBE_BUILD_CONFIG, sort_keys=False, default_flow_style=False))
+    # print('\nMOTION_SEGMENTATION_CONFIG\n', yaml.dump(MOTION_SEGMENTATION_CONFIG, sort_keys=False, default_flow_style=False))
+
     live_paths = extract_tubes_from_video(
         frames,
         MOTION_SEGMENTATION_CONFIG,
@@ -252,6 +259,9 @@ def ucfcrime_one_video_test():
     print('live_paths: ', len(live_paths))
 
 if __name__=="__main__":
+    22
+
+    
     # plot_video_tube('/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/RWF-2000-150frames-motion-maps2/train/Fight/OAfV0xPIhZw_2.json')
     #ONE VIDEO test
     # ucfcrime2local_config = {
@@ -317,17 +327,17 @@ if __name__=="__main__":
     #                                 frames=frames)
 
     ############################################################################################################
-    ucfcrime_one_video_test()
-    # ucf_config = {
-    #     'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime_Reduced/frames',
-    #     'path_in':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/UCFCrime_Reduced',
-    #     'path_out':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/UCFCrime_Reduced',
-    #     'splits':['train/abnormal', 'train/normal', 'test/abnormal', 'test/normal']
-    # }
-    # frames = None
-    # config = ucf_config
-    # TUBE_BUILD_CONFIG['dataset_root'] = config['dataset_root']
-    # for sp in config['splits']:
-    #     extract_tubes_from_dataset(dataset_persons_detections_path=os.path.join(config['path_in'], sp),
-    #                                 folder_out=os.path.join(config['path_out'], sp),
-    #                                 frames=frames)
+    # ucfcrime_one_video_test()
+    ucf_config = {
+        'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime_Reduced/frames',
+        'path_in':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/UCFCrime_Reduced',
+        'path_out':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/UCFCrime_Reduced',
+        'splits':['train/abnormal', 'train/normal', 'test/abnormal', 'test/normal']
+    }
+    frames = None
+    config = ucf_config
+    TUBE_BUILD_CONFIG['dataset_root'] = config['dataset_root']
+    for sp in config['splits']:
+        extract_tubes_from_dataset(dataset_persons_detections_path=os.path.join(config['path_in'], sp),
+                                    folder_out=os.path.join(config['path_out'], sp),
+                                    frames=frames)

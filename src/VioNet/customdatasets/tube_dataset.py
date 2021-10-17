@@ -17,6 +17,7 @@ from customdatasets.make_dataset import MakeRWF2000
 from customdatasets.tube_crop import TubeCrop
 from transformations.dynamic_image_transformation import DynamicImage
 from global_var import *
+from utils import natural_sort
 
 class TubeDataset(data.Dataset):
     """
@@ -40,14 +41,16 @@ class TubeDataset(data.Dataset):
         self.make_function = make_function
         if dataset == 'UCFCrime':
             self.paths, self.labels, _, self.annotations, self.num_frames = self.make_function()
-            indices_2_remove = []
-            for index in range(len(self.paths)):
-                annotation = self.annotations[index]
-                if len(annotation) == 0:
-                    indices_2_remove.append(index)
-            self.paths = [self.paths[i] for i in range(len(self.paths)) if i not in indices_2_remove]
-            self.labels = [self.labels[i] for i in range(len(self.labels)) if i not in indices_2_remove]
-            self.annotations = [self.annotations[i] for i in range(len(self.annotations)) if i not in indices_2_remove]
+            # indices_2_remove = []
+            # for index in range(len(self.paths)):
+            #     annotation = self.annotations[index]
+            #     if len(annotation) == 0:
+            #         indices_2_remove.append(index)
+            # self.paths = [self.paths[i] for i in range(len(self.paths)) if i not in indices_2_remove]
+            # self.labels = [self.labels[i] for i in range(len(self.labels)) if i not in indices_2_remove]
+            # self.annotations = [self.annotations[i] for i in range(len(self.annotations)) if i not in indices_2_remove]
+        elif dataset == 'UCFCrime_Reduced':
+            self.paths, self.labels, self.annotations, self.num_frames = self.make_function()
         else:
             self.paths, self.labels, self.annotations = self.make_function()
             self.paths, self.labels, self.annotations = filter_data_without_tubelet(self.paths, self.labels, self.annotations)
@@ -76,7 +79,7 @@ class TubeDataset(data.Dataset):
         sampler = WeightedRandomSampler(samples_weight, len(samples_weight))
         return sampler
     
-    def build_frame_name(self, path, frame_number):
+    def build_frame_name(self, path, frame_number, frames_names_list):
         if self.dataset == 'rwf-2000':
             return os.path.join(path,'frame{}.jpg'.format(frame_number+1))
         elif self.dataset == 'hockey':
@@ -85,12 +88,18 @@ class TubeDataset(data.Dataset):
             return os.path.join(path,'{:06}.jpg'.format(frame_number))
         elif self.dataset == 'UCFCrime':
             return os.path.join(path,'{:06}.jpg'.format(frame_number))
+        elif self.dataset == 'UCFCrime_Reduced':
+            frame_idx = frame_number
+            pth = os.path.join(path, frames_names_list[frame_idx])
+            return pth
     
-    def load_input_1(self, path, seg):
+    def load_input_1(self, path, seg, frames_names_list):
         tube_images = []
         raw_clip_images = []
+
+
         if self.config['input_1']['type']=='rgb':
-            frames_paths = [self.build_frame_name(path, i) for i in seg]
+            frames_paths = [self.build_frame_name(path, i, frames_names_list) for i in seg]
             # print('frames_paths: ', frames_paths)
             for i in frames_paths:
                 img = imread(i)
@@ -101,22 +110,22 @@ class TubeDataset(data.Dataset):
         elif self.config['input_1']['type']=='dynamic-image':
             tt = DynamicImage()
             for shot in seg:
-                frames_paths = [self.build_frame_name(path, i) for i in shot]
+                frames_paths = [self.build_frame_name(path, i, frames_names_list) for i in shot]
                 shot_images = [imread(img_path) for img_path in frames_paths]
                 img = self.spatial_transform(tt(shot_images)) if self.spatial_transform else tt(shot_images)
                 tube_images.append(img)
         return tube_images, raw_clip_images
     
-    def load_input_2(self, frames, path):
+    def load_input_2(self, frames, path, frames_names_list):
         if self.config['input_2']['type'] == 'rgb':
             i = frames[int(len(frames)/2)]
             # print('central frame:', i)
-            img_path = self.build_frame_name(path, i)
+            img_path = self.build_frame_name(path, i, frames_names_list)
             key_frame = imread(img_path)
             
         elif self.config['input_2']['type'] == 'dynamic-image':
             tt = DynamicImage()
-            frames_paths = [self.build_frame_name(path, i) for i in frames] #rwf
+            frames_paths = [self.build_frame_name(path, i, frames_names_list) for i in frames] #rwf
             shot_images = [np.array(imread(img_path, resize=(224,224))) for img_path in frames_paths]
             # shot_images = [s.reshape((224,224,3)) for s in shot_images]
             # sizes = [s.shape for s in shot_images]
@@ -167,7 +176,7 @@ class TubeDataset(data.Dataset):
         elif self.dataset == 'UCFCrime':
             max_video_len = self.annotations[idx][0]['foundAt'][-1]- 1
         elif self.dataset == 'UCFCrime_Reduced':
-            max_video_len = self.annotations[idx][0]['foundAt'][-1]- 1
+            max_video_len = len(os.listdir(path)) - 1
         return max_video_len
 
     def __len__(self):
@@ -175,6 +184,9 @@ class TubeDataset(data.Dataset):
     
     def __getitem__(self, index):
         path = self.paths[index]
+        frames_names_list = os.listdir(path)
+        frames_names_list = natural_sort(frames_names_list)
+        # print('frames_names_list: ', frames_names_list)
         label = self.labels[index]
         annotation = self.annotations[index]
         max_video_len = self.video_max_len(index)
@@ -184,7 +196,8 @@ class TubeDataset(data.Dataset):
         video_images = []
         num_tubes = len(segments)
         for seg in segments:
-            tube_images, _ = self.load_input_1(path, seg)
+            # print('load_input_1 args: ', path, seg)
+            tube_images, _ = self.load_input_1(path, seg, frames_names_list)
             video_images.append(torch.stack(tube_images, dim=0))
         
         key_frames = []
@@ -196,7 +209,7 @@ class TubeDataset(data.Dataset):
                 # elif self.dataset == 'hockey':
                 #     img_path = os.path.join(path,'frame{:03}.jpg'.format(i+1))
                 # key_frame = self.spatial_transform_2(imread(img_path)) if self.spatial_transform_2 else imread(img_path)
-                key_frame, _ = self.load_input_2(seg, path)
+                key_frame, _ = self.load_input_2(seg, path, frames_names_list)
                 key_frames.append(key_frame)
         # print('list boxes: ', boxes, len(boxes))
         

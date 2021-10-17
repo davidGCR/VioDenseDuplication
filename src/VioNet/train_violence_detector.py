@@ -287,7 +287,7 @@ def data_with_tubes(config: Config, make_dataset_train, make_dataset_val):
                         num_workers=config.num_workers,
                         # pin_memory=True,
                         collate_fn=my_collate,
-                        # sampler=train_dataset.get_sampler(),
+                        sampler=train_dataset.get_sampler(),
                         drop_last=True
                         )
     val_dataset = TubeDataset(frames_per_tube=config.frames_per_tube, 
@@ -301,7 +301,7 @@ def data_with_tubes(config: Config, make_dataset_train, make_dataset_val):
                         batch_size=config.val_batch,
                         # shuffle=True,
                         num_workers=config.num_workers,
-                        # sampler=val_dataset.get_sampler(),
+                        sampler=val_dataset.get_sampler(),
                         # pin_memory=True,
                         collate_fn=my_collate,
                         drop_last=True
@@ -378,25 +378,25 @@ if __name__=='__main__':
         model='TwoStreamVD_Binary_CFam',#'TwoStreamVD_Binary_CFam',#'TwoStreamVD_Binary',#'i3d-roi',i3d+roi+fc
         model_config=TWO_STREAM_CFAM_CONFIG,
         # head=BINARY,
-        dataset=UCFCrime_DATASET,
+        dataset=UCFCrimeReduced_DATASET,
         num_cv=1,
         # input_type='',
         device=get_torch_device(),
-        num_epoch=1,
+        num_epoch=100,
         criterion='CEL',
-        optimizer='SGD',
+        optimizer='Adadelta',
         learning_rate=0.001, #0.001 for adagrad
         train_batch=8,
         val_batch=8,
-        num_tubes=1,
+        num_tubes=4,
         tube_sampling_random=True,
         frames_per_tube=16, 
-        tube_sample_strategy=EVENLY,
-        save_every=10,
+        tube_sample_strategy=MIDDLE,
+        save_every=5,
         # freeze=False,
-        additional_info='',
-        home_path=HOME_UBUNTU,
-        num_workers=1
+        additional_info='using-gen-action-tubes',
+        home_path=HOME_COLAB,
+        num_workers=2
     )
     # config.pretrained_model = "/content/DATASETS/Pretrained_Models/DenseNetLean_Kinetics.pth"
     # config.pretrained_model='/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt'
