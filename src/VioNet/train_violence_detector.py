@@ -78,12 +78,24 @@ def load_make_dataset(dataset_name, train=True, cv_split=1, home_path='', catego
             cv_split_annotation_path=os.path.join(home_path, 'VioNetDB-splits/RealLifeViolenceDataset{}.json'.format(cv_split)), #'/content/DATASETS/VioNetDB-splits/hockey_jpg{}.json'
             path_annotations=os.path.join(home_path, 'ActionTubes/RealLifeViolenceDataset'),
             )
-    elif dataset_name == UCFCrime_DATASET:
-        ann_file  = 'Train_annotation.pkl' if train else 'Test_annotation.pkl'
+    # elif dataset_name == UCFCrime_DATASET:
+    #     ann_file  = ('Train_annotation.pkl', 'Train_normal_annotation.pkl') if train else ('Test_annotation.pkl', 'Test_normal_annotation.pkl')
+    #     make_dataset = MakeUCFCrime(
+    #         root=os.path.join(home_path, 'UCFCrime/frames'), 
+    #         sp_abnormal_annotations_file=os.path.join(home_path,'VioNetDB-splits/UCFCrime', ann_file[0]), 
+    #         sp_normal_annotations_file=os.path.join(home_path,'VioNetDB-splits/UCFCrime', ann_file[1]), 
+    #         action_tubes_path=os.path.join(home_path,'ActionTubes/UCFCrime_reduced', ann_file[1]),
+    #         train=train,
+    #         ground_truth_tubes=False)
+    elif dataset_name == UCFCrimeReduced_DATASET:
+        ann_file  = ('Train_annotation.pkl', 'Train_normal_annotation.pkl') if train else ('Test_annotation.pkl', 'Test_normal_annotation.pkl')
         make_dataset = MakeUCFCrime(
-            root=os.path.join(home_path, 'UCFCrime/frames'), 
-            sp_annotations_file=os.path.join(home_path,'VioNetDB-splits/UCFCrime', ann_file), 
-            train=train)
+            root=os.path.join(home_path, 'UCFCrime_Reduced', 'frames'), 
+            sp_abnormal_annotations_file=os.path.join(home_path,'VioNetDB-splits/UCFCrime', ann_file[0]), 
+            sp_normal_annotations_file=os.path.join(home_path,'VioNetDB-splits/UCFCrime', ann_file[1]), 
+            action_tubes_path=os.path.join(home_path,'ActionTubes/UCFCrime_Reduced'),
+            train=train,
+            ground_truth_tubes=False)
 
     return make_dataset
 
@@ -106,18 +118,6 @@ def main(config: Config, MIL=False):
     # train_loader, val_loader = data_with_tubes(config, make_dataset, val_make_dataset)
     train_loader, val_loader = data_with_tubes(config, make_dataset, val_make_dataset)
    
-    
-    ################## Full Detector ########################
-    # from models.violence_detector import ViolenceDetectorBinary
-    # if config.model == 'densenet_lean_roi':
-    #     model, params = VioNet_densenet_lean_roi(config, config.pretrained_model)
-    # elif config.model == 'i3d+roi+i3d':
-    #     model, params = VioNet_I3D_Roi(config, device, config.pretrained_model)
-    # elif config.model == 'i3d+roi+binary':
-    #     model = ViolenceDetectorBinary(
-    #         freeze=config.freeze,
-    #         input_dim=528).to(device)
-    #     params = model.parameters()
     if config.model == 'TwoStreamVD_Binary_CFam' or config.model == 'MIL_TwoStreamVD_Binary_CFam':
         model = TwoStreamVD_Binary_CFam(config.model_config).to(device)
         if config.model_config['load_weigths'] is not None:
@@ -378,7 +378,7 @@ if __name__=='__main__':
         model='TwoStreamVD_Binary_CFam',#'TwoStreamVD_Binary_CFam',#'TwoStreamVD_Binary',#'i3d-roi',i3d+roi+fc
         model_config=TWO_STREAM_CFAM_CONFIG,
         # head=BINARY,
-        dataset=UCFCrime_DATASET,
+        dataset=UCFCrimeReduced_DATASET,
         num_cv=1,
         # input_type='',
         device=get_torch_device(),
@@ -388,15 +388,15 @@ if __name__=='__main__':
         learning_rate=0.001, #0.001 for adagrad
         train_batch=8,
         val_batch=8,
-        num_tubes=1,
+        num_tubes=4,
         tube_sampling_random=True,
         frames_per_tube=16, 
-        tube_sample_strategy=EVENLY,
-        save_every=10,
+        tube_sample_strategy=MIDDLE,
+        save_every=5,
         # freeze=False,
-        additional_info='',
-        home_path=HOME_UBUNTU,
-        num_workers=4
+        additional_info='using-gen-action-tubes',
+        home_path=HOME_COLAB,
+        num_workers=2
     )
     # config.pretrained_model = "/content/DATASETS/Pretrained_Models/DenseNetLean_Kinetics.pth"
     # config.pretrained_model='/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt'

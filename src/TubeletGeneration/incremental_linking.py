@@ -116,7 +116,8 @@ class IncrementalLinking:
         self.jumpgap = self.config['jumpgap']
         self.dataset_root = self.config['dataset_root']
         self.min_window_len = self.config['min_window_len']
-        # self.plot_wait = 1000
+        self.train_mode = self.config['train_mode']
+        self.img_size = self.config['img_size']
         # self.max_num_motion_boxes = 4
         
     
@@ -350,8 +351,6 @@ class IncrementalLinking:
         for t in frames:
             #get current temporal window
             w = self.get_temporal_window(t, windows)
-            
-            # print('fname: {}, frame_idx: {} , window: {}'.format(t, t, w))
             if w == None:
                 continue
             img_paths, images = self.read_segment(w)
@@ -397,7 +396,7 @@ class IncrementalLinking:
                     video_windows.append(current_window)
                 # else:
                     # print(current_window['frames_numbers'])
-            
+            # print('fname: {}, frame_idx: {} , window: {}, real_frame: {}'.format(t, t, w, self.video_detections[t]['fname']))
             #initialize tube building
             num_persons = self.video_detections[t]['pred_boxes'].shape[0]
             if num_persons == 0: #no persons detected in frame
@@ -456,7 +455,8 @@ class IncrementalLinking:
                                 'id': lp_id, #id tube
                                 'foundAt': [t],
                                 'lastfound': 0, #diff between current frame and last frame in path
-                                'score': merge_pred_boxes[b,4]
+                                'score': merge_pred_boxes[b,4],
+                                'type': 'normal'
                             }
                         )
                         lp_id += 1
@@ -528,7 +528,8 @@ class IncrementalLinking:
                                 'id': len(live_paths), #id tube
                                 'foundAt': [t],
                                 'lastfound': 0, #diff between current frame and last frame in path
-                                'score': merge_pred_boxes[i,4]
+                                'score': merge_pred_boxes[i,4],
+                                'type': 'normal'
                             }
                         )
                         if debug_mode:
@@ -544,7 +545,8 @@ class IncrementalLinking:
         if save_results:
             create_video(images_to_video, self.config['plot_config']['save_folder_debug'] , 'tube_gen.avi', save_frames=True)
         
-        if len(live_paths)==0:
+        if len(live_paths)==0 and self.train_mode:
+            print('No tubes in video....using motion map')
             live_path_from_motion = ({
                     'frames_name': [],
                     'boxes':[],
@@ -552,7 +554,8 @@ class IncrementalLinking:
                     'id': '', #id tube
                     'foundAt': [],
                     'lastfound': 0, #diff between current frame and last frame in path
-                    'score': 0
+                    'score': 0,
+                    'type': 'motion'
                 })
             motion_in_video = True
             for vw in video_windows:#for each clip
@@ -585,6 +588,40 @@ class IncrementalLinking:
                 live_paths = [live_path_from_motion]
             else:
                 live_paths = []
+            if len(live_paths) == 0:
+                print('\tNo Motion maps in video ....generating random tube')
+
+                random_path = {
+                    'frames_name': [],
+                    'boxes':[],
+                    'len': 0, ##length of tube
+                    'id': '', #id tube
+                    'foundAt': [],
+                    'lastfound': 0, #diff between current frame and last frame in path
+                    'score': 0,
+                    'type': 'random'
+                }
+
+                w_min=100
+                h_min=50
+                xmin = np.random.randint(10, self.img_size[0]/2)
+                ymin = np.random.randint(10, self.img_size[1]/2)
+                xmax = np.random.randint(xmin + w_min, self.img_size[0])
+                ymax = np.random.randint(ymin + h_min, self.img_size[0])
+                # xmax = xmin + w_min
+                # ymax = ymin + h_min
+                random_box = [xmin, ymin, xmax, ymax, 0]
+                random_box = np.array(random_box)
+                # print('random_box: ', random_box)
+                for t in frames:
+                    random_path['frames_name'].append(self.video_detections[t]['fname'])
+                    random_path['boxes'].append(random_box),
+                    random_path['len'] += 1
+                    random_path['id'] = 0
+                    random_path['foundAt'].append(t)
+                live_paths = [random_path]
+
+
         
         # self.fill_gaps(live_paths)
         

@@ -15,6 +15,8 @@ MOTION_SEGMENTATION_CONFIG = {
 }
 
 TUBE_BUILD_CONFIG = {
+    'train_mode': True,
+    'img_size': (224,224),
     'dataset_root': '',
     'person_detections': '',
     'close_persons_rep': 10,#

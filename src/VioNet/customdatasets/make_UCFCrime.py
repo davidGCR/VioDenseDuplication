@@ -4,18 +4,28 @@ import pickle
 import cv2
 import numpy as np
 import random
+import shutil
 
 class MakeUCFCrime():
-    def __init__(self, root, sp_annotations_file, train):
+    def __init__(
+        self, 
+        root, 
+        sp_abnormal_annotations_file, 
+        sp_normal_annotations_file, 
+        action_tubes_path,
+        train,
+        ground_truth_tubes=True):
         self.root = root
-        self.sp_annotations_file = sp_annotations_file
+        self.sp_abnormal_annotations_file = sp_abnormal_annotations_file
+        self.sp_normal_annotations_file = sp_normal_annotations_file
         # self.path_person_detections = path_person_detections
         self.classes = ['normal', 'abnormal'] 
         self.subclasses = ['Fighting', 'Assault', 'Robbery']
         # self.abnormal = abnormal
         self.train = train
         self.split = 'train' if self.train else 'test'
-        # self.split_file = split_file
+        self.ground_truth_tubes = ground_truth_tubes
+        self.action_tubes_path = action_tubes_path
     
     def __get_list__(self):
         path = self.root
@@ -36,10 +46,18 @@ class MakeUCFCrime():
         return os.path.join(self.path_annotations, annotation)
     
     def __load_sp_ground_truth__(self):
-        filename = self.sp_annotations_file
-        infile = open(filename,'rb')
-        new_dict = pickle.load(infile)
+        filename_abnormal = self.sp_abnormal_annotations_file
+        infile = open(filename_abnormal,'rb')
+        abnormal_dict = pickle.load(infile)
         infile.close()
+
+        filename_normal = self.sp_normal_annotations_file
+        infile = open(filename_normal,'rb')
+        normal_dict = pickle.load(infile)
+        infile.close()
+
+        new_dict = abnormal_dict.copy()
+        new_dict.update(normal_dict)
         return new_dict
 
     def new_coordinates_after_resize_img(self, original_size, new_size, original_coordinate):
@@ -122,6 +140,9 @@ class MakeUCFCrime():
         return int(re.search(r'\d+', f_name).group())
 
     def gt2tube(self, annotations_per_frame):
+        """
+        Converts ground-truth to tube format
+        """
         live_paths = [
             {
                 'frames_name': [],
@@ -175,9 +196,68 @@ class MakeUCFCrime():
         # print('frames_numbers len: ', frames_numbers, len(frames_numbers))
 
         return frames_numbers
-        
-        
-        # print('frames_numbers: ', frames_numbers, len(frames_numbers))
+    
+    def generate_normal_spt_annotations_file(self, out_file):
+        """
+        Generates sp annotation file for a normal video
+        """
+        _, normal_paths = self.__get_list__()
+        _normal_annotations_dict = {}
+        for ap in normal_paths:
+            frames_numbers = self.gen_temp_split(ap)
+            [x1, y1, x2, y2] = self.gen_rand_bbox(size=(320,240))
+            x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
+            _anno2save=[]
+            for fn in frames_numbers:
+                _anno2save.append([
+                    os.path.join(ap, 'image_{:06}.jpg'.format(fn)),
+                    x1,
+                    y1,
+                    x2,
+                    y2
+                ])
+            _normal_annotations_dict[ap.split('/')[-1]] = _anno2save
+            print('\nnormal key:\t', ap.split('/')[-1], ', value: ', _anno2save)
+        file_to_write = open(out_file, "wb")
+        pickle.dump(_normal_annotations_dict, file_to_write)
+    
+    def create_reduced_dataset(self, folder_src, folder_dst):
+        """
+        Creates reduced dataset using sp annotations
+        """
+        abnormal_paths, normal_paths = self.__get_list__()
+        paths = abnormal_paths + normal_paths
+        gt_dict = self.__load_sp_ground_truth__()
+        for ap in paths:
+            assert os.path.isdir(ap), 'Folder does not exist!!!'
+            path_splits = ap.split('/')
+            video_imgs_folder = ap.split('/')[-1]
+            print('\nvideo_imgs_folder: ', ap)
+            dst_folder = os.path.join(folder_dst, path_splits[-3], path_splits[-2], video_imgs_folder)
+            if not os.path.isdir(dst_folder):
+                print('creating dst_folder: ', dst_folder)
+                os.mkdir(dst_folder)
+            else:
+                continue
+            gt = gt_dict[video_imgs_folder]
+            for frame_gt in gt:
+                src_path = frame_gt[0]
+                real_frame_name = '{:06}.jpg'.format(self.get_number_from_string(src_path.split('/')[-1]))
+                h,t = os.path.split(src_path)
+                src_path = os.path.join(h, real_frame_name)
+                # print('src_path: ', src_path)
+                if not os.path.isfile(src_path):
+                    print('ERROR: {} does not exist!!!: '.format(src_path))
+                    frame_path_splits = src_path.split('/')
+                    print('frame_path_splits: ', frame_path_splits)
+                    clase = 'abnormal' if 'Anomaly_Test' in frame_path_splits or 'Anomaly_Train' in frame_path_splits else 'normal'
+                    split = 'train' if 'Anomaly_Train' in frame_path_splits else 'test'
+                    src_path = os.path.join(folder_src, split, clase, frame_path_splits[-2], '{:06}.jpg'.format(self.get_number_from_string(frame_path_splits[-1])))
+                print('\tcopying: {}'.format(src_path))
+                img_dst = os.path.join(dst_folder, src_path.split('/')[-1])
+                shutil.copyfile(src_path, img_dst)
+
+
 
 #    No frames at:  /Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime/frames/train/normal/Normal_Videos533_x264
 #    No frames at:  /Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime/frames/train/normal/Normal_Videos425_x264
@@ -186,16 +266,18 @@ class MakeUCFCrime():
         abnormal_paths, normal_paths = self.__get_list__()
         paths = abnormal_paths + normal_paths
         num_frames = []
-        sp_gts = []
-        gt_tubes = []
+        # sp_gts = []
+        action_tubes = []
         gt_dict = self.__load_sp_ground_truth__()
         for ap in paths:
             assert os.path.isdir(ap), 'Folder does not exist!!!'
             n = len(os.listdir(ap))
             num_frames.append(n)
             annotations_per_frame = []
-            if ap.split('/')[-2] == 'abnormal':
+
+            if self.ground_truth_tubes:
                 gt = gt_dict[ap.split('/')[-1]]
+                # print('\nkey:\t', ap.split('/')[-1], ', value: ', gt)
                 for g in gt:
                     f_number=self.get_number_from_string(g[0].split('/')[-1])
                     (x1, y1) = self.new_coordinates_after_resize_img((320,240), (224,224), (int(g[1]),int(g[2])))
@@ -210,43 +292,86 @@ class MakeUCFCrime():
                         
                     })
                 annotations_per_frame = sorted(annotations_per_frame, key = lambda i: i['number'])
-                sp_gts.append(annotations_per_frame)
-                gt_tubes.append(self.gt2tube(annotations_per_frame))
+                # sp_gts.append(annotations_per_frame)
+                action_tubes.append(self.gt2tube(annotations_per_frame))
             else:
-                frames_numbers = self.gen_temp_split(ap)
-                [x1, y1, x2, y2] = self.gen_rand_bbox((224,224))
-                for fn in frames_numbers:
-                    annotations_per_frame.append({
-                        "number": fn,
-                        "frame": '{:06}.jpg'.format(fn),
-                        "xmin": x1,
-                        "ymin": y1,
-                        "xmax": x2,
-                        "ymax": y2
+                video_path_splits = ap.split('/')
+                tube_annotation_path = os.path.join(self.action_tubes_path, video_path_splits[-3], video_path_splits[-2], video_path_splits[-1]+'.json')
+                # print('tube_annotation_path: ', tube_annotation_path)
+                if not os.path.isfile(tube_annotation_path):
+                    print('\nAnnotation does not exist!!! ', tube_annotation_path)
+                
+                action_tubes.append(tube_annotation_path)
+
+
+
+            # if ap.split('/')[-2] == 'abnormal':
+            #     gt = gt_dict[ap.split('/')[-1]]
+            #     # print('\nkey:\t', ap.split('/')[-1], ', value: ', gt)
+            #     for g in gt:
+            #         f_number=self.get_number_from_string(g[0].split('/')[-1])
+            #         (x1, y1) = self.new_coordinates_after_resize_img((320,240), (224,224), (int(g[1]),int(g[2])))
+            #         (x2, y2) = self.new_coordinates_after_resize_img((320,240), (224,224), (int(g[3]),int(g[4])))
+            #         annotations_per_frame.append({
+            #             "number": f_number,
+            #             "frame": '{:06}.jpg'.format(f_number),
+            #             "xmin": x1,
+            #             "ymin": y1,
+            #             "xmax": x2,
+            #             "ymax": y2
                         
-                    })
-                annotations_per_frame = sorted(annotations_per_frame, key = lambda i: i['number'])
-                # gt = None
-                sp_gts.append(annotations_per_frame)
-                gt_tubes.append(self.gt2tube(annotations_per_frame))
-            # print('\ngt: ', sp_gts[-1])
+            #         })
+            #     annotations_per_frame = sorted(annotations_per_frame, key = lambda i: i['number'])
+            #     sp_gts.append(annotations_per_frame)
+            #     gt_tubes.append(self.gt2tube(annotations_per_frame))
+            # else:
+            #     frames_numbers = self.gen_temp_split(ap)
+            #     [x1, y1, x2, y2] = self.gen_rand_bbox((224,224))
+            #     for fn in frames_numbers:
+            #         annotations_per_frame.append({
+            #             "number": fn,
+            #             "frame": '{:06}.jpg'.format(fn),
+            #             "xmin": x1,
+            #             "ymin": y1,
+            #             "xmax": x2,
+            #             "ymax": y2
+                        
+            #         })
+            #     annotations_per_frame = sorted(annotations_per_frame, key = lambda i: i['number'])
+            #     sp_gts.append(annotations_per_frame)
+            #     gt_tubes.append(self.gt2tube(annotations_per_frame))
+            
         labels = [1]*len(abnormal_paths) + [0]*len(normal_paths)
-        return paths, labels, sp_gts, gt_tubes, num_frames
+        return paths, labels, action_tubes, num_frames
 
 if __name__=='__main__':
     make_func = MakeUCFCrime(
-        root='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime/frames', 
-        sp_annotations_file='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/VioNetDB-splits/UCFCrime/Test_annotation.pkl', 
-        train=False)
+        root='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime_Reduced/frames', 
+        sp_abnormal_annotations_file='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/VioNetDB-splits/UCFCrime/Train_annotation.pkl', 
+        sp_normal_annotations_file='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/VioNetDB-splits/UCFCrime/Train_normal_annotation.pkl',
+        action_tubes_path='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/UCFCrime_Reduced', 
+        train=True,
+        ground_truth_tubes=False)
     
-    paths, labels, sp_gts, gt_tubes, num_frames = make_func()
-    print('paths: ', len(paths), paths[0])
-    print('labels: ', len(labels))
-    print('sp_gts: ', len(sp_gts))
-    print('gt_tubes: ', len(gt_tubes))
+    paths, labels, action_tubes, num_frames = make_func()
+    rand_idx = random.randint(0,len(paths)-1)
+    print('paths: ', len(paths), paths[rand_idx])
+    print('labels: ', len(labels), labels[rand_idx])
+    print('action_tubes: ', len(action_tubes))
+    # print('gt_tubes: ', len(gt_tubes))
     print('num_frames: ', len(num_frames))
 
-    idx = 20
-    print('sp_gts[idx]: ', sp_gts[idx], len(sp_gts[idx]))
-    print('\ngt_tubes[idx]: ', gt_tubes[idx], len(gt_tubes[idx][0]['frames_name']))
-    make_func.plot(folder_imgs=paths[idx], annotations_dict=sp_gts[idx], live_paths=[])
+    # make_func.create_reduced_dataset(
+    #     folder_src='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime/frames',
+    #     folder_dst='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime_Reduced/frames'
+    #     )
+
+    # make_func.generate_normal_spt_annotations_file(
+    #     "/Users/davidchoqueluqueroman/Documents/DATASETS_Local/VioNetDB-splits/UCFCrime/Train_normal_annotation.pkl"
+    #     )
+
+    idx = 0
+    print('action_tubes[idx]: ', action_tubes[idx], len(action_tubes[idx]))
+    # print('sp_gts[idx]: ', sp_gts[idx], len(sp_gts[idx]))
+    # print('\ngt_tubes[idx]: ', gt_tubes[idx], len(gt_tubes[idx][0]['frames_name']))
+    # make_func.plot(folder_imgs=paths[idx], annotations_dict=sp_gts[idx], live_paths=[])

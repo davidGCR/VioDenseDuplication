@@ -35,7 +35,6 @@ class TubeCrop(object):
         
         for tube in tubes:
             if self.input_type==RGB_FRAME:
-                
                 frames_idxs = self.__centered_frames__(tube['foundAt'],max_video_len)
             else:
                 frames_idxs = self.__centered_segments__()
@@ -93,28 +92,22 @@ class TubeCrop(object):
 
             return centered_array.tolist()
         if len(tube_frames_idxs) < self.tube_len: #padding
-
-            # last_idx = tube_frames_idxs[-1]
-            # tube_frames_idxs += (self.tube_len - len(tube_frames_idxs))*[last_idx]
-            # tube_frames_idxs = tube_frames_idxs
-            # print('len(tube_frames_idxs) < self.tube_len: ', tube_frames_idxs)
-            center_idx = int(len(tube_frames_idxs)/2)
-            
-            # print('center_idx:{}, center_frame:{}'.format(center_idx, tube_frames_idxs[center_idx]))
-            
-            start = tube_frames_idxs[center_idx]-int(self.tube_len/2)
-            end = tube_frames_idxs[center_idx]+int(self.tube_len/2)
-            # print('start: {}, end: {}'.format(start,end))
-            out = list(range(start,end))
-            # if tube_frames_idxs[center_idx]-int(self.tube_len/2) < self.max_video_len:
-            if out[0]<0:
-                most_neg = abs(out[0])
-                out = [i+most_neg for i in out]
-            elif tube_frames_idxs[center_idx]+int(self.tube_len/2) > max_video_len:
-                start = tube_frames_idxs[center_idx]-(self.tube_len-(max_video_len-tube_frames_idxs[center_idx]))+1
-                end = max_video_len+1
-                out = list(range(start,end))
-            tube_frames_idxs = out
+            min_frame = tube_frames_idxs[0]
+            tube_frames_idxs = np.linspace(min_frame, max_video_len, self.tube_len).astype(int)
+            tube_frames_idxs = tube_frames_idxs.tolist()
+            # center_idx = int(len(tube_frames_idxs)/2)
+            # # print('center_idx:{}, center_frame:{}'.format(center_idx, tube_frames_idxs[center_idx]))
+            # start = tube_frames_idxs[center_idx]-int(self.tube_len/2)
+            # end = tube_frames_idxs[center_idx]+int(self.tube_len/2)
+            # out = list(range(start,end))
+            # if out[0]<0:
+            #     most_neg = abs(out[0])
+            #     out = [i+most_neg for i in out]
+            # elif tube_frames_idxs[center_idx]+int(self.tube_len/2) > max_video_len:
+            #     start = tube_frames_idxs[center_idx]-(self.tube_len-(max_video_len-tube_frames_idxs[center_idx]))+1
+            #     end = max_video_len+1
+            #     out = list(range(start,end))
+            # tube_frames_idxs = out
             return tube_frames_idxs
     
     def __centered_segments__(self):
