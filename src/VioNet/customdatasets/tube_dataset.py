@@ -40,14 +40,14 @@ class TubeDataset(data.Dataset):
         self.make_function = make_function
         if dataset == 'UCFCrime':
             self.paths, self.labels, _, self.annotations, self.num_frames = self.make_function()
-            indices_2_remove = []
-            for index in range(len(self.paths)):
-                annotation = self.annotations[index]
-                if len(annotation) == 0:
-                    indices_2_remove.append(index)
-            self.paths = [self.paths[i] for i in range(len(self.paths)) if i not in indices_2_remove]
-            self.labels = [self.labels[i] for i in range(len(self.labels)) if i not in indices_2_remove]
-            self.annotations = [self.annotations[i] for i in range(len(self.annotations)) if i not in indices_2_remove]
+            # indices_2_remove = []
+            # for index in range(len(self.paths)):
+            #     annotation = self.annotations[index]
+            #     if len(annotation) == 0:
+            #         indices_2_remove.append(index)
+            # self.paths = [self.paths[i] for i in range(len(self.paths)) if i not in indices_2_remove]
+            # self.labels = [self.labels[i] for i in range(len(self.labels)) if i not in indices_2_remove]
+            # self.annotations = [self.annotations[i] for i in range(len(self.annotations)) if i not in indices_2_remove]
         else:
             self.paths, self.labels, self.annotations = self.make_function()
             self.paths, self.labels, self.annotations = filter_data_without_tubelet(self.paths, self.labels, self.annotations)
@@ -178,7 +178,7 @@ class TubeDataset(data.Dataset):
         max_video_len = self.video_max_len(index)
         boxes, segments, idxs = self.sampler(self.load_tube_from_file(annotation), max_video_len)
         # print('segments_from_sampler: ', segments)
-        print('boxes_from_sampler: ', boxes)
+        # print('boxes_from_sampler: ', boxes)
         video_images = []
         num_tubes = len(segments)
         for seg in segments:
