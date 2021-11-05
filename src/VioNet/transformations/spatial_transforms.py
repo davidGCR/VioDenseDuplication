@@ -95,6 +95,7 @@ class GroupRandomHorizontalFlip(object):
 
 class ToTensor(object):
     def __call__(self, pic):
+        # print('toTensor input type: ', type(pic))
         # handle RGB PIL Image
         img = torch.ByteTensor(torch.ByteStorage.from_buffer(pic.tobytes()))
         img = img.view(pic.size[1], pic.size[0], len(pic.mode))
@@ -160,6 +161,6 @@ if __name__ == '__main__':
             Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ]
     )
-    img = Image.open('../test.jpg')
+    img = Image.open('test.jpg')
     img_group = [img] * 3
     rst = trans(img_group)
