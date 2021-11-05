@@ -15,7 +15,10 @@ class TubeCrop(object):
                     train=True,
                     input_type=RGB_FRAME,
                     sample_strategy=MIDDLE,#'middle', #'evenly'
-                    random=True):
+                    # boxes_sample_strategy=MIDDLE,
+                    random=True,
+                    box_as_tensor=True,
+                    shape=(224,224)):
         """
         Args:
         """
@@ -26,73 +29,92 @@ class TubeCrop(object):
         self.input_type = input_type
         self.random = random
         self.sample_strategy = sample_strategy
+        # self.boxes_sample_strategy = boxes_sample_strategy
+        self.box_as_tensor = box_as_tensor
+        self.shape = shape
 
     def __call__(self, tubes: list, max_video_len: int):
         segments = []
-        boxes = []
-        if not self.random:
-            tubes = sorted(tubes, key = lambda i: i['len'], reverse=True)
+        # boxes = []
+        if self.random: # select randomly K tubes
+            chosed_tubes_idxs = random.sample(range(len(tubes)), self.max_num_tubes)
+            print('\nchosed_tubes_idxs:', chosed_tubes_idxs)
+            # chosed_tubes = list(itemgetter(*chosed_tubes_idxs)(tubes))
+            chosed_tubes = [tubes[i] for i in range(len(tubes)) if i in chosed_tubes_idxs]
+        else:
+            chosed_tubes = tubes[0:self.max_num_tubes]
         
-        for tube in tubes:
+        print('chosed_tubes: \n', chosed_tubes)
+
+        for tube in chosed_tubes:
             if self.input_type==RGB_FRAME:
-                frames_idxs = self.__centered_frames__(tube['foundAt'],max_video_len)
+                frames_idxs = self.__sampled_tube_frames_indices__(tube['foundAt'], max_video_len)
             else:
                 frames_idxs = self.__centered_segments__()
-            if len(frames_idxs) > 0:
-                bbox = self.__central_bbox__(tube['boxes'], tube['id']+1)
-                boxes.append(bbox)
-                segments.append(frames_idxs)
-                # print(
-                    # 'tube[foundAt]: ', tube['foundAt'] , 
-                #         '\tsample: ', frames_idxs,
-                        # '\tbox: ',bbox)   
-        idxs = range(len(boxes))
-        if self.max_num_tubes != 0 and len(boxes) > self.max_num_tubes:
-            if self.random:
-                idxs = random.sample(range(len(boxes)), self.max_num_tubes)
-                boxes = list(itemgetter(*idxs)(boxes))
-                # print('random boxes: ', boxes)
-                segments = list(itemgetter(*idxs)(segments))
-                segments = [segments] if self.max_num_tubes==1 else segments
-                # if self.train:
-                #     idxs = random.sample(range(len(boxes)), self.max_num_tubes)
-                #     boxes = list(itemgetter(*idxs)(boxes))
-                #     segments = list(itemgetter(*idxs)(segments))
-                # else:
-                #     n = len(boxes)
-                #     m = int(n/2)
-                #     boxes = boxes[m-int(self.max_num_tubes/2) : m+int(self.max_num_tubes/2)]
-                #     segments = segments[m-int(self.max_num_tubes/2) : m+int(self.max_num_tubes/2)]
-            else:
-                boxes = boxes[0:self.max_num_tubes]
-                segments = segments[0:self.max_num_tubes]
+            
+            # bboxes = self.__sampled_tube_bboxes__(tube['boxes'], frames_idxs)
+            # boxes.append(bboxes)
+            segments.append(frames_idxs)
+
+        # for tube in tubes:
+        #     if self.input_type==RGB_FRAME:
+        #         frames_idxs = self.__centered_frames__(tube['foundAt'],max_video_len)
+        #     else:
+        #         frames_idxs = self.__centered_segments__()
+        #     if len(frames_idxs) > 0:
+        #         bbox = self.__central_bbox__(tube['boxes'], tube['id']+1)
+        #         boxes.append(bbox)
+        #         segments.append(frames_idxs)
+        #         # print(
+        #         #     '\ntube[foundAt]: ', tube['foundAt'] , 
+        #         #         '\tsample: ', frames_idxs,
+        #         #         '\tbox: ',bbox)   
+        # idxs = range(len(boxes))
+        # if self.max_num_tubes != 0 and len(boxes) > self.max_num_tubes:
+        #     if self.random:
+        #         idxs = random.sample(range(len(boxes)), self.max_num_tubes)
+        #         boxes = list(itemgetter(*idxs)(boxes))
+        #         # print('random boxes: ', boxes)
+        #         boxes = [b.reshape(1,-1) for b in boxes]
+        #         segments = list(itemgetter(*idxs)(segments))
+        #         segments = [segments] if self.max_num_tubes==1 else segments
+        #         # if self.train:
+        #         #     idxs = random.sample(range(len(boxes)), self.max_num_tubes)
+        #         #     boxes = list(itemgetter(*idxs)(boxes))
+        #         #     segments = list(itemgetter(*idxs)(segments))
+        #         # else:
+        #         #     n = len(boxes)
+        #         #     m = int(n/2)
+        #         #     boxes = boxes[m-int(self.max_num_tubes/2) : m+int(self.max_num_tubes/2)]
+        #         #     segments = segments[m-int(self.max_num_tubes/2) : m+int(self.max_num_tubes/2)]
+        #     else:
+        #         boxes = boxes[0:self.max_num_tubes]
+        #         segments = segments[0:self.max_num_tubes]
         
         # if len(boxes)==1:
-        #     print('boxes==1: ', boxes, boxes[0].size())
         #     boxes[0] = torch.unsqueeze(boxes[0], 0)
-        #     print('boxes unsqueeze: ', boxes, boxes[0].size())
-        for id,box in enumerate(boxes):
-            boxes[id][0,0] = id
+        # print('tube_crop boxes: ', boxes, boxes[0].shape)
+        # for id,box in enumerate(boxes):
+        #     boxes[id][0,0] = id
         # print('boxes ids: ', boxes)
-        return boxes, segments, idxs
+        return segments, chosed_tubes
     
-    def __centered_frames__(self, tube_frames_idxs: list, max_video_len: int):
-        if len(tube_frames_idxs) == self.tube_len: 
-            return tube_frames_idxs
-        if len(tube_frames_idxs) > self.tube_len:
+    def __sampled_tube_frames_indices__(self, tube_found_at: list, max_video_len: int):
+        if len(tube_found_at) == self.tube_len: 
+            return tube_found_at
+        if len(tube_found_at) > self.tube_len:
             if self.sample_strategy == MIDDLE:
-                n = len(tube_frames_idxs)
+                n = len(tube_found_at)
                 m = int(n/2)
-                arr = np.array(tube_frames_idxs)
+                arr = np.array(tube_found_at)
                 centered_array = arr[m-int(self.tube_len/2) : m+int(self.tube_len/2)]
             elif self.sample_strategy == EVENLY:
-                min_frame = tube_frames_idxs[0]
+                min_frame = tube_found_at[0]
                 tube_frames_idxs = np.linspace(min_frame, max_video_len, self.tube_len).astype(int)
                 tube_frames_idxs = tube_frames_idxs.tolist()
-
             return centered_array.tolist()
-        if len(tube_frames_idxs) < self.tube_len: #padding
-            min_frame = tube_frames_idxs[0]
+        if len(tube_found_at) < self.tube_len: #padding
+            min_frame = tube_found_at[0]
             tube_frames_idxs = np.linspace(min_frame, max_video_len, self.tube_len).astype(int)
             tube_frames_idxs = tube_frames_idxs.tolist()
             # center_idx = int(len(tube_frames_idxs)/2)
@@ -133,14 +155,30 @@ class TubeCrop(object):
             video_segments.append(segment)
         return video_segments
 
-    def __central_bbox__(self, tube, id):
-        width, height = 224, 224
-        if len(tube)>2:
-            central_box = tube[int(len(tube)/2)]
-        else:
-            central_box = tube[0]
-        central_box = central_box[0:4]
-        central_box = np.array([max(central_box[0], 0), max(central_box[1], 0), min(central_box[2], width - 1), min(central_box[3], height - 1)])
-        central_box = np.insert(central_box[0:4], 0, id).reshape(1,-1)
-        central_box = torch.from_numpy(central_box).float()
-        return central_box
+    def __format_bbox__(self, bbox):
+        """
+        Format a tube bbox: [x1,y1,x2,y2] to a correct format
+        """
+        (width, height) = self.shape
+        bbox = bbox[0:4]
+        bbox = np.array([max(bbox[0], 0), max(bbox[1], 0), min(bbox[2], width - 1), min(bbox[3], height - 1)])
+        bbox = np.insert(bbox[0:4], 0, id).reshape(1,-1).astype(float)
+        if self.box_as_tensor:
+            bbox = torch.from_numpy(bbox).float()
+        return bbox
+
+    # def __sampled_tube_bboxes__(self, tube_boxes, frames_idxs):
+    #     """
+    #     Sample a set of bboxes from a tube
+    #     """
+    #     if self.__sampled_tube_bboxes__ == MIDDLE:
+    #         if len(tube_boxes)>2:
+    #             central_box = tube_boxes[int(len(tube_boxes)/2)]
+    #         else:
+    #             central_box = tube_boxes[0]
+    #         return central_box
+    #     else:
+    #         sampled_boxes = [tube_boxes[i] for i in range(tube_boxes) if i in frames_idxs]
+    #         return sampled_boxes
+        
+        

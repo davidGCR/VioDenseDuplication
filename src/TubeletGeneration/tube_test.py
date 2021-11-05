@@ -20,7 +20,8 @@ from PIL import Image, ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 import random
 from tube_config import *
-import yaml
+import time
+from utils import natural_sort, TimeMeter
 
 def CountFrequency(my_list):
     # Creating an empty dictionary
@@ -39,46 +40,70 @@ def get_videos_from_num_tubes(my_list, num_tubes):
             videos.append(dcc['path'])
     return videos
 
-def extract_tubes_from_dataset(dataset_persons_detections_path, folder_out, frames=None):
-    
+def extract_tubes_from_dataset(
+    dataset_root, 
+    split, 
+    person_detections_root, 
+    folder_out, 
+    frames=None,
+    meter=None):
     """
         Args:
-            dataset_persons_detections_path: Path to folder containing the person detections in JSON format
+            person_detections_root: Path to folder containing the person detections in JSON format
     """
-    videos_list = os.listdir(dataset_persons_detections_path)
+    videos_list = os.listdir(os.path.join(dataset_root, split))
     videos_list = sorted(videos_list)
+    num_videos = len(videos_list)
     num_live_paths = []
-    # print('TUBE_BUILD_CONFIG\n', yaml.dump(TUBE_BUILD_CONFIG, sort_keys=False, default_flow_style=False))
-    # print('\nMOTION_SEGMENTATION_CONFIG\n', yaml.dump(MOTION_SEGMENTATION_CONFIG, sort_keys=False, default_flow_style=False))
     
-    for i, video_folder in enumerate(videos_list):
-        assert '.json' in video_folder, 'Unrecognized format!!!'
-        print("Processing ({}/{}), pt: {}/{} ...".format(i+1,len(videos_list), dataset_persons_detections_path, video_folder))
+
+    TUBE_BUILD_CONFIG['dataset_root'] = dataset_root
+
+    folder_out = os.path.join(folder_out, split)
+    if not os.path.isdir(folder_out): #Create folder of split
+        os.makedirs(folder_out)  
+
+    for i, video in enumerate(videos_list):
+        video_path = os.path.join(dataset_root, split, video)
+        person_detections_file = os.path.join(person_detections_root, split, video+'.json')
+        print("Processing ({}/{}), pt: {}".format(i+1, num_videos, video_path))
+
+        assert '.json' in person_detections_file, 'Unrecognized format!!!'
         
-        if not os.path.isdir(folder_out):
-            os.makedirs(folder_out)
-        
-        if os.path.exists(os.path.join(folder_out, video_folder)):
+        file_out = os.path.join(folder_out, video+'.json')
+        if os.path.exists(file_out):
             print('Already done!!!')
             continue
+        person_detections = JSON_2_videoDetections(person_detections_file)
 
-        person_detections = JSON_2_videoDetections("{}/{}".format(dataset_persons_detections_path, video_folder))
+        #video frames path
         if frames == None:
-            frames = np.linspace(0, len(person_detections)-1, len(person_detections), dtype=np.int16).tolist()
+            # frames = np.linspace(0, len(person_detections)-1, len(person_detections), dtype=np.int16).tolist()
+            frames_names = os.listdir(video_path)
+            frames_names = natural_sort(frames_names)
+            # print('\nframes_names: ', frames_names, len(frames_names))
+            frames = list(range(0,len(frames_names)))
+
         TUBE_BUILD_CONFIG['person_detections'] = person_detections
         segmentator = MotionSegmentation(MOTION_SEGMENTATION_CONFIG)
         tube_builder = IncrementalLinking(TUBE_BUILD_CONFIG)
 
-        live_paths = tube_builder(frames, segmentator)
+        start = time.time()
+        live_paths = tube_builder(frames, frames_names, segmentator)
+        end = time.time()
+        exc_time = end-start
         print('live_paths: ', len(live_paths))
+
+        meter.update(exc_time, len(frames))
         
         # num_live_paths.append({
         #     'path': dataset_persons_detections_path,
         #     'num': len(live_paths)
         #     })
 
-        tube_2_JSON(output_path=os.path.join(folder_out, video_folder), tube=live_paths)
+        # tube_2_JSON(output_path=file_out, tube=live_paths)
         frames = None
+    
     
         
     # CountFrequency(num_live_paths)
@@ -89,15 +114,14 @@ def extract_tubes_from_dataset(dataset_persons_detections_path, folder_out, fram
 
     return num_live_paths
 
-def extract_tubes_from_video(frames, motion_seg_config, tube_build_config, gt=None):
-    # segmentator = MotionSegmentation(MOTION_SEGMENTATION_CONFIG)
-    # tube_builder = IncrementalLinking(TUBE_BUILD_CONFIG)
-
-    
+def extract_tubes_from_video(frames, frames_names, motion_seg_config, tube_build_config, gt=None):
     segmentator = MotionSegmentation(motion_seg_config)
     tube_builder = IncrementalLinking(tube_build_config)
-    live_paths = tube_builder(frames, segmentator, gt)
-    return  live_paths
+    start = time.time()
+    live_paths = tube_builder(frames, frames_names, segmentator, gt)
+    end = time.time()
+    exec_time = end - start
+    return  live_paths, exec_time
 
 def plot_video_tube(tube_json):
     tubes = JSON_2_tube(tube_json)
@@ -229,17 +253,24 @@ def rlvs_one_video_test():
     print('live_paths: ', len(live_paths))
 
 def ucfcrime_one_video_test():
+    time_meter = TimeMeter()
     ucf_config = {
         'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime_Reduced/frames',
-        'split': 'train/normal',
-        'video': 'Normal_Videos180_x264',#'V_683',
+        'split': 'train/abnormal',
+        'video': 'Assault001_x264',#'Normal_Videos180_x264',#'V_683',
         'p_d_path': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/UCFCrime_Reduced'
     }
     config = ucf_config
     persons_detections_path = config['p_d_path']+'/{}/{}.json'.format(config['split'],config['video'])
     person_detections = JSON_2_videoDetections(persons_detections_path)
-    frames = np.linspace(0, len(person_detections)-1, num=len(person_detections), dtype=np.int16).tolist()
+    # frames = np.linspace(0, len(person_detections)-1, num=len(person_detections), dtype=np.int16).tolist()
     # frames = np.linspace(0, 149, dtype=np.int16).tolist()
+    
+    frames_names = os.listdir(os.path.join(ucf_config['dataset_root'], ucf_config['split'], ucf_config['video']))
+    frames_names = natural_sort(frames_names)
+    print('frames_names: ', frames_names, len(frames_names))
+    frames = list(range(0,len(frames_names)))
+
     print('random frames: ', frames, len(frames))
 
     TUBE_BUILD_CONFIG['dataset_root'] = config['dataset_root']
@@ -247,20 +278,28 @@ def ucfcrime_one_video_test():
 
     plot_create_save_dirs(config)
 
-    # print('TUBE_BUILD_CONFIG\n', yaml.dump(TUBE_BUILD_CONFIG, sort_keys=False, default_flow_style=False))
-    # print('\nMOTION_SEGMENTATION_CONFIG\n', yaml.dump(MOTION_SEGMENTATION_CONFIG, sort_keys=False, default_flow_style=False))
-
-    live_paths = extract_tubes_from_video(
+    live_paths, exec_time= extract_tubes_from_video(
         frames,
+        frames_names,
         MOTION_SEGMENTATION_CONFIG,
         TUBE_BUILD_CONFIG
         )
-    
-    print('live_paths: ', len(live_paths))
+    clip_len = len(frames)
+    num_runs = 1
+    frame_rate = 30
+
+    FPS = clip_len*num_runs/exec_time
+    print('\nlive_paths: {}, time: {} seconds, FPS: {}'.format(len(live_paths), exec_time, FPS))
+
+    time_meter.update(exec_time, clip_len)
+
+    print('TimeMeter FPS ---> time: {}, FPS: {}'.format(time_meter.total_time, time_meter.fps))
+
+    for i, lp in enumerate(live_paths):
+        print('\n lp:{}'.format(i+1))
+        print(lp)
 
 if __name__=="__main__":
-    22
-
     
     # plot_video_tube('/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/RWF-2000-150frames-motion-maps2/train/Fight/OAfV0xPIhZw_2.json')
     #ONE VIDEO test
@@ -331,13 +370,18 @@ if __name__=="__main__":
     ucf_config = {
         'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime_Reduced/frames',
         'path_in':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/UCFCrime_Reduced',
-        'path_out':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/UCFCrime_Reduced',
+        'path_out':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/UCFCrime_Reduced_V2.0',
         'splits':['train/abnormal', 'train/normal', 'test/abnormal', 'test/normal']
     }
     frames = None
     config = ucf_config
-    TUBE_BUILD_CONFIG['dataset_root'] = config['dataset_root']
+    # TUBE_BUILD_CONFIG['dataset_root'] = config['dataset_root']
+    time_meter = TimeMeter()
     for sp in config['splits']:
-        extract_tubes_from_dataset(dataset_persons_detections_path=os.path.join(config['path_in'], sp),
-                                    folder_out=os.path.join(config['path_out'], sp),
-                                    frames=frames)
+        extract_tubes_from_dataset(dataset_root=config['dataset_root'],
+                                    split=sp,
+                                    person_detections_root=config['path_in'],
+                                    folder_out=config['path_out'],
+                                    frames=frames,
+                                    meter=time_meter)
+    print('TimeMeter FPS ---> time: {}, FPS: {}'.format(time_meter.total_time, time_meter.fps))

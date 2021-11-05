@@ -153,10 +153,11 @@ class MakeUCFCrime():
                 'score': 1
             }
         ]
-        for gt in annotations_per_frame:
+        for idx, gt in enumerate(annotations_per_frame):
             live_paths[0]['frames_name'].append(gt['frame'])
             live_paths[0]['boxes'].append(np.array([gt['xmin'], gt['ymin'], gt['xmax'], gt['ymax'], 1]))
-            live_paths[0]['foundAt'].append(gt['number'])
+            # live_paths[0]['foundAt'].append(gt['number'])
+            live_paths[0]['foundAt'].append(idx)
             # live_paths[0]['frames_name'].append(gt['number'])
             live_paths[0]['len'] += 1
         return live_paths
@@ -351,7 +352,7 @@ if __name__=='__main__':
         sp_normal_annotations_file='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/VioNetDB-splits/UCFCrime/Train_normal_annotation.pkl',
         action_tubes_path='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/UCFCrime_Reduced', 
         train=True,
-        ground_truth_tubes=False)
+        ground_truth_tubes=True)
     
     paths, labels, action_tubes, num_frames = make_func()
     rand_idx = random.randint(0,len(paths)-1)

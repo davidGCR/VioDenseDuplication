@@ -329,8 +329,11 @@ class IncrementalLinking:
                 boxes = np.array(boxes)
                 break
         return boxes
+    
+    def is_dead(self, lp):
+        return lp['lastfound'] > self.jumpgap
 
-    def __call__(self, frames, segmentor, gt=None):
+    def __call__(self, frames_indices, frames_names, segmentor, gt=None):
         live_paths = []
         dead_paths = []
         video_windows = []
@@ -341,38 +344,17 @@ class IncrementalLinking:
         plot_wait_2 = self.config['plot_config']['plot_wait_2']#6000
         save_results = self.config['plot_config']['save_results']
         debug_mode = self.config['plot_config']['debug_mode']
-        # avg_image = segmentor.compute_mean_image(frames)
-        windows = list(self.split_by_windows(frames, self.config['temporal_window']))
+        windows = list(self.split_by_windows(frames_indices, self.config['temporal_window']))
         windows =  self.remove_short_windows(windows)
         current_window = None
-        # print('windows: ', windows)
-        # debug_folder = '/Users/davidchoqueluqueroman/Downloads/TubeGenerationExamples'
-        # save_folder = ''
-        for t in frames:
+        for t in frames_indices:
             #get current temporal window
             w = self.get_temporal_window(t, windows)
             if w == None:
                 continue
             img_paths, images = self.read_segment(w)
-            
-            #PLot and save results
-            # video_name = img_paths[0].split('/')[-2]
-            # if plot is not None:
-            #     save_folder = os.path.join(debug_folder, video_name)
-            #     if not os.path.isdir(save_folder):
-            #         os.mkdir(save_folder)
-            # if save_results:
-            #     save_folder = os.path.join(debug_folder, video_name)
-            #     if not os.path.isdir(save_folder):
-            #         os.mkdir(save_folder)
-            #     if not os.path.isdir(save_folder+'/motion'):
-            #         os.mkdir(save_folder+'/motion')
             #initialize motion segmentation
             if current_window == None:
-                # if save_results:
-                #     s_folder = os.path.join(save_folder,'motion',str(w))
-                # else:
-                #     s_folder = None
                 motion_regions_map = segmentor(images, img_paths)
                 current_window = {
                     'motion_regions_map': motion_regions_map,
@@ -383,10 +365,6 @@ class IncrementalLinking:
                 # print('first---', current_window['frames_numbers'])
             else:
                 if not t in current_window['frames_numbers']:
-                    # if save_results:
-                    #     s_folder = os.path.join(save_folder, 'motion',str(w))
-                    # else:
-                    #     s_folder = None
                     motion_regions_map = segmentor(images, img_paths)
                     current_window = {
                         'motion_regions_map': motion_regions_map,
@@ -394,8 +372,6 @@ class IncrementalLinking:
                         # 'tube': motion_tube
                     }
                     video_windows.append(current_window)
-                # else:
-                    # print(current_window['frames_numbers'])
             # print('fname: {}, frame_idx: {} , window: {}, real_frame: {}'.format(t, t, w, self.video_detections[t]['fname']))
             #initialize tube building
             num_persons = self.video_detections[t]['pred_boxes'].shape[0]
@@ -496,19 +472,20 @@ class IncrementalLinking:
                 #find persons near tubes
                 for j, lp in enumerate(live_paths):
                     # print('#### tube {}'.format(j))
-                    # print('####### persons={} shape {}'.format(merge_pred_boxes, merge_pred_boxes.shape))
-                    final_box = self.merge_persons_to_tube(merge_pred_boxes, lp, thresh=0.3, flac=FLAC_MERGED_2)
-                    # print('####### final_box={}'.format(final_box))
-                    if final_box is not None:
-                        lp['frames_name'].append(self.video_detections[t]['fname'])
-                        lp['len'] += 1
-                        lp['boxes'].append(final_box[0,:])
-                        lp['foundAt'].append(t)
-                        if debug_mode:
-                            img = self.plot_tube_frame(t,lp, color='green', plot_wait=plot_wait_2)
-                            images_to_video.append(img)
-                    else:
-                        lp['lastfound'] += 1
+                    if not self.is_dead(lp):
+                        # print('####### persons={} shape {}'.format(merge_pred_boxes, merge_pred_boxes.shape))
+                        final_box = self.merge_persons_to_tube(merge_pred_boxes, lp, thresh=0.3, flac=FLAC_MERGED_2)
+                        # print('####### final_box={}'.format(final_box))
+                        if final_box is not None:
+                            lp['frames_name'].append(self.video_detections[t]['fname'])
+                            lp['len'] += 1
+                            lp['boxes'].append(final_box[0,:])
+                            lp['foundAt'].append(t)
+                            if debug_mode:
+                                img = self.plot_tube_frame(t,lp, color='green', plot_wait=plot_wait_2)
+                                images_to_video.append(img)
+                        else:
+                            lp['lastfound'] += 1
                 
                 #start new paths
                 motion_regions_numpy = self.get_boxes_from_dict(current_window['motion_regions_map'],t)
@@ -613,7 +590,7 @@ class IncrementalLinking:
                 random_box = [xmin, ymin, xmax, ymax, 0]
                 random_box = np.array(random_box)
                 # print('random_box: ', random_box)
-                for t in frames:
+                for t in frames_indices:
                     random_path['frames_name'].append(self.video_detections[t]['fname'])
                     random_path['boxes'].append(random_box),
                     random_path['len'] += 1
@@ -623,66 +600,52 @@ class IncrementalLinking:
 
 
         
-        # self.fill_gaps(live_paths)
+        self.fill_gaps(live_paths, frames_indices, frames_names)
         
         
         if plot:
-            self.plot_tubes(frames, None, live_paths, self.config['plot_config']['plot_wait_tubes'], gt, self.config['plot_config']['save_folder_final'])
+            self.plot_tubes(frames_indices, None, live_paths, self.config['plot_config']['plot_wait_tubes'], gt, self.config['plot_config']['save_folder_final'])
         return live_paths
-    
-    # def fill_gaps(self, live_paths):
-    #     for i in range(len(live_paths)):
-    #         lp = live_paths[i]
 
-    #         start = int(re.search(r'\d+', lp['frames_name'][0]).group())
-    #         end = int(re.search(r'\d+', lp['frames_name'][-1]).group())
-
-    #         # full_path = list(range(lp['foundAt'][0],lp['foundAt'][-1]+1))
-    #         full_path = list(range(start, end))
-
-    #         real_numbers = [int(re.search(r'\d+', name).group()) for name in lp['frames_name']]
-    #         # diff = list(set(full_path) ^ set(lp['foundAt']))
-    #         diff = list(set(full_path) ^ set(real_numbers))
-    #         diff.sort()
-    #         # print('diff:',diff)
-    #         for d in diff:
-    #             idx = d - lp['foundAt'][0]
-    #             # print('idx:',idx)
-    #             #avg box
-    #             b1 = lp['boxes'][idx-1]
-    #             b2 = lp['boxes'][idx]
-    #             avg_box = list(np.mean(np.array([b1,b2]), axis=0))
-    #             lp['boxes'].insert(idx, avg_box)
-    #             lp['foundAt'].insert(idx, d)
-    #             lp['frames_name'].insert(idx, 'frame{}.jpg'.format(d+1))
-    #             lp['len'] = lp['len'] + 1
-    #             lp['lastfound'] -= 1
-
-    def fill_gaps(self, live_paths):
+    def fill_gaps(self, live_paths, real_indices, real_frame_names):
         for i in range(len(live_paths)):
-            lp = live_paths[i]
+            if not  self.is_dead(live_paths[i]):
+                # print('Filling live_path: {}:\n{}'.format(i+1, live_paths[i]))
+                foundAt = live_paths[i]['foundAt']
+                framesNames = live_paths[i]['frames_name']
 
-            start = int(re.search(r'\d+', lp['frames_name'][0]).group())
-            end = int(re.search(r'\d+', lp['frames_name'][-1]).group())
-            full_path = list(range(start, end))
+                start_idx = foundAt[0]
+                end_idx = foundAt[-1]
 
-            real_numbers = [int(re.search(r'\d+', name).group()) for name in lp['frames_name']]
-            diff = list(set(full_path) ^ set(real_numbers))
-            diff.sort()
-            # print('diff:',diff)
-            for i, d in enumerate(diff):
-                idx = real_numbers.index(d)
-                # print('idx:',idx)
-                #avg box
-                b1 = lp['boxes'][idx-1]
-                b2 = lp['boxes'][idx]
-                avg_box = list(np.mean(np.array([b1,b2]), axis=0))
-                lp['boxes'].insert(idx, avg_box)
-                lp['foundAt'].insert(idx, lp['foundAt']+1)
-                #TO DO
-                # lp['frames_name'].insert(idx, 'frame{}.jpg'.format(d+1))
-                # lp['len'] = lp['len'] + 1
-                # lp['lastfound'] -= 1
+                real_segment = real_indices[start_idx:end_idx+1]
+                missed_indices = []
+                missed_frames = []
+                indices_to_insert = []
+                for k_idx, j in enumerate(real_segment):
+                    if not j in foundAt:
+                        missed_indices.append(j)
+                        missed_frames.append(real_frame_names[j])
+                        indices_to_insert.append(k_idx)
+                
+                # print('missed_indices: ', missed_indices)
+                # print('missed_frames: ', missed_frames)
+                # print('indices_to_insert: ', indices_to_insert)
+                new_founAt = foundAt.copy()
+                new_boxes = live_paths[i]['boxes'].copy()
+                new_frames_name = live_paths[i]['frames_name'].copy()
+                for ii, mi in zip(indices_to_insert, missed_indices):
+                    new_founAt.insert(ii, mi)
+                    new_frames_name.insert(ii, real_frame_names[mi])
+                    # new_boxes.insert(ii, live_paths[i]['boxes'][ii-1]) #replace with previous box
+                    new_boxes.insert(ii, new_boxes[ii-1]) #replace with previous box
+
+                live_paths[i]['foundAt'] = new_founAt  
+                live_paths[i]['frames_name'] = new_frames_name  
+                live_paths[i]['boxes'] = new_boxes  
+                live_paths[i]['len'] += len(missed_frames)
+                
+                assert new_founAt == real_segment, 'Filling lp error!!!'
+                # print('path: {}, foundAt: {}, real_segment: {}, missed_indices: {}, indices_to_insert: {} = {}'.format(i+1, foundAt, real_segment, missed_indices, indices_to_insert, new_founAt))
 
     def plot_frame(
         self, 

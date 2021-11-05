@@ -1,8 +1,9 @@
-import sys
+
 
 from torch.utils.data.sampler import WeightedRandomSampler
-sys.path.insert(1, '/Users/davidchoqueluqueroman/Documents/CODIGOS_SOURCES/AVSS2019/src/VioNet')
-
+# 
+# import src.VioNet.add_path
+import imports
 from numpy.core.numeric import indices
 import torch.utils.data as data
 import numpy as np
@@ -13,11 +14,14 @@ import random
 from operator import itemgetter
 # from MotionSegmentation.segmentation import segment
 from customdatasets.dataset_utils import imread, filter_data_without_tubelet
-from customdatasets.make_dataset import MakeRWF2000
+from customdatasets.make_dataset import *
+from customdatasets.make_UCFCrime import *
 from customdatasets.tube_crop import TubeCrop
 from transformations.dynamic_image_transformation import DynamicImage
 from global_var import *
 from utils import natural_sort
+from torch.utils.data.dataloader import default_collate
+import json
 
 class TubeDataset(data.Dataset):
     """
@@ -32,9 +36,11 @@ class TubeDataset(data.Dataset):
                        dataset='',
                        random=True,
                        config=None,
-                       tube_sample_strategy=MIDDLE):
+                       tube_sample_strategy=MIDDLE,
+                       shape=(224,224)):
         self.config = config
         self.dataset = dataset
+        self.shape = shape
         # self.input_type = input_type
         self.frames_per_tube = frames_per_tube
         self.tube_sample_strategy = tube_sample_strategy
@@ -66,7 +72,9 @@ class TubeDataset(data.Dataset):
                                 train=train,
                                 input_type=self.config['input_1']['type'],
                                 sample_strategy=tube_sample_strategy,
-                                random=random)
+                                random=random,
+                                box_as_tensor=False)
+        self.box_as_tensor = False
         self.max_num_tubes = max_num_tubes
     
     def get_sampler(self):
@@ -93,28 +101,49 @@ class TubeDataset(data.Dataset):
             pth = os.path.join(path, frames_names_list[frame_idx])
             return pth
     
-    def load_input_1(self, path, seg, frames_names_list):
+    def __format_bbox__(self, bbox):
+        """
+        Format a tube bbox: [x1,y1,x2,y2] to a correct format
+        """
+        (width, height) = self.shape
+        bbox = bbox[0:4]
+        bbox = np.array([max(bbox[0], 0), max(bbox[1], 0), min(bbox[2], width - 1), min(bbox[3], height - 1)])
+        # bbox = np.insert(bbox[0:4], 0, id).reshape(1,-1).astype(float)
+        bbox = bbox.reshape(1,-1).astype(float)
+        if self.box_as_tensor:
+            bbox = torch.from_numpy(bbox).float()
+        return bbox
+    
+    def load_input_1(self, path, frames_indices, frames_names_list, sampled_tube):
         tube_images = []
         raw_clip_images = []
-
-
+        tube_images_t = None
+        tube_boxes_t = []
         if self.config['input_1']['type']=='rgb':
-            frames_paths = [self.build_frame_name(path, i, frames_names_list) for i in seg]
+            frames_paths = [self.build_frame_name(path, i, frames_names_list) for i in frames_indices]
             # print('frames_paths: ', frames_paths)
             for i in frames_paths:
                 img = imread(i)
                 tube_images.append(img)
+                _, frame_name = os.path.split(i)
+                box_idx = sampled_tube['frames_name'].index(frame_name)
+                tube_boxes_t.append(box_idx)
+            
+            tube_boxes_t = [sampled_tube['boxes'][b] for b in tube_boxes_t]
+            tube_boxes_t = [self.__format_bbox__(t) for t in tube_boxes_t]
+            
+            print('\ntube_boxes_t: ', tube_boxes_t, len(tube_boxes_t))
             raw_clip_images = tube_images.copy()
             if self.config['input_1']['spatial_transform']:
-                tube_images = self.config['input_1']['spatial_transform'](tube_images)
-        elif self.config['input_1']['type']=='dynamic-image':
-            tt = DynamicImage()
-            for shot in seg:
-                frames_paths = [self.build_frame_name(path, i, frames_names_list) for i in shot]
-                shot_images = [imread(img_path) for img_path in frames_paths]
-                img = self.spatial_transform(tt(shot_images)) if self.spatial_transform else tt(shot_images)
-                tube_images.append(img)
-        return tube_images, raw_clip_images
+                tube_images_t, tube_boxes_t = self.config['input_1']['spatial_transform'](tube_images, tube_boxes_t)
+        # elif self.config['input_1']['type']=='dynamic-image':
+        #     tt = DynamicImage()
+        #     for shot in seg:
+        #         frames_paths = [self.build_frame_name(path, i, frames_names_list) for i in shot]
+        #         shot_images = [imread(img_path) for img_path in frames_paths]
+        #         img = self.spatial_transform(tt(shot_images)) if self.spatial_transform else tt(shot_images)
+        #         tube_images.append(img)
+        return tube_images_t, tube_boxes_t, raw_clip_images
     
     def load_input_2(self, frames, path, frames_names_list):
         if self.config['input_2']['type'] == 'rgb':
@@ -161,7 +190,10 @@ class TubeDataset(data.Dataset):
         if self.dataset == 'UCFCrime':
             return annotation
         else:
-            video_tubes = JSON_2_tube(annotation)
+            if isinstance(annotation, list):
+                video_tubes = annotation
+            else:
+                video_tubes = JSON_2_tube(annotation)
             assert len(video_tubes) >= 1, "No tubes in video!!!==>{}".format(annotation)
             return video_tubes
     
@@ -186,64 +218,62 @@ class TubeDataset(data.Dataset):
         path = self.paths[index]
         frames_names_list = os.listdir(path)
         frames_names_list = natural_sort(frames_names_list)
-        # print('frames_names_list: ', frames_names_list)
+        print('frames_names_list: ', frames_names_list)
+        
         label = self.labels[index]
         annotation = self.annotations[index]
+        
         max_video_len = self.video_max_len(index)
-        boxes, segments, idxs = self.sampler(self.load_tube_from_file(annotation), max_video_len)
-        # print('segments_from_sampler: ', segments)
-        # print('boxes_from_sampler: ', boxes)
+        tubes_ = self.load_tube_from_file(annotation)
+
+        #remove tubes with len=1
+        tubes_ = [t for t in tubes_ if t['len'] > 1]
+        print('\n\ntubes_: ', tubes_)
+        sampled_frames_indices, chosed_tubes = self.sampler(tubes_, max_video_len)
+        print('sampled_frames_indices: ', sampled_frames_indices)
+        # print('boxes_from_sampler: ', boxes, boxes[0].shape)
         video_images = []
-        num_tubes = len(segments)
-        for seg in segments:
-            # print('load_input_1 args: ', path, seg)
-            tube_images, _ = self.load_input_1(path, seg, frames_names_list)
+        boxes = []
+        num_tubes = len(sampled_frames_indices)
+        for frames_indices, sampled_tube in zip(sampled_frames_indices, chosed_tubes):
+            print('\nload_input_1 args: ', path, frames_indices, boxes)
+            # dup_boxes = boxes[0][:,1:5]
+            tube_images, tube_boxes, _ = self.load_input_1(path, frames_indices, frames_names_list, sampled_tube)
             video_images.append(torch.stack(tube_images, dim=0))
         
         key_frames = []
         if self.config['input_2'] is not None:
-            for seg in segments:
-                # i = seg[int(len(seg)/2)]
-                # if self.dataset == 'rwf-2000':
-                #     img_path = os.path.join(path,'frame{}.jpg'.format(i+1)) #rwf
-                # elif self.dataset == 'hockey':
-                #     img_path = os.path.join(path,'frame{:03}.jpg'.format(i+1))
-                # key_frame = self.spatial_transform_2(imread(img_path)) if self.spatial_transform_2 else imread(img_path)
+            for seg in sampled_frames_indices:
                 key_frame, _ = self.load_input_2(seg, path, frames_names_list)
                 key_frames.append(key_frame)
-        # print('list boxes: ', boxes, len(boxes))
         
+        #padding
         if len(video_images)<self.max_num_tubes:
-            bbox_id = len(video_images)
             for i in range(self.max_num_tubes-len(video_images)):
                 video_images.append(video_images[len(video_images)-1])
-                p_box = boxes[len(boxes)-1]
-                boxes.append(p_box)
+                p_box = tube_boxes[len(tube_boxes)-1]
+                tube_boxes.append(p_box)
                 if self.config['input_2'] is not None:
                     key_frames.append(key_frames[-1])
-        for j,b in enumerate(boxes):
-            b[0,0] = j
-        boxes = torch.stack(boxes, dim=0).squeeze()
+        #TODO
+        # for j,b in enumerate(tube_boxes):
+        #     b[0,0] = j
+        tube_boxes = torch.stack(tube_boxes, dim=0).squeeze()
         
-        if len(boxes.shape)==1:
-            
-            boxes = torch.unsqueeze(boxes, dim=0)
+        if len(tube_boxes.shape)==1:
+            tube_boxes = torch.unsqueeze(tube_boxes, dim=0)
             # print('boxes unsqueeze: ', boxes)
         
-        video_images = torch.stack(video_images, dim=0).permute(0,2,1,3,4)
+        video_images = torch.stack(video_images, dim=0)#.permute(0,2,1,3,4)
         if self.config['input_2'] is not None:
             key_frames = torch.stack(key_frames, dim=0)
             if torch.isnan(key_frames).any().item():
                 print('Detected Nan at: ', path)
             if torch.isinf(key_frames).any().item():
                 print('Detected Inf at: ', path)
-            return boxes, video_images, label, num_tubes, path, key_frames
+            return tube_boxes, video_images, label, num_tubes, path, key_frames
         else:
-            return boxes, video_images, label, num_tubes, path
-
-
-
-from torch.utils.data.dataloader import default_collate
+            return tube_boxes, video_images, label, num_tubes, path
 
 def my_collate_2(batch):
     # batch = filter (lambda x:x is not None, batch)
@@ -385,9 +415,7 @@ class TubeFeaturesDataset(data.Dataset):
         return features
 
 
-import json
-from torch.utils.data import DataLoader
-from torchvision import transforms
+
 
 def JSON_2_tube(json_file):
     """
@@ -413,6 +441,12 @@ def check_no_tubes(make_function):
     
     return videos_no_tubes
 
+from transformations.data_aug.data_aug import *
+from transformations.vizualize_batch import *
+from model_transformations import i3d_video_transf, resnet_transf
+
+from torch.utils.data import DataLoader
+from torchvision import transforms
 
 if __name__=='__main__':
 
@@ -425,13 +459,70 @@ if __name__=='__main__':
     # make_dataset = MakeRWF2000(root='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames', 
     #                             train=True,
     #                             path_annotations='/Users/davidchoqueluqueroman/Documents/DATASETS_Local/Tubes/RWF-2000')
+
     # dataset = TubeDataset(frames_per_tube=16, 
     #                         min_frames_per_tube=8, 
     #                         make_function=make_dataset,
-    #                         spatial_transform=transforms.Compose([
-    #                             transforms.CenterCrop(224),
-    #                             transforms.ToTensor()
-    #                         ]))
+    #                         spatial_transform=None)
+    
+    ann_file  = ('Train_annotation.pkl', 'Train_normal_annotation.pkl')# if train else ('Test_annotation.pkl', 'Test_normal_annotation.pkl')
+    home_path = '/Users/davidchoqueluqueroman/Documents/DATASETS_Local'
+    make_dataset = MakeUCFCrime(
+            root=os.path.join(home_path, 'UCFCrime_Reduced', 'frames'), 
+            sp_abnormal_annotations_file=os.path.join(home_path,'VioNetDB-splits/UCFCrime', ann_file[0]), 
+            sp_normal_annotations_file=os.path.join(home_path,'VioNetDB-splits/UCFCrime', ann_file[1]), 
+            action_tubes_path=os.path.join(home_path,'ActionTubes/UCFCrime_Reduced'),
+            train=True,
+            ground_truth_tubes=False)
+    
+    TWO_STREAM_INPUT_train = {
+        'input_1': {
+            'type': 'rgb',
+            # 'spatial_transform': i3d_video_transf()['train'],
+            'spatial_transform': Compose(
+                [
+                    ClipRandomHorizontalFlip(), 
+                    ClipRandomScale(scale=0.2, diff=True), 
+                    ClipRandomRotate(angle=5),
+                    ClipRandomTranslate(translate=0.1, diff=True),
+                    NumpyToTensor()
+                ],
+                probs=[0.4, 0.5, 0.2, 0.3]
+                ),
+            'temporal_transform': None
+        },
+        'input_2': {
+            'type': 'rgb',
+            'spatial_transform': resnet_transf()['train'],
+            'temporal_transform': None
+        }
+        # 'input_2': {
+        #     'type': 'dynamic-image',
+        #     'spatial_transform': resnet_di_transf()['train'],
+        #     'temporal_transform': None
+        # }
+    }
+    train_dataset = TubeDataset(frames_per_tube=16, 
+                            make_function=make_dataset,
+                            max_num_tubes=1,
+                            train=True,
+                            dataset='UCFCrime_Reduced',
+                            random=True,
+                            config=TWO_STREAM_INPUT_train)
+
+    bboxes, video_images, label, num_tubes, path, key_frames = train_dataset[10]
+
+    print('\tvideo_images: ', type(video_images), video_images.size())
+    print('\tbboxes: ', bboxes.size())
+
+    frames_numpy = video_images.cpu().numpy()
+    bboxes_numpy = torch.unsqueeze(bboxes, dim=0).cpu().numpy()
+    # bboxes_numpy = bboxes_numpy[:, 1:5]
+    # print('\tframes_numpy: ', frames_numpy.shape)
+    # print('\tbboxes_numpy: ', bboxes_numpy, bboxes_numpy.shape)
+    for j in range(frames_numpy.shape[0]):
+        plot_clip(frames_numpy[j], bboxes_numpy[j], (4,4))
+
     # path, label, annotation,frames_names, boxes, video_images = dataset[213]
     # print('path: ', path)
     # print('label: ', label)
@@ -458,8 +549,8 @@ if __name__=='__main__':
     #     print('video_images: ', type(video_images), len(video_images), '-video_images[0]: ', video_images[0].size())
     #     print('labels: ', type(labels), len(labels), '-labels: ', labels)
 
-    crop = TubeCrop()
-    lp = [15, 16, 17, 18, 19, 20, 21, 22, 23, 24]
-    print('lp len:', len(lp))
-    idxs = crop.__centered_frames__(lp)
-    print('idxs: ', idxs, len(idxs))
+    # crop = TubeCrop()
+    # lp = [15, 16, 17, 18, 19, 20, 21, 22, 23, 24]
+    # print('lp len:', len(lp))
+    # idxs = crop.__centered_frames__(lp)
+    # print('idxs: ', idxs, len(idxs))

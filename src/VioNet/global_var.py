@@ -63,6 +63,7 @@ BINARY = 'binary'
 #tube sample strategies
 MIDDLE = 'middle'
 EVENLY = 'evenly'
+CENTER = 'center'
 
 DYN_IMAGE = "dynamic-image"
 RGB_FRAME = "rgb"

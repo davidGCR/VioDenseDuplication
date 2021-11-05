@@ -18,6 +18,19 @@ class AverageMeter(object):
         self.counter += n
         self.avg = self.sum / self.counter
 
+class TimeMeter(object):
+    def __init__(self):
+        self.time = 0
+        self.fps = 0
+        self.total_time = 0
+        self.frames_counter = 0
+
+    def update(self, time, num_frames=1):
+        self.time = time
+        self.total_time += time
+        self.frames_counter += num_frames
+        self.fps = self.frames_counter/self.total_time
+
 
 class Log(object):
     def __init__(self, path, keys):
