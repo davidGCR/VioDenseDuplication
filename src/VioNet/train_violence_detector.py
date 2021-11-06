@@ -55,7 +55,13 @@ def matplotlib_imshow(img, one_channel=False):
     else:
         plt.imshow(np.transpose(npimg, (1, 2, 0)))
 
-def load_make_dataset(dataset_name, train=True, cv_split=1, home_path='', category=2, shuffle=False):
+def load_make_dataset(dataset_name, 
+                    train=True, 
+                    cv_split=1, 
+                    home_path='', 
+                    category=2, 
+                    shuffle=False,
+                    load_gt=False):
     if dataset_name == RWF_DATASET:
         make_dataset = MakeRWF2000(
             root=os.path.join(home_path, 'RWF-2000/frames'),
@@ -93,9 +99,9 @@ def load_make_dataset(dataset_name, train=True, cv_split=1, home_path='', catego
             root=os.path.join(home_path, 'UCFCrime_Reduced', 'frames'), 
             sp_abnormal_annotations_file=os.path.join(home_path,'VioNetDB-splits/UCFCrime', ann_file[0]), 
             sp_normal_annotations_file=os.path.join(home_path,'VioNetDB-splits/UCFCrime', ann_file[1]), 
-            action_tubes_path=os.path.join(home_path,'ActionTubes/UCFCrime_Reduced'),
+            action_tubes_path=os.path.join(home_path,'ActionTubesV2/UCFCrime_Reduced'),
             train=train,
-            ground_truth_tubes=False)
+            ground_truth_tubes=load_gt)
 
     return make_dataset
 
@@ -106,7 +112,8 @@ def main(config: Config, MIL=False):
         train=True,
         cv_split=config.num_cv,
         home_path=config.home_path,
-        category=2)
+        category=2,
+        load_gt=config.load_gt)
 
     #validation
     val_make_dataset = load_make_dataset(

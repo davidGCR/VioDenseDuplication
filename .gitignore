@@ -289,3 +289,5 @@ src/VioNet/weights
 *.whl
 
 .env32/
+
+*.webm
