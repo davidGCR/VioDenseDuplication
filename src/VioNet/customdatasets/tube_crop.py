@@ -33,22 +33,22 @@ class TubeCrop(object):
         self.box_as_tensor = box_as_tensor
         self.shape = shape
 
-    def __call__(self, tubes: list, max_video_len: int):
+    def __call__(self, tubes: list,):
         segments = []
         # boxes = []
         if self.random: # select randomly K tubes
             chosed_tubes_idxs = random.sample(range(len(tubes)), self.max_num_tubes)
-            print('\nchosed_tubes_idxs:', chosed_tubes_idxs)
+            # print('\nchosed_tubes_idxs:', chosed_tubes_idxs)
             # chosed_tubes = list(itemgetter(*chosed_tubes_idxs)(tubes))
             chosed_tubes = [tubes[i] for i in range(len(tubes)) if i in chosed_tubes_idxs]
         else:
             chosed_tubes = tubes[0:self.max_num_tubes]
         
-        print('chosed_tubes: \n', chosed_tubes)
+        # print('chosed_tubes: \n', chosed_tubes)
 
         for tube in chosed_tubes:
             if self.input_type==RGB_FRAME:
-                frames_idxs = self.__sampled_tube_frames_indices__(tube['foundAt'], max_video_len)
+                frames_idxs = self.__sampled_tube_frames_indices__(tube['foundAt'])
             else:
                 frames_idxs = self.__centered_segments__()
             
@@ -99,7 +99,8 @@ class TubeCrop(object):
         # print('boxes ids: ', boxes)
         return segments, chosed_tubes
     
-    def __sampled_tube_frames_indices__(self, tube_found_at: list, max_video_len: int):
+    def __sampled_tube_frames_indices__(self, tube_found_at: list):
+        max_video_len = tube_found_at[-1]
         if len(tube_found_at) == self.tube_len: 
             return tube_found_at
         if len(tube_found_at) > self.tube_len:

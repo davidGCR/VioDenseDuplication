@@ -101,7 +101,7 @@ def extract_tubes_from_dataset(
         #     'num': len(live_paths)
         #     })
 
-        # tube_2_JSON(output_path=file_out, tube=live_paths)
+        tube_2_JSON(output_path=file_out, tube=live_paths)
         frames = None
     
     
@@ -370,7 +370,7 @@ if __name__=="__main__":
     ucf_config = {
         'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime_Reduced/frames',
         'path_in':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/UCFCrime_Reduced',
-        'path_out':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/UCFCrime_Reduced_V2.0',
+        'path_out':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubesV2/UCFCrime_Reduced',
         'splits':['train/abnormal', 'train/normal', 'test/abnormal', 'test/normal']
     }
     frames = None

@@ -132,7 +132,7 @@ class TubeDataset(data.Dataset):
             tube_boxes_t = [sampled_tube['boxes'][b] for b in tube_boxes_t]
             tube_boxes_t = [self.__format_bbox__(t) for t in tube_boxes_t]
             
-            print('\ntube_boxes_t: ', tube_boxes_t, len(tube_boxes_t))
+            # print('\ntube_boxes_t: ', tube_boxes_t, len(tube_boxes_t))
             raw_clip_images = tube_images.copy()
             if self.config['input_1']['spatial_transform']:
                 tube_images_t, tube_boxes_t = self.config['input_1']['spatial_transform'](tube_images, tube_boxes_t)
@@ -218,25 +218,25 @@ class TubeDataset(data.Dataset):
         path = self.paths[index]
         frames_names_list = os.listdir(path)
         frames_names_list = natural_sort(frames_names_list)
-        print('frames_names_list: ', frames_names_list)
+        # print('frames_names_list: ', frames_names_list)
         
         label = self.labels[index]
         annotation = self.annotations[index]
         
-        max_video_len = self.video_max_len(index)
+        # max_video_len = self.video_max_len(index)
         tubes_ = self.load_tube_from_file(annotation)
 
         #remove tubes with len=1
         tubes_ = [t for t in tubes_ if t['len'] > 1]
-        print('\n\ntubes_: ', tubes_)
-        sampled_frames_indices, chosed_tubes = self.sampler(tubes_, max_video_len)
-        print('sampled_frames_indices: ', sampled_frames_indices)
+        # print('\n\ntubes_: ', tubes_)
+        sampled_frames_indices, chosed_tubes = self.sampler(tubes_)
+        # print('sampled_frames_indices: ', sampled_frames_indices)
         # print('boxes_from_sampler: ', boxes, boxes[0].shape)
         video_images = []
         boxes = []
         num_tubes = len(sampled_frames_indices)
         for frames_indices, sampled_tube in zip(sampled_frames_indices, chosed_tubes):
-            print('\nload_input_1 args: ', path, frames_indices, boxes)
+            # print('\nload_input_1 args: ', path, frames_indices, boxes)
             # dup_boxes = boxes[0][:,1:5]
             tube_images, tube_boxes, _ = self.load_input_1(path, frames_indices, frames_names_list, sampled_tube)
             video_images.append(torch.stack(tube_images, dim=0))
@@ -471,7 +471,7 @@ if __name__=='__main__':
             root=os.path.join(home_path, 'UCFCrime_Reduced', 'frames'), 
             sp_abnormal_annotations_file=os.path.join(home_path,'VioNetDB-splits/UCFCrime', ann_file[0]), 
             sp_normal_annotations_file=os.path.join(home_path,'VioNetDB-splits/UCFCrime', ann_file[1]), 
-            action_tubes_path=os.path.join(home_path,'ActionTubes/UCFCrime_Reduced'),
+            action_tubes_path=os.path.join(home_path,'ActionTubesV2/UCFCrime_Reduced'),
             train=True,
             ground_truth_tubes=False)
     
@@ -510,7 +510,7 @@ if __name__=='__main__':
                             random=True,
                             config=TWO_STREAM_INPUT_train)
 
-    bboxes, video_images, label, num_tubes, path, key_frames = train_dataset[10]
+    bboxes, video_images, label, num_tubes, path, key_frames = train_dataset[230]
 
     print('\tvideo_images: ', type(video_images), video_images.size())
     print('\tbboxes: ', bboxes.size())
