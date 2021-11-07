@@ -609,7 +609,8 @@ class IncrementalLinking:
 
     def fill_gaps(self, live_paths, real_indices, real_frame_names):
         for i in range(len(live_paths)):
-            if not  self.is_dead(live_paths[i]):
+            # if not self.is_dead(live_paths[i]):
+            if True:
                 # print('Filling live_path: {}:\n{}'.format(i+1, live_paths[i]))
                 foundAt = live_paths[i]['foundAt']
                 framesNames = live_paths[i]['frames_name']

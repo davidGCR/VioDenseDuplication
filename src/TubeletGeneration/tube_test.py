@@ -256,8 +256,8 @@ def ucfcrime_one_video_test():
     time_meter = TimeMeter()
     ucf_config = {
         'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime_Reduced/frames',
-        'split': 'train/abnormal',
-        'video': 'Assault001_x264',#'Normal_Videos180_x264',#'V_683',
+        'split': 'train/normal',
+        'video': 'Normal_Videos108_x264',#'Normal_Videos180_x264',#'V_683',
         'p_d_path': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/UCFCrime_Reduced'
     }
     config = ucf_config

@@ -509,11 +509,19 @@ if __name__=='__main__':
                             dataset='UCFCrime_Reduced',
                             random=True,
                             config=TWO_STREAM_INPUT_train)
+    
+    for i in range(len(train_dataset)):
+        data = train_dataset[i]
+        bboxes, video_images, label, num_tubes, path, key_frames = data
+        if os.path.split(path)[1]=='Assault027_x264':
+            print(i)
 
-    bboxes, video_images, label, num_tubes, path, key_frames = train_dataset[230]
 
+    bboxes, video_images, label, num_tubes, path, key_frames = train_dataset[7]
+    print('\tpath: ', path)
     print('\tvideo_images: ', type(video_images), video_images.size())
     print('\tbboxes: ', bboxes.size())
+    
 
     frames_numpy = video_images.cpu().numpy()
     bboxes_numpy = torch.unsqueeze(bboxes, dim=0).cpu().numpy()
