@@ -396,7 +396,7 @@ if __name__=='__main__':
         criterion='CEL',
         optimizer='Adadelta',
         learning_rate=0.001, #0.001 for adagrad
-        train_batch=2,
+        train_batch=4,
         val_batch=4,
         num_tubes=4,
         tube_sampling_random=True,
@@ -406,8 +406,8 @@ if __name__=='__main__':
         # freeze=False,
         additional_info='',
         home_path=HOME_UBUNTU,
-        num_workers=1,
-        load_gt=False
+        num_workers=4,
+        load_gt=True
     )
     # config.pretrained_model = "/content/DATASETS/Pretrained_Models/DenseNetLean_Kinetics.pth"
     # config.pretrained_model='/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt'

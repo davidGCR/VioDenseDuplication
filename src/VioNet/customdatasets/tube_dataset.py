@@ -142,7 +142,7 @@ class TubeDataset(data.Dataset):
             # print('\tube_boxes: ', tube_boxes, len(tube_boxes))
             raw_clip_images = tube_images.copy()
             if self.config['input_1']['spatial_transform']:
-                tube_images_t, tube_boxes_t = self.config['input_1']['spatial_transform'](tube_images, tube_boxes)
+                tube_images_t, tube_boxes_t, t_combination = self.config['input_1']['spatial_transform'](tube_images, tube_boxes)
        
        # elif self.config['input_1']['type']=='dynamic-image':
         #     tt = DynamicImage()
@@ -151,7 +151,7 @@ class TubeDataset(data.Dataset):
         #         shot_images = [imread(img_path) for img_path in frames_paths]
         #         img = self.spatial_transform(tt(shot_images)) if self.spatial_transform else tt(shot_images)
         #         tube_images.append(img)
-        return tube_images_t, tube_boxes_t, tube_boxes, raw_clip_images
+        return tube_images_t, tube_boxes_t, tube_boxes, raw_clip_images, t_combination
     
     def load_input_2(self, frames, path, frames_names_list):
         if self.config['input_2']['type'] == 'rgb':
@@ -251,7 +251,7 @@ class TubeDataset(data.Dataset):
         for frames_indices, sampled_tube in zip(sampled_frames_indices, chosed_tubes):
             # print('\nload_input_1 args: ', path, frames_indices, boxes)
             # dup_boxes = boxes[0][:,1:5]
-            tube_images_t, tube_boxes_t, tube_boxes, _ = self.load_input_1(path, frames_indices, frames_names_list, sampled_tube)
+            tube_images_t, tube_boxes_t, tube_boxes, _, t_combination = self.load_input_1(path, frames_indices, frames_names_list, sampled_tube)
             video_images.append(torch.stack(tube_images_t, dim=0))
             m = int(len(tube_boxes)/2) #middle box from tube
             
@@ -259,8 +259,8 @@ class TubeDataset(data.Dataset):
             ##setting id to box
             c_box = tube_boxes_t[m]
             id_tensor = torch.tensor([0]).unsqueeze(dim=0).float()
-            print('\n', ' id_tensor: ', id_tensor,id_tensor.size())
-            print(' c_box: ', c_box, c_box.size(), ' index: ', m)
+            # print('\n', ' id_tensor: ', id_tensor,id_tensor.size())
+            # print(' c_box: ', c_box, c_box.size(), ' index: ', m)
 
             if c_box.size(0)==0:
                 print(' Here error: ', path, index, '\n',
@@ -268,7 +268,9 @@ class TubeDataset(data.Dataset):
                         sampled_tube, '\n', 
                         frames_indices, '\n', 
                         tube_boxes_t, len(tube_boxes_t), '\n', 
-                        tube_boxes, len(tube_boxes))
+                        tube_boxes, len(tube_boxes), '\n',
+                        t_combination)
+                exit()
             f_box = torch.cat([id_tensor , c_box], dim=1).float()
             
             final_tube_boxes.append(f_box)
