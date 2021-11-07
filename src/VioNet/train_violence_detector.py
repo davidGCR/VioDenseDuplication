@@ -6,7 +6,7 @@ import sys
 from models.v_d_config import *
 
 from PIL import Image, ImageFile
-from VioNet.lib.accuracy import get_accuracy
+# from VioNet.lib.accuracy import get_accuracy
 from VioNet.model_transformations import *
 
 # from VioNet.dataset import make_dataset
@@ -249,12 +249,14 @@ def data_with_tubes(config: Config, make_dataset_train, make_dataset_val):
     TWO_STREAM_INPUT_train = {
         'input_1': {
             'type': 'rgb',
-            'spatial_transform': i3d_video_transf()['train'],
+            # 'spatial_transform': i3d_video_transf()['train'],
+            'spatial_transform': cnn3d_transf()['train'],
             'temporal_transform': None
         },
         'input_2': {
             'type': 'rgb',
             'spatial_transform': resnet_transf()['train'],
+            # 'spatial_transform': cnn3d_transf()['train'],
             'temporal_transform': None
         }
         # 'input_2': {
@@ -267,7 +269,8 @@ def data_with_tubes(config: Config, make_dataset_train, make_dataset_val):
     TWO_STREAM_INPUT_val = {
         'input_1': {
             'type': 'rgb',
-            'spatial_transform': i3d_video_transf()['val'],
+            # 'spatial_transform': i3d_video_transf()['val'],
+            'spatial_transform': cnn3d_transf()['val'],
             'temporal_transform': CenterCrop(size=16, stride=1, input_type='rgb')
         },
         'input_2': {
@@ -290,11 +293,11 @@ def data_with_tubes(config: Config, make_dataset_train, make_dataset_val):
                             config=TWO_STREAM_INPUT_train)
     train_loader = DataLoader(train_dataset,
                         batch_size=config.train_batch,
-                        # shuffle=True,
+                        shuffle=False,
                         num_workers=config.num_workers,
                         # pin_memory=True,
                         collate_fn=my_collate,
-                        sampler=train_dataset.get_sampler(),
+                        # sampler=train_dataset.get_sampler(),
                         drop_last=True
                         )
     val_dataset = TubeDataset(frames_per_tube=config.frames_per_tube, 
@@ -393,17 +396,18 @@ if __name__=='__main__':
         criterion='CEL',
         optimizer='Adadelta',
         learning_rate=0.001, #0.001 for adagrad
-        train_batch=8,
-        val_batch=8,
+        train_batch=2,
+        val_batch=4,
         num_tubes=4,
         tube_sampling_random=True,
         frames_per_tube=16, 
         tube_sample_strategy=MIDDLE,
         save_every=5,
         # freeze=False,
-        additional_info='using-gen-action-tubes',
-        home_path=HOME_COLAB,
-        num_workers=2
+        additional_info='',
+        home_path=HOME_UBUNTU,
+        num_workers=1,
+        load_gt=False
     )
     # config.pretrained_model = "/content/DATASETS/Pretrained_Models/DenseNetLean_Kinetics.pth"
     # config.pretrained_model='/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt'

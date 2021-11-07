@@ -21,10 +21,10 @@ def train(_loader, _epoch, _model, _criterion, _optimizer, _device, _config, _ac
         # key_frames = key_frames.to(_device)
         # boxes = None
 
-        # print('video_images: ', video_images.size())
-        # print('key_frames: ', key_frames.size())
-        # print('boxes: ', boxes,  boxes.size())
-        # print('labels: ', labels, labels.size())
+        print('video_images: ', video_images.size())
+        print('key_frames: ', key_frames.size())
+        print('boxes: ', boxes,  boxes.size())
+        print('labels: ', labels, labels.size())
 
         # zero the parameter gradients
         _optimizer.zero_grad()

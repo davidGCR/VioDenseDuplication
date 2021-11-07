@@ -3,7 +3,7 @@
 from torch.utils.data.sampler import WeightedRandomSampler
 # 
 # import src.VioNet.add_path
-import imports
+import customdatasets.imports
 from numpy.core.numeric import indices
 import torch.utils.data as data
 import numpy as np
@@ -59,7 +59,7 @@ class TubeDataset(data.Dataset):
             self.paths, self.labels, self.annotations, self.num_frames = self.make_function()
         else:
             self.paths, self.labels, self.annotations = self.make_function()
-            self.paths, self.labels, self.annotations = filter_data_without_tubelet(self.paths, self.labels, self.annotations)
+            # self.paths, self.labels, self.annotations = filter_data_without_tubelet(self.paths, self.labels, self.annotations)
 
         # self.max_video_len = 39 if dataset=='hockey' else 149
         # self.keyframe = keyframe
@@ -115,10 +115,11 @@ class TubeDataset(data.Dataset):
         return bbox
     
     def load_input_1(self, path, frames_indices, frames_names_list, sampled_tube):
+        # print('\nload_input_1--> frames_paths')
         tube_images = []
         raw_clip_images = []
         tube_images_t = None
-        tube_boxes_t = []
+        tube_boxes = []
         if self.config['input_1']['type']=='rgb':
             frames_paths = [self.build_frame_name(path, i, frames_names_list) for i in frames_indices]
             # print('frames_paths: ', frames_paths)
@@ -126,24 +127,31 @@ class TubeDataset(data.Dataset):
                 img = imread(i)
                 tube_images.append(img)
                 _, frame_name = os.path.split(i)
-                box_idx = sampled_tube['frames_name'].index(frame_name)
-                tube_boxes_t.append(box_idx)
+                
+                try:
+                    box_idx = sampled_tube['frames_name'].index(frame_name)
+                except Exception as e:
+                    print("\nOops!", e.__class__, "occurred.")
+                    print("sampled_tube['frames_name']: {}, frame: {} , sampled_indices: {}, path: {}".format(sampled_tube['frames_name'], frame_name, frames_indices, path))
+                    exit()
+                tube_boxes.append(box_idx)
             
-            tube_boxes_t = [sampled_tube['boxes'][b] for b in tube_boxes_t]
-            tube_boxes_t = [self.__format_bbox__(t) for t in tube_boxes_t]
+            tube_boxes = [sampled_tube['boxes'][b] for b in tube_boxes]
+            tube_boxes = [self.__format_bbox__(t) for t in tube_boxes]
             
-            # print('\ntube_boxes_t: ', tube_boxes_t, len(tube_boxes_t))
+            # print('\tube_boxes: ', tube_boxes, len(tube_boxes))
             raw_clip_images = tube_images.copy()
             if self.config['input_1']['spatial_transform']:
-                tube_images_t, tube_boxes_t = self.config['input_1']['spatial_transform'](tube_images, tube_boxes_t)
-        # elif self.config['input_1']['type']=='dynamic-image':
+                tube_images_t, tube_boxes_t = self.config['input_1']['spatial_transform'](tube_images, tube_boxes)
+       
+       # elif self.config['input_1']['type']=='dynamic-image':
         #     tt = DynamicImage()
         #     for shot in seg:
         #         frames_paths = [self.build_frame_name(path, i, frames_names_list) for i in shot]
         #         shot_images = [imread(img_path) for img_path in frames_paths]
         #         img = self.spatial_transform(tt(shot_images)) if self.spatial_transform else tt(shot_images)
         #         tube_images.append(img)
-        return tube_images_t, tube_boxes_t, raw_clip_images
+        return tube_images_t, tube_boxes_t, tube_boxes, raw_clip_images
     
     def load_input_2(self, frames, path, frames_names_list):
         if self.config['input_2']['type'] == 'rgb':
@@ -226,20 +234,57 @@ class TubeDataset(data.Dataset):
         # max_video_len = self.video_max_len(index)
         tubes_ = self.load_tube_from_file(annotation)
 
+        assert len(tubes_)>0, "No tubes found: {}".format(path)
+
         #remove tubes with len=1
-        tubes_ = [t for t in tubes_ if t['len'] > 1]
+        # tubes_ = [t for t in tubes_ if t['len'] > 1]
         # print('\n\ntubes_: ', tubes_)
         sampled_frames_indices, chosed_tubes = self.sampler(tubes_)
+
+        # for i in range(len(sampled_frames_indices)):
+        #     print('\ntube[{}] \n (1)frames_names_list: {}, \n(2)tube frames_name: {}, \n(3)sampled_frames_indices: {}'.format(i,frames_names_list, chosed_tubes[i]['frames_name'], sampled_frames_indices[i]))
         # print('sampled_frames_indices: ', sampled_frames_indices)
         # print('boxes_from_sampler: ', boxes, boxes[0].shape)
         video_images = []
-        boxes = []
+        final_tube_boxes = []
         num_tubes = len(sampled_frames_indices)
         for frames_indices, sampled_tube in zip(sampled_frames_indices, chosed_tubes):
             # print('\nload_input_1 args: ', path, frames_indices, boxes)
             # dup_boxes = boxes[0][:,1:5]
-            tube_images, tube_boxes, _ = self.load_input_1(path, frames_indices, frames_names_list, sampled_tube)
-            video_images.append(torch.stack(tube_images, dim=0))
+            tube_images_t, tube_boxes_t, tube_boxes, _ = self.load_input_1(path, frames_indices, frames_names_list, sampled_tube)
+            video_images.append(torch.stack(tube_images_t, dim=0))
+            m = int(len(tube_boxes)/2) #middle box from tube
+            
+
+            ##setting id to box
+            c_box = tube_boxes_t[m]
+            id_tensor = torch.tensor([0]).unsqueeze(dim=0).float()
+            print('\n', ' id_tensor: ', id_tensor,id_tensor.size())
+            print(' c_box: ', c_box, c_box.size(), ' index: ', m)
+
+            if c_box.size(0)==0:
+                print(' Here error: ', path, index, '\n',
+                        c_box, '\n', 
+                        sampled_tube, '\n', 
+                        frames_indices, '\n', 
+                        tube_boxes_t, len(tube_boxes_t), '\n', 
+                        tube_boxes, len(tube_boxes))
+            f_box = torch.cat([id_tensor , c_box], dim=1).float()
+            
+            final_tube_boxes.append(f_box)
+
+        # #add extra dimension to boxes for id
+        # final_tube_boxes = [None]*len(final_tube_boxes_tmp)
+        # for i in range(len(final_tube_boxes_tmp)):
+        #     id_tensor = torch.tensor([0]).unsqueeze(dim=0).float()
+        #     print('\n', i, ' id_tensor: ', id_tensor,id_tensor.size())
+        #     print(i, ' final_tube_boxes_tmp[i]: ', final_tube_boxes_tmp[i], final_tube_boxes_tmp[i].size())
+        #     if final_tube_boxes_tmp[i].size(0)==0:
+        #         print(i, ' Here error: ', final_tube_boxes_tmp[i], '\n', chosed_tubes[i])
+        #     box = torch.cat([id_tensor , final_tube_boxes_tmp[i]], dim=1).float()
+            
+        #     # print('box: ', box, box.size())
+        #     final_tube_boxes[i] = box
         
         key_frames = []
         if self.config['input_2'] is not None:
@@ -255,25 +300,27 @@ class TubeDataset(data.Dataset):
                 tube_boxes.append(p_box)
                 if self.config['input_2'] is not None:
                     key_frames.append(key_frames[-1])
-        #TODO
-        # for j,b in enumerate(tube_boxes):
-        #     b[0,0] = j
-        tube_boxes = torch.stack(tube_boxes, dim=0).squeeze()
+
+        final_tube_boxes = torch.stack(final_tube_boxes, dim=0).squeeze()
         
-        if len(tube_boxes.shape)==1:
-            tube_boxes = torch.unsqueeze(tube_boxes, dim=0)
+        if len(final_tube_boxes.shape)==1:
+            final_tube_boxes = torch.unsqueeze(final_tube_boxes, dim=0)
             # print('boxes unsqueeze: ', boxes)
         
-        video_images = torch.stack(video_images, dim=0)#.permute(0,2,1,3,4)
+        video_images = torch.stack(video_images, dim=0).permute(0,4,1,2,3)#.permute(0,2,1,3,4)
         if self.config['input_2'] is not None:
             key_frames = torch.stack(key_frames, dim=0)
             if torch.isnan(key_frames).any().item():
                 print('Detected Nan at: ', path)
             if torch.isinf(key_frames).any().item():
                 print('Detected Inf at: ', path)
-            return tube_boxes, video_images, label, num_tubes, path, key_frames
+            # print('video_images: ', video_images.size())
+            # print('key_frames: ', key_frames.size())
+            # print('final_tube_boxes: ', final_tube_boxes,  final_tube_boxes.size())
+            # print('label: ', label)
+            return final_tube_boxes, video_images, label, num_tubes, path, key_frames
         else:
-            return tube_boxes, video_images, label, num_tubes, path
+            return final_tube_boxes, video_images, label, num_tubes, path
 
 def my_collate_2(batch):
     # batch = filter (lambda x:x is not None, batch)
