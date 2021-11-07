@@ -72,8 +72,8 @@ class NumpyToTensor(object):
     def __call__(self, img, bboxes):
         # print('toTensor input type: ', type(img), type(bboxes))
         # img = checkInputs([img])
-        img = torch.from_numpy(img.copy())
-        bboxes = torch.from_numpy(bboxes)
+        img = torch.from_numpy(img.copy()).float()
+        bboxes = torch.from_numpy(bboxes).float()
         return img, bboxes
 
 class ClipRandomHorizontalFlip(object):

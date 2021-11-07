@@ -6,6 +6,7 @@ def add_path(path):
         sys.path.insert(0, path)
 
 vionet_dir = os.path.dirname(__file__)
+src_path = os.path.split(vionet_dir)[0]
 lib_path = os.path.join(vionet_dir, 'lib')
 
 
@@ -17,7 +18,7 @@ transformation_dir = os.path.join(os.path.dirname(vionet_dir),'transformations')
 # print('tube_dir: ', tube_dir)
 # print('customdataset_dir: ', customdataset_dir)
 
-libraries = [vionet_dir, lib_path, tube_dir, customdataset_dir, transformation_dir]
+libraries = [src_path, vionet_dir, lib_path, tube_dir, customdataset_dir, transformation_dir]
 
 # add_path(os.path.normpath(lib_path))
 # add_path(os.path.normpath(tube_dir))

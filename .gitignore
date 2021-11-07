@@ -285,3 +285,9 @@ src/VioNet/weights
 *.avi
 .env3/
 .env/
+
+*.whl
+
+.env32/
+
+*.webm

@@ -2,6 +2,7 @@ from re import T
 from transformations.spatial_transforms import Compose, Normalize, GroupRandomScaleCenterCrop, GroupRandomHorizontalFlip, ToTensor
 from transformations.temporal_transforms import *
 import torchvision.transforms as transforms
+from transformations.data_aug.data_aug import *
 
 i3d_based_models = [
     'TwoStreamVD_Binary_CFam',
@@ -15,6 +16,29 @@ models_2d_ = [
         'TwoStreamVD_Binary',
         'TwoStreamVD_Binary_CFam'
     ]
+
+def cnn3d_transf():
+    sample_size = (224,224)
+    
+    T = {
+        'train':Compose(
+                [
+                    ClipRandomHorizontalFlip(), 
+                    ClipRandomScale(scale=0.2, diff=True), 
+                    ClipRandomRotate(angle=5),
+                    ClipRandomTranslate(translate=0.1, diff=True),
+                    NumpyToTensor()
+                ],
+                probs=[0.4, 0.5, 0.2, 0.3]
+                ),
+        'val': Compose(
+                [
+                    NumpyToTensor()
+                ]
+                )
+    }
+    return T
+
 
 def i3d_transf():
     sample_size = (224,224)
