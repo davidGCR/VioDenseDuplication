@@ -59,7 +59,7 @@ class TubeDataset(data.Dataset):
             self.paths, self.labels, self.annotations, self.num_frames = self.make_function()
         else:
             self.paths, self.labels, self.annotations = self.make_function()
-            # self.paths, self.labels, self.annotations = filter_data_without_tubelet(self.paths, self.labels, self.annotations)
+            self.paths, self.labels, self.annotations = filter_data_without_tubelet(self.paths, self.labels, self.annotations)
 
         # self.max_video_len = 39 if dataset=='hockey' else 149
         # self.keyframe = keyframe
@@ -234,7 +234,7 @@ class TubeDataset(data.Dataset):
         # max_video_len = self.video_max_len(index)
         tubes_ = self.load_tube_from_file(annotation)
 
-        assert len(tubes_)>0, "No tubes found: {}".format(path)
+        # assert len(tubes_)>0, "No tubes found: {}".format(path)
 
         #remove tubes with len=1
         # tubes_ = [t for t in tubes_ if t['len'] > 1]
