@@ -57,6 +57,8 @@ def plot_clip(clip, boxes, grid=(2,2), title=''):
         # box = boxes[i].reshape(1,-1)[:,1:5]
         # print('box: ', box, box.shape)
         box = boxes[i].reshape(1,-1)
+        # box = boxes[i]
+        # print('box: ', box, box.shape)
         ax.imshow(draw_rect(im, box))
 
     plt.show()

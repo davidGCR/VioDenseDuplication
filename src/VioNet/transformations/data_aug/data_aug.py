@@ -54,7 +54,10 @@ class Compose(object):
                 prob = self.probs[i]
             else:
                 prob = self.probs
-            if random.random() < prob:
+            
+            p = random.random()
+            if  p < prob:
+                print('p: ', p)
                 img_group, bboxes = t(img_group, bboxes)
                 # print("\ntransf: {}/ out: {}/ len: {}".format(type(t), type(img_group), len(img_group)))
         for t in self.transforms:
@@ -72,8 +75,8 @@ class NumpyToTensor(object):
     def __call__(self, img, bboxes):
         # print('toTensor input type: ', type(img), type(bboxes))
         # img = checkInputs([img])
-        img = torch.from_numpy(img.copy()).float()
-        bboxes = torch.from_numpy(bboxes).float()
+        img = torch.from_numpy(img.copy())
+        bboxes = torch.from_numpy(bboxes)
         return img, bboxes
 
 class ClipRandomHorizontalFlip(object):
@@ -93,6 +96,7 @@ class ClipRandomHorizontalFlip(object):
         return img, bboxes
 
     def __call__(self, img_group, bboxes_group):
+        print('\t ClipRandomHorizontalFlip')
         # img_group = checkInputs(img_group)
         imgs = []
         bboxes_transformed = []
@@ -147,6 +151,7 @@ class ClipRandomScale(object):
         return img, bboxes
 
     def __call__(self, img_group, bboxes):
+        print('\t ClipRandomScale')
         # img_group = checkInputs(img_group)
         imgs = []
         bboxes_transformed = []
@@ -199,6 +204,7 @@ class ClipRandomRotate(object):
         return img, bboxes
 
     def __call__(self, img_group, bboxes):
+        print('\t ClipRandomRotate')
         # img_group = checkInputs(img_group)
         imgs = []
         bboxes_transformed = []
@@ -252,6 +258,7 @@ class ClipRandomTranslate(object):
         return img, bboxes
 
     def __call__(self, img_group, bboxes):
+        print('\t ClipRandomTranslate')
         # img_group = checkInputs(img_group)
         imgs = []
         bboxes_transformed = []

@@ -316,21 +316,30 @@ if __name__=="__main__":
     
     # rlvs_one_video_test()
     ########################################PROCESS ALL DATASET
-    # rwf_config = {
-    #     'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames',
-    #     'path_in':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/RWF-2000',
-    #     'path_out':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubes/final/rwf',
-    #     'splits':['train/Fight', 'train/NonFight', 'val/Fight', 'val/NonFight'],
-    #     'start_frame':0,
-    #     'seg_len': 150
-    # }
-    # frames = np.linspace(0, 149,dtype=np.int16).tolist()
-    # config = rwf_config
+    rwf_config = {
+        'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/RWF-2000/frames',
+        'path_in':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/RWF-2000',
+        'path_out':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubesV2/RWF-2000',
+        'splits':['train/Fight', 'train/NonFight', 'val/Fight', 'val/NonFight'],
+        # 'start_frame':0,
+        # 'seg_len': 150
+    }
+    frames = None
+    config = rwf_config
     # TUBE_BUILD_CONFIG['dataset_root'] = config['dataset_root']
     # for sp in config['splits']:
     #     extract_tubes_from_dataset(dataset_persons_detections_path=os.path.join(config['path_in'], sp),
     #                                 folder_out=os.path.join(config['path_out'], sp),
     #                                 frames=frames)
+    time_meter = TimeMeter()
+    for sp in config['splits']:
+        extract_tubes_from_dataset(dataset_root=config['dataset_root'],
+                                    split=sp,
+                                    person_detections_root=config['path_in'],
+                                    folder_out=config['path_out'],
+                                    frames=frames,
+                                    meter=time_meter)
+    print('TimeMeter FPS ---> time: {}, FPS: {}'.format(time_meter.total_time, time_meter.fps))
     ############################################################################################################
     # hockey_config = {
     #     'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/HockeyFightsDATASET/frames',
@@ -367,21 +376,21 @@ if __name__=="__main__":
 
     ############################################################################################################
     # ucfcrime_one_video_test()
-    ucf_config = {
-        'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime_Reduced/frames',
-        'path_in':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/UCFCrime_Reduced',
-        'path_out':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubesV2/UCFCrime_Reduced',
-        'splits':['train/abnormal', 'train/normal', 'test/abnormal', 'test/normal']
-    }
-    frames = None
-    config = ucf_config
-    # TUBE_BUILD_CONFIG['dataset_root'] = config['dataset_root']
-    time_meter = TimeMeter()
-    for sp in config['splits']:
-        extract_tubes_from_dataset(dataset_root=config['dataset_root'],
-                                    split=sp,
-                                    person_detections_root=config['path_in'],
-                                    folder_out=config['path_out'],
-                                    frames=frames,
-                                    meter=time_meter)
-    print('TimeMeter FPS ---> time: {}, FPS: {}'.format(time_meter.total_time, time_meter.fps))
+    # ucf_config = {
+    #     'dataset_root': '/Users/davidchoqueluqueroman/Documents/DATASETS_Local/UCFCrime_Reduced/frames',
+    #     'path_in':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/PersonDetections/UCFCrime_Reduced',
+    #     'path_out':'/Users/davidchoqueluqueroman/Documents/DATASETS_Local/ActionTubesV2/UCFCrime_Reduced',
+    #     'splits':['train/abnormal', 'train/normal', 'test/abnormal', 'test/normal']
+    # }
+    # frames = None
+    # config = ucf_config
+    # # TUBE_BUILD_CONFIG['dataset_root'] = config['dataset_root']
+    # time_meter = TimeMeter()
+    # for sp in config['splits']:
+    #     extract_tubes_from_dataset(dataset_root=config['dataset_root'],
+    #                                 split=sp,
+    #                                 person_detections_root=config['path_in'],
+    #                                 folder_out=config['path_out'],
+    #                                 frames=frames,
+    #                                 meter=time_meter)
+    # print('TimeMeter FPS ---> time: {}, FPS: {}'.format(time_meter.total_time, time_meter.fps))

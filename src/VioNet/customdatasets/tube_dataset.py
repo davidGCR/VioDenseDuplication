@@ -3,7 +3,7 @@
 from torch.utils.data.sampler import WeightedRandomSampler
 # 
 # import src.VioNet.add_path
-import customdatasets.imports
+import imports
 from numpy.core.numeric import indices
 import torch.utils.data as data
 import numpy as np
@@ -307,7 +307,7 @@ class TubeDataset(data.Dataset):
             final_tube_boxes = torch.unsqueeze(final_tube_boxes, dim=0)
             # print('boxes unsqueeze: ', boxes)
         
-        video_images = torch.stack(video_images, dim=0).permute(0,4,1,2,3)#.permute(0,2,1,3,4)
+        video_images = torch.stack(video_images, dim=0)#.permute(0,4,1,2,3)#.permute(0,2,1,3,4)
         if self.config['input_2'] is not None:
             key_frames = torch.stack(key_frames, dim=0)
             if torch.isnan(key_frames).any().item():
@@ -528,13 +528,13 @@ if __name__=='__main__':
             # 'spatial_transform': i3d_video_transf()['train'],
             'spatial_transform': Compose(
                 [
-                    ClipRandomHorizontalFlip(), 
+                    # ClipRandomHorizontalFlip(), 
                     ClipRandomScale(scale=0.2, diff=True), 
-                    ClipRandomRotate(angle=5),
+                    # ClipRandomRotate(angle=5),
                     ClipRandomTranslate(translate=0.1, diff=True),
                     NumpyToTensor()
                 ],
-                probs=[0.4, 0.5, 0.2, 0.3]
+                probs=[1, 1]
                 ),
             'temporal_transform': None
         },
@@ -557,26 +557,27 @@ if __name__=='__main__':
                             random=True,
                             config=TWO_STREAM_INPUT_train)
     
-    for i in range(len(train_dataset)):
-        data = train_dataset[i]
-        bboxes, video_images, label, num_tubes, path, key_frames = data
-        if os.path.split(path)[1]=='Assault027_x264':
-            print(i)
-
-
-    bboxes, video_images, label, num_tubes, path, key_frames = train_dataset[7]
-    print('\tpath: ', path)
-    print('\tvideo_images: ', type(video_images), video_images.size())
-    print('\tbboxes: ', bboxes.size())
+    # for i in range(len(train_dataset)):
+    #     data = train_dataset[i]
+    #     bboxes, video_images, label, num_tubes, path, key_frames = data
+    #     if os.path.split(path)[1]=='Assault027_x264':
+    #         print(i)
+    #         break
+    random.seed(34)
+    for i in range(10):
+        bboxes, video_images, label, num_tubes, path, key_frames = train_dataset[204]
+        print('\tpath: ', path)
+        print('\tvideo_images: ', type(video_images), video_images.size())
+        print('\tbboxes: ', bboxes.size())
     
 
-    frames_numpy = video_images.cpu().numpy()
-    bboxes_numpy = torch.unsqueeze(bboxes, dim=0).cpu().numpy()
-    # bboxes_numpy = bboxes_numpy[:, 1:5]
+    # frames_numpy = video_images.cpu().numpy()
+    # # bboxes_numpy = torch.unsqueeze(bboxes, dim=0).cpu().numpy()
+    # bboxes_numpy = np.array([bboxes.cpu().numpy()[:,1:5]]*16).reshape((1,16,4))
     # print('\tframes_numpy: ', frames_numpy.shape)
     # print('\tbboxes_numpy: ', bboxes_numpy, bboxes_numpy.shape)
-    for j in range(frames_numpy.shape[0]):
-        plot_clip(frames_numpy[j], bboxes_numpy[j], (4,4))
+    # for j in range(frames_numpy.shape[0]):
+    #     plot_clip(frames_numpy[j], bboxes_numpy[j], (4,4))
 
     # path, label, annotation,frames_names, boxes, video_images = dataset[213]
     # print('path: ', path)
