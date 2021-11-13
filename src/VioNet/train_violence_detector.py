@@ -62,13 +62,14 @@ def load_make_dataset(dataset_name,
                     category=2, 
                     shuffle=False,
                     load_gt=False):
-    at_path = 'ActionTubes'
+    at_path = 'ActionTubesV2'
     if dataset_name == RWF_DATASET:
         make_dataset = MakeRWF2000(
             root=os.path.join(home_path, 'RWF-2000/frames'),
             train=train,
             category=category, 
-            path_annotations=os.path.join(home_path, at_path, 'final/rwf'),
+            # path_annotations=os.path.join(home_path, at_path, 'final/rwf'),
+            path_annotations=os.path.join(home_path, at_path, 'RWF-2000'),
             shuffle=shuffle)
 
     elif dataset_name == HOCKEY_DATASET:
