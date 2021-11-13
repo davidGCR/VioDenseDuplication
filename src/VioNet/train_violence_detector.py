@@ -62,12 +62,14 @@ def load_make_dataset(dataset_name,
                     category=2, 
                     shuffle=False,
                     load_gt=False):
+    at_path = 'ActionTubesV2'
     if dataset_name == RWF_DATASET:
         make_dataset = MakeRWF2000(
             root=os.path.join(home_path, 'RWF-2000/frames'),
             train=train,
             category=category, 
-            path_annotations=os.path.join(home_path, 'ActionTubes/final/rwf'),
+            # path_annotations=os.path.join(home_path, at_path, 'final/rwf'),
+            path_annotations=os.path.join(home_path, at_path, 'RWF-2000'),
             shuffle=shuffle)
 
     elif dataset_name == HOCKEY_DATASET:
@@ -75,14 +77,14 @@ def load_make_dataset(dataset_name,
             root=os.path.join(home_path, 'HockeyFightsDATASET/frames'), 
             train=train,
             cv_split_annotation_path=os.path.join(home_path, 'VioNetDB-splits/hockey_jpg{}.json'.format(cv_split)), #'/content/DATASETS/VioNetDB-splits/hockey_jpg{}.json'
-            path_annotations=os.path.join(home_path, 'ActionTubes/final/hockey'),
+            path_annotations=os.path.join(home_path, at_path, 'final/hockey'),
             )
     elif dataset_name == RLVSD_DATASET:
         make_dataset = MakeRLVDDataset(
             root=os.path.join(home_path, 'RealLifeViolenceDataset/frames'), 
             train=train,
             cv_split_annotation_path=os.path.join(home_path, 'VioNetDB-splits/RealLifeViolenceDataset{}.json'.format(cv_split)), #'/content/DATASETS/VioNetDB-splits/hockey_jpg{}.json'
-            path_annotations=os.path.join(home_path, 'ActionTubes/RealLifeViolenceDataset'),
+            path_annotations=os.path.join(home_path, at_path, 'RealLifeViolenceDataset'),
             )
     # elif dataset_name == UCFCrime_DATASET:
     #     ann_file  = ('Train_annotation.pkl', 'Train_normal_annotation.pkl') if train else ('Test_annotation.pkl', 'Test_normal_annotation.pkl')
@@ -99,7 +101,7 @@ def load_make_dataset(dataset_name,
             root=os.path.join(home_path, 'UCFCrime_Reduced', 'frames'), 
             sp_abnormal_annotations_file=os.path.join(home_path,'VioNetDB-splits/UCFCrime', ann_file[0]), 
             sp_normal_annotations_file=os.path.join(home_path,'VioNetDB-splits/UCFCrime', ann_file[1]), 
-            action_tubes_path=os.path.join(home_path,'ActionTubesV2/UCFCrime_Reduced'),
+            action_tubes_path=os.path.join(home_path, at_path, 'UCFCrime_Reduced'),
             train=train,
             ground_truth_tubes=load_gt)
 
@@ -293,11 +295,11 @@ def data_with_tubes(config: Config, make_dataset_train, make_dataset_val):
                             config=TWO_STREAM_INPUT_train)
     train_loader = DataLoader(train_dataset,
                         batch_size=config.train_batch,
-                        shuffle=False,
+                        # shuffle=False,
                         num_workers=config.num_workers,
                         # pin_memory=True,
                         collate_fn=my_collate,
-                        # sampler=train_dataset.get_sampler(),
+                        sampler=train_dataset.get_sampler(),
                         drop_last=True
                         )
     val_dataset = TubeDataset(frames_per_tube=config.frames_per_tube, 
@@ -388,7 +390,7 @@ if __name__=='__main__':
         model='TwoStreamVD_Binary_CFam',#'TwoStreamVD_Binary_CFam',#'TwoStreamVD_Binary',#'i3d-roi',i3d+roi+fc
         model_config=TWO_STREAM_CFAM_CONFIG,
         # head=BINARY,
-        dataset=UCFCrimeReduced_DATASET,
+        dataset=RWF_DATASET,
         num_cv=1,
         # input_type='',
         device=get_torch_device(),
@@ -396,17 +398,17 @@ if __name__=='__main__':
         criterion='CEL',
         optimizer='Adadelta',
         learning_rate=0.001, #0.001 for adagrad
-        train_batch=2,
+        train_batch=4,
         val_batch=4,
         num_tubes=4,
         tube_sampling_random=True,
         frames_per_tube=16, 
         tube_sample_strategy=MIDDLE,
-        save_every=5,
+        save_every=20,
         # freeze=False,
-        additional_info='',
+        additional_info='actV2',
         home_path=HOME_UBUNTU,
-        num_workers=1,
+        num_workers=4,
         load_gt=False
     )
     # config.pretrained_model = "/content/DATASETS/Pretrained_Models/DenseNetLean_Kinetics.pth"

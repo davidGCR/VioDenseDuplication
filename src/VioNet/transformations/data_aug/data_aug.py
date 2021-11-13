@@ -49,15 +49,16 @@ class Compose(object):
 
     def __call__(self, img_group, bboxes):
         img_group = checkInputs(img_group)
+        combination = []
         for i, t in enumerate(self.group_transforms):
             if type(self.probs) == list:
                 prob = self.probs[i]
             else:
                 prob = self.probs
-            
             p = random.random()
-            if  p < prob:
-                print('p: ', p)
+            if p < prob:
+                combination.append((p, t.__class__.__name__))
+                # print(p, t.__class__.__name__)
                 img_group, bboxes = t(img_group, bboxes)
                 # print("\ntransf: {}/ out: {}/ len: {}".format(type(t), type(img_group), len(img_group)))
         for t in self.transforms:
@@ -69,7 +70,7 @@ class Compose(object):
                 boxes_list.append(boxes_t)
             img_group = imgs_list
             bboxes = boxes_list
-        return img_group, bboxes
+        return img_group, bboxes, combination
 
 class NumpyToTensor(object):
     def __call__(self, img, bboxes):
@@ -96,7 +97,7 @@ class ClipRandomHorizontalFlip(object):
         return img, bboxes
 
     def __call__(self, img_group, bboxes_group):
-        print('\t ClipRandomHorizontalFlip')
+        # print('\t ClipRandomHorizontalFlip')
         # img_group = checkInputs(img_group)
         imgs = []
         bboxes_transformed = []
@@ -153,6 +154,7 @@ class ClipRandomScale(object):
     def __call__(self, img_group, bboxes):
         print('\t ClipRandomScale')
         # img_group = checkInputs(img_group)
+        # print('\t ClipRandomScale')
         imgs = []
         bboxes_transformed = []
         for i, img in enumerate(img_group):
@@ -204,7 +206,7 @@ class ClipRandomRotate(object):
         return img, bboxes
 
     def __call__(self, img_group, bboxes):
-        print('\t ClipRandomRotate')
+        # print('\t ClipRandomRotate')
         # img_group = checkInputs(img_group)
         imgs = []
         bboxes_transformed = []
@@ -258,7 +260,7 @@ class ClipRandomTranslate(object):
         return img, bboxes
 
     def __call__(self, img_group, bboxes):
-        print('\t ClipRandomTranslate')
+        # print('\t ClipRandomTranslate')
         # img_group = checkInputs(img_group)
         imgs = []
         bboxes_transformed = []

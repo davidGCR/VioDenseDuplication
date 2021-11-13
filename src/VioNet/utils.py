@@ -1,3 +1,5 @@
+
+import json
 import os
 import csv
 import matplotlib.pyplot as plt
@@ -18,6 +20,8 @@ class AverageMeter(object):
         self.counter += n
         self.avg = self.sum / self.counter
 
+
+
 class TimeMeter(object):
     def __init__(self):
         self.time = 0
@@ -30,6 +34,15 @@ class TimeMeter(object):
         self.total_time += time
         self.frames_counter += num_frames
         self.fps = self.frames_counter/self.total_time
+    
+    def save_summary(self, dst_file):
+        dc = {
+            'total_time': self.total_time,
+            'total_frames':  self.frames_counter,
+            'fps': self.fps
+        }
+        with open(dst_file, 'w') as fp:
+            json.dump(dc, fp)
 
 
 class Log(object):
