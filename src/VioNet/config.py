@@ -48,7 +48,8 @@ class Config:
             criterion='CEL',
             model_config=None,
             tube_sample_strategy='',
-            load_gt=False
+            load_gt=False,
+            tube_box=''
     ):
 
         # VioNet models
@@ -124,10 +125,11 @@ class Config:
         self.model_config = model_config
         self.tube_sample_strategy = tube_sample_strategy
         self.load_gt = load_gt
+        self.tube_box = tube_box
         self.log = self.log_name()
     
     def log_name(self):
-        log = "{}_model({})_load_gt({})_config({})_cv({})_epochs({})_num_tubes({})_framesXtube({})_tub_sampl_rand({})_sampe_strat({})_criterion({})_optimizer({})_lr({})_note({})".format(
+        log = "{}_model({})_load_gt({})_config({})_cv({})_epochs({})_num_tubes({})_framesXtube({})_tubeBox({})_tub_sampl_rand({})_sampe_strat({})_criterion({})_optimizer({})_lr({})_note({})".format(
             self.dataset,
             self.model,
             self.load_gt,
@@ -138,6 +140,7 @@ class Config:
             self.num_epoch,
             self.num_tubes,
             self.frames_per_tube,
+            self.tube_box,
             self.tube_sampling_random,
             self.tube_sample_strategy,
             self.criterion,

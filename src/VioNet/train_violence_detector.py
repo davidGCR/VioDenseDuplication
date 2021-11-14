@@ -20,7 +20,7 @@ import os
 #data
 from customdatasets.make_dataset import MakeRWF2000, MakeHockeyDataset, MakeRLVDDataset, MakeUCFCrime2LocalClips
 from customdatasets.make_UCFCrime import MakeUCFCrime
-from customdatasets.tube_dataset import TubeDataset, my_collate, my_collate_2, OneVideoTubeDataset, TubeFeaturesDataset
+from customdatasets.tube_dataset import TubeDataset, my_collate, my_collate_2
 from torch.utils.data import DataLoader
 
 from config import Config
@@ -292,7 +292,8 @@ def data_with_tubes(config: Config, make_dataset_train, make_dataset_val):
                             train=True,
                             dataset=config.dataset,
                             random=config.tube_sampling_random,
-                            config=TWO_STREAM_INPUT_train)
+                            config=TWO_STREAM_INPUT_train,
+                            tube_box=config.tube_box)
     train_loader = DataLoader(train_dataset,
                         batch_size=config.train_batch,
                         # shuffle=False,
@@ -308,7 +309,8 @@ def data_with_tubes(config: Config, make_dataset_train, make_dataset_val):
                             train=False,
                             dataset=config.dataset,
                             random=config.tube_sampling_random,
-                            config=TWO_STREAM_INPUT_val)
+                            config=TWO_STREAM_INPUT_val,
+                            tube_box=config.tube_box)
     val_loader = DataLoader(val_dataset,
                         batch_size=config.val_batch,
                         # shuffle=True,
@@ -394,22 +396,23 @@ if __name__=='__main__':
         num_cv=1,
         # input_type='',
         device=get_torch_device(),
-        num_epoch=100,
+        num_epoch=40,
         criterion='CEL',
-        optimizer='Adadelta',
+        optimizer='SGD',
         learning_rate=0.001, #0.001 for adagrad
         train_batch=4,
         val_batch=4,
         num_tubes=4,
         tube_sampling_random=True,
         frames_per_tube=16, 
-        tube_sample_strategy=MIDDLE,
+        tube_sample_strategy=MIDDLE_FRAMES,
         save_every=20,
         # freeze=False,
-        additional_info='actV2',
+        additional_info='',
         home_path=HOME_UBUNTU,
         num_workers=4,
-        load_gt=False
+        load_gt=False,
+        tube_box=UNION_BOX
     )
     # config.pretrained_model = "/content/DATASETS/Pretrained_Models/DenseNetLean_Kinetics.pth"
     # config.pretrained_model='/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt'

@@ -8,13 +8,17 @@ from torch.utils.data import DataLoader
 from PIL import Image, ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
-from dynamic_image import dynamic_image_v1
+# from dynamic_image import dynamic_image_v1
 from transformations.temporal_transforms import KeyFrameCrop, TrainGuidedKeyFrameCrop, ValGuidedKeyFrameCrop, KeySegmentCrop, SequentialCrop
 from transformations.spatial_transforms import Lighting
 from global_var import RGB_FRAME, DYN_IMAGE
 import torchvision.transforms as transforms
 import numpy as np
 import pandas as pd
+
+def dynamic_image_v1():
+    #TODO
+    pass
 
 def imread(path):
     with Image.open(path) as img:

@@ -3,7 +3,7 @@
 from torch.utils.data.sampler import WeightedRandomSampler
 # 
 # import src.VioNet.add_path
-import imports
+# import imports
 from numpy.core.numeric import indices
 import torch.utils.data as data
 import numpy as np
@@ -333,7 +333,7 @@ class TubeDataset(data.Dataset):
             final_tube_boxes = torch.unsqueeze(final_tube_boxes, dim=0)
             # print('boxes unsqueeze: ', boxes)
         
-        video_images = torch.stack(video_images, dim=0)#.permute(0,4,1,2,3)#.permute(0,2,1,3,4)
+        video_images = torch.stack(video_images, dim=0).permute(0,4,1,2,3)#.permute(0,2,1,3,4)
         if self.config['input_2'] is not None:
             key_frames = torch.stack(key_frames, dim=0)
             if torch.isnan(key_frames).any().item():
