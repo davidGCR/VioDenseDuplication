@@ -61,9 +61,14 @@ REGRESSION = 'regression'
 BINARY = 'binary'
 
 #tube sample strategies
-MIDDLE = 'middle'
-EVENLY = 'evenly'
-CENTER = 'center'
+MIDDLE_FRAMES = 'middle'
+EVENLY_FRAMES = 'evenly'
+# CENTER_FRAMES = 'center'
+
+#box tube
+MIDDLE_BOX = 0
+UNION_BOX = 1
+ALL_BOX = 2
 
 DYN_IMAGE = "dynamic-image"
 RGB_FRAME = "rgb"

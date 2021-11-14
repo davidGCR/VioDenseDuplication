@@ -3,9 +3,10 @@ import numpy as np
 import torch
 import random
 import numpy as np
+# from VioNet.global_var import MIDDLE_FRAMES
 
 
-from global_var import MIDDLE, EVENLY, DYN_IMAGE, RGB_FRAME
+from global_var import *
 
 class TubeCrop(object):
     def __init__(self, 
@@ -14,7 +15,7 @@ class TubeCrop(object):
                     max_num_tubes=4, 
                     train=True,
                     input_type=RGB_FRAME,
-                    sample_strategy=MIDDLE,#'middle', #'evenly'
+                    sample_strategy=MIDDLE_FRAMES,#'middle', #'evenly'
                     # boxes_sample_strategy=MIDDLE,
                     random=True,
                     box_as_tensor=True,
@@ -112,12 +113,12 @@ class TubeCrop(object):
         if len(tube_found_at) == self.tube_len: 
             return tube_found_at
         if len(tube_found_at) > self.tube_len:
-            if self.sample_strategy == MIDDLE:
+            if self.sample_strategy == MIDDLE_FRAMES:
                 n = len(tube_found_at)
                 m = int(n/2)
                 arr = np.array(tube_found_at)
                 centered_array = arr[m-int(self.tube_len/2) : m+int(self.tube_len/2)]
-            elif self.sample_strategy == EVENLY:
+            elif self.sample_strategy == EVENLY_FRAMES:
                 min_frame = tube_found_at[0]
                 tube_frames_idxs = np.linspace(min_frame, max_video_len, self.tube_len).astype(int)
                 tube_frames_idxs = tube_frames_idxs.tolist()

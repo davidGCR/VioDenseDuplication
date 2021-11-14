@@ -36,12 +36,13 @@ class TubeDataset(data.Dataset):
                        dataset='',
                        random=True,
                        config=None,
-                       tube_sample_strategy=MIDDLE,
+                       tube_sample_strategy=MIDDLE_FRAMES,
+                       tube_box=MIDDLE_BOX,
                        shape=(224,224)):
         self.config = config
         self.dataset = dataset
         self.shape = shape
-        # self.input_type = input_type
+        self.tube_box = tube_box
         self.frames_per_tube = frames_per_tube
         self.tube_sample_strategy = tube_sample_strategy
         self.make_function = make_function
@@ -253,26 +254,49 @@ class TubeDataset(data.Dataset):
             # dup_boxes = boxes[0][:,1:5]
             tube_images_t, tube_boxes_t, tube_boxes, _, t_combination = self.load_input_1(path, frames_indices, frames_names_list, sampled_tube)
             video_images.append(torch.stack(tube_images_t, dim=0))
-            m = int(len(tube_boxes)/2) #middle box from tube
-            
 
-            ##setting id to box
-            c_box = tube_boxes_t[m]
-            id_tensor = torch.tensor([0]).unsqueeze(dim=0).float()
-            # print('\n', ' id_tensor: ', id_tensor,id_tensor.size())
-            # print(' c_box: ', c_box, c_box.size(), ' index: ', m)
+            #Box extracted from tube
+            tube_box = None
+            if self.tube_box == MIDDLE_BOX:
+                m = int(len(tube_boxes)/2) #middle box from tube
+                ##setting id to box
+                tube_box = tube_boxes_t[m]
+                id_tensor = torch.tensor([0]).unsqueeze(dim=0).float()
+                # print('\n', ' id_tensor: ', id_tensor,id_tensor.size())
+                # print(' c_box: ', c_box, c_box.size(), ' index: ', m)
+                if tube_box.size(0)==0:
+                    print(' Here error: ', path, index, '\n',
+                            tube_box, '\n', 
+                            sampled_tube, '\n', 
+                            frames_indices, '\n', 
+                            tube_boxes_t, len(tube_boxes_t), '\n', 
+                            tube_boxes, len(tube_boxes), '\n',
+                            t_combination)
+                    exit()
+                f_box = torch.cat([id_tensor , tube_box], dim=1).float()
 
-            if c_box.size(0)==0:
-                print(' Here error: ', path, index, '\n',
-                        c_box, '\n', 
-                        sampled_tube, '\n', 
-                        frames_indices, '\n', 
-                        tube_boxes_t, len(tube_boxes_t), '\n', 
-                        tube_boxes, len(tube_boxes), '\n',
-                        t_combination)
-                exit()
-            f_box = torch.cat([id_tensor , c_box], dim=1).float()
-            
+            elif self.tube_box == UNION_BOX:
+                # TODO
+                all_boxes = [torch.from_numpy(t) for i, t in enumerate(tube_boxes)]
+                all_boxes = torch.stack(all_boxes, dim=0).squeeze()
+                mins, _ = torch.min(all_boxes, dim=0)
+                x1 = mins[0].unsqueeze(dim=0).float()
+                y1 = mins[1].unsqueeze(dim=0).float()
+                maxs, _ = torch.max(all_boxes, dim=0)
+                x2 = maxs[2].unsqueeze(dim=0).float()
+                y2 = maxs[3].unsqueeze(dim=0).float()
+                id_tensor = torch.tensor([0]).float()
+                # print('all_boxes: ', all_boxes, all_boxes.size())
+                # print('id_tensor: ', id_tensor, id_tensor.size())
+                # print('x1: ', x1, x1.size())
+                # print('y1: ', y1, y1.size())
+                # print('x2: ', x2, x2.size())
+                # print('y2: ', y2, y2.size())
+                
+                f_box = torch.cat([id_tensor , x1, y1, x2, y2]).float()
+            elif self.tube_box == ALL_BOX:
+                f_box = [torch.cat([torch.tensor([i]).unsqueeze(dim=0), torch.from_numpy(t)], dim=1).float() for i, t in enumerate(tube_boxes)]
+                f_box = torch.stack(f_box, dim=0)
             final_tube_boxes.append(f_box)
 
         # #add extra dimension to boxes for id
@@ -366,105 +390,6 @@ def my_collate(batch):
         return boxes, images, labels, num_tubes, paths, key_frames#torch.stack(labels, dim=0)
     return boxes, images, labels, num_tubes, paths
 
-class OneVideoTubeDataset(data.Dataset):
-    """
-    Load tubelets from one video
-    Use to extract features tube-by-tube from just a video
-    """
-
-    def __init__(self, frames_per_tube,
-                       video_path,
-                       annotation_path,
-                       spatial_transform=None,
-                       max_num_tubes=0):
-        self.frames_per_tube = frames_per_tube
-        self.spatial_transform = spatial_transform
-        self.video_path = video_path
-        self.annotation_path = annotation_path
-        self.max_num_tubes = max_num_tubes
-        self.sampler = TubeCrop(tube_len=frames_per_tube, central_frame=True, max_num_tubes=max_num_tubes)
-        self.boxes, self.segments, self.idxs = self.sampler(JSON_2_tube(annotation_path), annotation_path)
-        print('self.idxs:', self.idxs)
-    
-    def __len__(self):
-        if self.boxes is not None:
-            return len(self.boxes)
-        else:
-            return 0
-
-    def __getitem__(self, index):
-        if self.boxes == None:
-            return None, None
-        frames_names = []
-        segment = self.segments[index]
-        box = self.boxes[index]
-       
-        frames = [os.path.join(self.video_path,'frame{}.jpg'.format(i+1)) for i in segment]
-        frames_names.append(frames)
-        tube_images = [] #one tube-16 frames
-        for i in frames:
-            img = self.spatial_transform(imread(i)) if self.spatial_transform else imread(i)
-            tube_images.append(img)
-        # video_images.append(torch.stack(tube_images, dim=0))
-        tube_images = torch.stack(tube_images, dim=0) #torch.Size([16, 3, 224, 224])
-        # print("tube_images stacked:", tube_images.size())
-        # tube_images.permute(0,2,1,3,4)
-        
-        return box, tube_images
-
-class TubeFeaturesDataset(data.Dataset):
-    """
-    Load tubelet features from files (txt)
-    """
-
-    def __init__(self, frames_per_tube,
-                       min_frames_per_tube,
-                       make_function,
-                       max_num_tubes=4,
-                       map_shape=(1,528,4,14,14)):
-        # self.annotation_path = annotation_path
-        self.max_num_tubes = max_num_tubes
-        self.map_shape = map_shape
-        self.paths, self.labels, self.annotations, self.feat_annotations = make_function()
-        self.sampler = TubeCrop(tube_len=frames_per_tube, min_tube_len=min_frames_per_tube, central_frame=True, max_num_tubes=max_num_tubes)
-        
-    
-    def __getitem__(self, index):
-        path = self.paths[index]
-        label = self.labels[index]
-        box_annotation = self.annotations[index]
-        feat_annotation = self.feat_annotations[index]
-        boxes, segments, idxs = self.sampler(JSON_2_tube(box_annotation), box_annotation)
-        
-        f_maps = self.read_features(feat_annotation, idxs)
-        f_maps = torch.reshape(f_maps, self.map_shape)
-        
-        boxes = torch.stack(boxes, dim=0).squeeze()
-        if len(boxes.shape)==1:
-            boxes = torch.unsqueeze(boxes, dim=0)
-        return boxes, f_maps, label
-    
-    # def get_feature(self):
-    #     features = read_features(f"{feature_subpath}.txt", self.features_dim, self.bucket_size)
-    
-    def read_features(self, annotation_path, idxs, features_dim=413952):
-        if not os.path.exists(annotation_path):
-            raise Exception(f"Feature doesn't exist: {annotation_path}")
-        features = None
-        with open(annotation_path, 'r') as fp:
-            data = fp.read().splitlines(keepends=False)
-            # idxs = random.sample(range(len(data)), self.max_num_tubes)
-            data = list(itemgetter(*idxs)(data))
-            features = np.zeros((len(data), features_dim))
-            for i, line in enumerate(data):
-                features[i, :] = [float(x) for x in line.split(' ')]
-        # features = features[0:max_features, :]
-        features = torch.from_numpy(features).float()
-        
-        return features
-
-
-
 
 def JSON_2_tube(json_file):
     """
@@ -522,7 +447,7 @@ if __name__=='__main__':
             sp_normal_annotations_file=os.path.join(home_path,'VioNetDB-splits/UCFCrime', ann_file[1]), 
             action_tubes_path=os.path.join(home_path,'ActionTubesV2/UCFCrime_Reduced'),
             train=True,
-            ground_truth_tubes=False)
+            ground_truth_tubes=True)
     
     TWO_STREAM_INPUT_train = {
         'input_1': {
@@ -530,10 +455,10 @@ if __name__=='__main__':
             # 'spatial_transform': i3d_video_transf()['train'],
             'spatial_transform': Compose(
                 [
-                    # ClipRandomHorizontalFlip(), 
-                    ClipRandomScale(scale=0.2, diff=True), 
-                    # ClipRandomRotate(angle=5),
-                    ClipRandomTranslate(translate=0.1, diff=True),
+                    ClipRandomHorizontalFlip(), 
+                    # ClipRandomScale(scale=0.2, diff=True), 
+                    ClipRandomRotate(angle=5),
+                    # ClipRandomTranslate(translate=0.1, diff=True),
                     NumpyToTensor()
                 ],
                 probs=[1, 1]
@@ -557,6 +482,7 @@ if __name__=='__main__':
                             train=True,
                             dataset='UCFCrime_Reduced',
                             random=True,
+                            tube_box=UNION_BOX,
                             config=TWO_STREAM_INPUT_train)
     
     # for i in range(len(train_dataset)):
@@ -565,13 +491,23 @@ if __name__=='__main__':
     #     if os.path.split(path)[1]=='Assault027_x264':
     #         print(i)
     #         break
-    random.seed(34)
-    for i in range(10):
-        bboxes, video_images, label, num_tubes, path, key_frames = train_dataset[204]
+    # random.seed(34)
+    for i in range(1):
+        bboxes, video_images, label, num_tubes, path, key_frames = train_dataset[20]
         print('\tpath: ', path)
         print('\tvideo_images: ', type(video_images), video_images.size())
         print('\tbboxes: ', bboxes.size())
-    
+
+        frames_numpy = video_images.cpu().numpy()
+        bboxes_numpy = bboxes.cpu().numpy()[:,1:5] #remove id and to shape (n,4)
+        
+        print('\nframes_numpy: ', frames_numpy.shape)
+        print('bboxes_numpy: ', bboxes_numpy)
+
+        for j in range(frames_numpy.shape[0]): #iterate over batch
+            
+            bboxes_numpy = [bboxes_numpy] * 16
+            plot_clip(frames_numpy[j], bboxes_numpy, (4,4))
 
     # frames_numpy = video_images.cpu().numpy()
     # # bboxes_numpy = torch.unsqueeze(bboxes, dim=0).cpu().numpy()
