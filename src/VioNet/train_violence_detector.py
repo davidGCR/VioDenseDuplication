@@ -396,13 +396,13 @@ if __name__=='__main__':
         num_cv=1,
         # input_type='',
         device=get_torch_device(),
-        num_epoch=40,
+        num_epoch=100,
         criterion='CEL',
         optimizer='SGD',
-        learning_rate=0.001, #0.001 for adagrad
+        learning_rate=0.00001, #0.001 for adagrad
         train_batch=4,
         val_batch=4,
-        num_tubes=4,
+        num_tubes=2,
         tube_sampling_random=True,
         frames_per_tube=16, 
         tube_sample_strategy=MIDDLE_FRAMES,
