@@ -99,10 +99,10 @@ def resnet_transf():
                 transforms.Normalize(mean=mean, std=std)
             ]),
             'val': transforms.Compose([
-                transforms.Resize(input_size),
+                # transforms.Resize(input_size),
                 # transforms.CenterCrop(input_size),
                 transforms.ToTensor(),
-                transforms.Normalize(mean=mean, std=std)
+                # transforms.Normalize(mean=mean, std=std)
             ]),
         }
     return T  

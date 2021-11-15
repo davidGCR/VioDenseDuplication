@@ -70,5 +70,10 @@ MIDDLE_BOX = 0
 UNION_BOX = 1
 ALL_BOX = 2
 
+#keyframe pos
+MIDDLE_KEYFRAME = 0
+BEGIN_KEYFRAME = 1
+RANDOM_KEYFRAME = 2
+
 DYN_IMAGE = "dynamic-image"
 RGB_FRAME = "rgb"
