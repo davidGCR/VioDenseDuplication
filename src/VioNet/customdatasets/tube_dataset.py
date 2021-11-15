@@ -3,7 +3,7 @@
 from torch.utils.data.sampler import WeightedRandomSampler
 # 
 # import src.VioNet.add_path
-# import imports
+import imports
 from numpy.core.numeric import indices
 import torch.utils.data as data
 import numpy as np
@@ -38,11 +38,13 @@ class TubeDataset(data.Dataset):
                        config=None,
                        tube_sample_strategy=MIDDLE_FRAMES,
                        tube_box=MIDDLE_BOX,
+                       key_frame=MIDDLE_KEYFRAME,
                        shape=(224,224)):
         self.config = config
         self.dataset = dataset
         self.shape = shape
         self.tube_box = tube_box
+        self.key_frame = key_frame
         self.frames_per_tube = frames_per_tube
         self.tube_sample_strategy = tube_sample_strategy
         self.make_function = make_function
@@ -77,6 +79,9 @@ class TubeDataset(data.Dataset):
                                 box_as_tensor=False)
         self.box_as_tensor = False
         self.max_num_tubes = max_num_tubes
+
+        if self.config['input_2']['type'] == DYN_IMAGE:
+            self.dynamic_image_fn = DynamicImage()
     
     def get_sampler(self):
         class_sample_count = np.unique(self.labels, return_counts=True)[1]
@@ -123,7 +128,8 @@ class TubeDataset(data.Dataset):
         tube_boxes = []
         if self.config['input_1']['type']=='rgb':
             frames_paths = [self.build_frame_name(path, i, frames_names_list) for i in frames_indices]
-            # print('frames_paths: ', frames_paths)
+            for j, fp in enumerate(frames_paths):
+                print(j, ' ', fp)
             for i in frames_paths:
                 img = imread(i)
                 tube_images.append(img)
@@ -145,32 +151,24 @@ class TubeDataset(data.Dataset):
             if self.config['input_1']['spatial_transform']:
                 tube_images_t, tube_boxes_t, t_combination = self.config['input_1']['spatial_transform'](tube_images, tube_boxes)
        
-       # elif self.config['input_1']['type']=='dynamic-image':
-        #     tt = DynamicImage()
-        #     for shot in seg:
-        #         frames_paths = [self.build_frame_name(path, i, frames_names_list) for i in shot]
-        #         shot_images = [imread(img_path) for img_path in frames_paths]
-        #         img = self.spatial_transform(tt(shot_images)) if self.spatial_transform else tt(shot_images)
-        #         tube_images.append(img)
         return tube_images_t, tube_boxes_t, tube_boxes, raw_clip_images, t_combination
     
-    def load_input_2(self, frames, path, frames_names_list):
-        if self.config['input_2']['type'] == 'rgb':
-            i = frames[int(len(frames)/2)]
-            # print('central frame:', i)
-            img_path = self.build_frame_name(path, i, frames_names_list)
-            key_frame = imread(img_path)
+    def load_input_2_di(self, frames_indices, path, frames_names_list):
+        # if self.config['input_2']['type'] == 'rgb':
+        #     i = frames_indices[int(len(frames_indices)/2)]
             
-        elif self.config['input_2']['type'] == 'dynamic-image':
-            tt = DynamicImage()
-            frames_paths = [self.build_frame_name(path, i, frames_names_list) for i in frames] #rwf
-            shot_images = [np.array(imread(img_path, resize=(224,224))) for img_path in frames_paths]
-            # shot_images = [s.reshape((224,224,3)) for s in shot_images]
-            # sizes = [s.shape for s in shot_images]
-            # print('sizes: ', sizes)
-            # img = self.spatial_transform(tt(shot_images)) if self.spatial_transform else tt(shot_images)
-            key_frame = tt(shot_images)
-            # print('key_frame: ', type(key_frame))
+        #     img_path = self.build_frame_name(path, i, frames_names_list)
+        #     print('central frame path: ', i, ' ', img_path)
+        #     key_frame = imread(img_path)
+            
+        # elif self.config['input_2']['type'] == 'dynamic-image':
+        frames_paths = [self.build_frame_name(path, i, frames_names_list) for i in frames_indices] #rwf
+        print('frames to build DI')
+        for j, fp in enumerate(frames_paths):
+            print(j, ' ', fp)
+        shot_images = [np.array(imread(img_path, resize=self.shape)) for img_path in frames_paths]
+        key_frame = self.dynamic_image_fn(shot_images)
+            
         raw_key_frame = key_frame.copy()
         if self.config['input_2']['spatial_transform']:
             key_frame = self.config['input_2']['spatial_transform'](key_frame)
@@ -234,9 +232,6 @@ class TubeDataset(data.Dataset):
         
         # max_video_len = self.video_max_len(index)
         tubes_ = self.load_tube_from_file(annotation)
-
-        # assert len(tubes_)>0, "No tubes found: {}".format(path)
-
         #remove tubes with len=1
         # tubes_ = [t for t in tubes_ if t['len'] > 1]
         # print('\n\ntubes_: ', tubes_)
@@ -244,17 +239,18 @@ class TubeDataset(data.Dataset):
 
         # for i in range(len(sampled_frames_indices)):
         #     print('\ntube[{}] \n (1)frames_names_list: {}, \n(2)tube frames_name: {}, \n(3)sampled_frames_indices: {}'.format(i,frames_names_list, chosed_tubes[i]['frames_name'], sampled_frames_indices[i]))
-        # print('sampled_frames_indices: ', sampled_frames_indices)
+        print('sampled_frames_indices: ', sampled_frames_indices)
         # print('boxes_from_sampler: ', boxes, boxes[0].shape)
         video_images = []
+        video_images_raw = []
         final_tube_boxes = []
         num_tubes = len(sampled_frames_indices)
         for frames_indices, sampled_tube in zip(sampled_frames_indices, chosed_tubes):
             # print('\nload_input_1 args: ', path, frames_indices, boxes)
-            # dup_boxes = boxes[0][:,1:5]
-            tube_images_t, tube_boxes_t, tube_boxes, _, t_combination = self.load_input_1(path, frames_indices, frames_names_list, sampled_tube)
-            video_images.append(torch.stack(tube_images_t, dim=0))
-
+            tube_images_t, tube_boxes_t, tube_boxes, tube_raw_clip_images, t_combination = self.load_input_1(path, frames_indices, frames_names_list, sampled_tube)
+            video_images.append(torch.stack(tube_images_t, dim=0)) #added tensor: torch.Size([16, 224, 224, 3])
+            video_images_raw.append(tube_raw_clip_images) #added PIL image
+            print('video_images[-1]: ', video_images[-1].size())
             #Box extracted from tube
             tube_box = None
             if self.tube_box == MIDDLE_BOX:
@@ -274,9 +270,7 @@ class TubeDataset(data.Dataset):
                             t_combination)
                     exit()
                 f_box = torch.cat([id_tensor , tube_box], dim=1).float()
-
             elif self.tube_box == UNION_BOX:
-                # TODO
                 all_boxes = [torch.from_numpy(t) for i, t in enumerate(tube_boxes)]
                 all_boxes = torch.stack(all_boxes, dim=0).squeeze()
                 mins, _ = torch.min(all_boxes, dim=0)
@@ -286,36 +280,34 @@ class TubeDataset(data.Dataset):
                 x2 = maxs[2].unsqueeze(dim=0).float()
                 y2 = maxs[3].unsqueeze(dim=0).float()
                 id_tensor = torch.tensor([0]).float()
-                # print('all_boxes: ', all_boxes, all_boxes.size())
-                # print('id_tensor: ', id_tensor, id_tensor.size())
-                # print('x1: ', x1, x1.size())
-                # print('y1: ', y1, y1.size())
-                # print('x2: ', x2, x2.size())
-                # print('y2: ', y2, y2.size())
                 
                 f_box = torch.cat([id_tensor , x1, y1, x2, y2]).float()
             elif self.tube_box == ALL_BOX:
                 f_box = [torch.cat([torch.tensor([i]).unsqueeze(dim=0), torch.from_numpy(t)], dim=1).float() for i, t in enumerate(tube_boxes)]
                 f_box = torch.stack(f_box, dim=0)
             final_tube_boxes.append(f_box)
-
-        # #add extra dimension to boxes for id
-        # final_tube_boxes = [None]*len(final_tube_boxes_tmp)
-        # for i in range(len(final_tube_boxes_tmp)):
-        #     id_tensor = torch.tensor([0]).unsqueeze(dim=0).float()
-        #     print('\n', i, ' id_tensor: ', id_tensor,id_tensor.size())
-        #     print(i, ' final_tube_boxes_tmp[i]: ', final_tube_boxes_tmp[i], final_tube_boxes_tmp[i].size())
-        #     if final_tube_boxes_tmp[i].size(0)==0:
-        #         print(i, ' Here error: ', final_tube_boxes_tmp[i], '\n', chosed_tubes[i])
-        #     box = torch.cat([id_tensor , final_tube_boxes_tmp[i]], dim=1).float()
-            
-        #     # print('box: ', box, box.size())
-        #     final_tube_boxes[i] = box
         
+        #load keyframes
         key_frames = []
         if self.config['input_2'] is not None:
-            for seg in sampled_frames_indices:
-                key_frame, _ = self.load_input_2(seg, path, frames_names_list)
+            for k in range(len(video_images_raw)):
+                if self.config['input_2']['type'] == DYN_IMAGE:
+                    # key_frame, _ = self.load_input_2_di(sampled_frames_indices[k], path, frames_names_list)
+                    clip = []
+                    key_frame = self.dynamic_image_fn(video_images[k])
+                    if self.config['input_2']['spatial_transform']:
+                        key_frame = self.config['input_2']['spatial_transform'](key_frame)
+                else:
+                    if self.key_frame == MIDDLE_KEYFRAME:
+                        m = int(video_images[k].size(0)/2) #using frames loaded from 3d branch
+                        key_frame = video_images[k][m] #tensor 
+                        key_frame = key_frame.numpy()
+                        if self.config['input_2']['spatial_transform']:
+                            key_frame = self.config['input_2']['spatial_transform'](key_frame)
+                    else:
+                        #TODO
+                        print('Not implemented yet...')
+                        exit()
                 key_frames.append(key_frame)
         
         #padding
@@ -449,6 +441,9 @@ if __name__=='__main__':
             train=True,
             ground_truth_tubes=True)
     
+    mean = [0.485, 0.456, 0.406]
+    std = [0.229, 0.224, 0.225]
+    norm = transforms.Normalize(mean=mean, std=std)  
     TWO_STREAM_INPUT_train = {
         'input_1': {
             'type': 'rgb',
@@ -465,16 +460,21 @@ if __name__=='__main__':
                 ),
             'temporal_transform': None
         },
-        'input_2': {
-            'type': 'rgb',
-            'spatial_transform': resnet_transf()['train'],
-            'temporal_transform': None
-        }
         # 'input_2': {
-        #     'type': 'dynamic-image',
-        #     'spatial_transform': resnet_di_transf()['train'],
+        #     'type': 'rgb',
+        #     'spatial_transform': resnet_transf()['val'],
         #     'temporal_transform': None
         # }
+        'input_2': {
+            'type': 'dynamic-image',
+            'spatial_transform': transforms.Compose([
+                transforms.Resize((224,224)),
+                # transforms.CenterCrop(input_size),
+                transforms.ToTensor(),
+                norm
+            ]),
+            'temporal_transform': None
+        }
     }
     train_dataset = TubeDataset(frames_per_tube=16, 
                             make_function=make_dataset,
@@ -493,21 +493,27 @@ if __name__=='__main__':
     #         break
     # random.seed(34)
     for i in range(1):
-        bboxes, video_images, label, num_tubes, path, key_frames = train_dataset[20]
+        bboxes, video_images, label, num_tubes, path, key_frames = train_dataset[400]
         print('\tpath: ', path)
         print('\tvideo_images: ', type(video_images), video_images.size())
         print('\tbboxes: ', bboxes.size())
+        print('\tkey_frames: ', type(key_frames), key_frames.size())
 
-        frames_numpy = video_images.cpu().numpy()
-        bboxes_numpy = bboxes.cpu().numpy()[:,1:5] #remove id and to shape (n,4)
+        frames_numpy = video_images.permute(0,2,3,4,1)
+        frames_numpy = frames_numpy.cpu().numpy().astype('uint8')
+        bboxes_numpy = bboxes.cpu().numpy()[:,1:5] #remove id and to shape (n,4)\
+        key_frames_numpy = key_frames.permute(0,2,3,1)
+        key_frames_numpy = key_frames_numpy.cpu().numpy()
         
         print('\nframes_numpy: ', frames_numpy.shape)
         print('bboxes_numpy: ', bboxes_numpy)
+        print('key_frames_numpy: ', key_frames_numpy.shape)
 
         for j in range(frames_numpy.shape[0]): #iterate over batch
             
             bboxes_numpy = [bboxes_numpy] * 16
             plot_clip(frames_numpy[j], bboxes_numpy, (4,4))
+            plot_keyframe(key_frames_numpy[j], bboxes_numpy[0])
 
     # frames_numpy = video_images.cpu().numpy()
     # # bboxes_numpy = torch.unsqueeze(bboxes, dim=0).cpu().numpy()

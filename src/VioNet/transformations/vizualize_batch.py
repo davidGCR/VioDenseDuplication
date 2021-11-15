@@ -62,3 +62,8 @@ def plot_clip(clip, boxes, grid=(2,2), title=''):
         ax.imshow(draw_rect(im, box))
 
     plt.show()
+
+def plot_keyframe(im, box):
+    img = draw_rect(im, box)
+    plt.imshow(img)
+    plt.show()
