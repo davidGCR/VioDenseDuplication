@@ -248,26 +248,34 @@ def main(config: Config, MIL=False):
             save_checkpoint(model, config.num_epoch, epoch, optimizer,train_loss, os.path.join(chk_path_folder,"save_at_epoch-"+str(epoch)+".chk"))
 
 def data_with_tubes(config: Config, make_dataset_train, make_dataset_val):
+    
+    def load_key_frame_config(split):
+        if config.key_frame in [RGB_BEGIN_KEYFRAME, RGB_MIDDLE_KEYFRAME, RGB_RANDOM_KEYFRAME]:
+            input_2_c={
+                    'type': 'rgb',
+                    'spatial_transform': resnet_transf()[split],
+                    'temporal_transform': None
+                }
+        elif config.key_frame == DYNAMIC_IMAGE_KEYFRAME:
+            input_2_c = {
+                'type': 'dynamic-image',
+                'spatial_transform': resnet_di_transf()[split],
+                'temporal_transform': None
+            }
+        else:
+            print('Error. No valid keyframe...')
+            exit()
+        return input_2_c
+
     TWO_STREAM_INPUT_train = {
         'input_1': {
             'type': 'rgb',
-            # 'spatial_transform': i3d_video_transf()['train'],
             'spatial_transform': cnn3d_transf()['train'],
             'temporal_transform': None
         },
-        'input_2': {
-            'type': 'rgb',
-            'spatial_transform': resnet_transf()['train'],
-            # 'spatial_transform': cnn3d_transf()['train'],
-            'temporal_transform': None
-        }
-        # 'input_2': {
-        #     'type': 'dynamic-image',
-        #     'spatial_transform': resnet_di_transf()['train'],
-        #     'temporal_transform': None
-        # }
+        'input_2': load_key_frame_config('train') 
     }
-
+    
     TWO_STREAM_INPUT_val = {
         'input_1': {
             'type': 'rgb',
@@ -275,16 +283,7 @@ def data_with_tubes(config: Config, make_dataset_train, make_dataset_val):
             'spatial_transform': cnn3d_transf()['val'],
             'temporal_transform': CenterCrop(size=16, stride=1, input_type='rgb')
         },
-        'input_2': {
-            'type': 'rgb',
-            'spatial_transform': resnet_transf()['val'],
-            'temporal_transform': None
-        }
-        # 'input_2': {
-        #     'type': 'dynamic-image',
-        #     'spatial_transform': resnet_di_transf()['val'],
-        #     'temporal_transform': None
-        # }
+        'input_2': load_key_frame_config('val')
     }
     train_dataset = TubeDataset(frames_per_tube=config.frames_per_tube, 
                             make_function=make_dataset_train,
@@ -412,7 +411,8 @@ if __name__=='__main__':
         home_path=HOME_UBUNTU,
         num_workers=4,
         load_gt=False,
-        tube_box=UNION_BOX
+        tube_box=UNION_BOX,
+        key_frame=DYNAMIC_IMAGE_KEYFRAME
     )
     # config.pretrained_model = "/content/DATASETS/Pretrained_Models/DenseNetLean_Kinetics.pth"
     # config.pretrained_model='/media/david/datos/Violence DATA/VioNet_weights/pytorch_i3d/rgb_imagenet.pt'

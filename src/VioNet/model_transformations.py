@@ -121,15 +121,15 @@ def resnet_di_transf():
     input_size = (224,224)
     T = {
             'train': transforms.Compose([
-                transforms.RandomResizedCrop(input_size),
-                transforms.RandomHorizontalFlip(),
+                # transforms.RandomResizedCrop(input_size),
+                # transforms.RandomHorizontalFlip(),
                 # transforms.Resize(input_size),
                 # transforms.CenterCrop(input_size),
                 transforms.ToTensor(),
                 norm
             ]),
             'val': transforms.Compose([
-                transforms.Resize(input_size),
+                # transforms.Resize(input_size),
                 # transforms.CenterCrop(input_size),
                 transforms.ToTensor(),
                 norm

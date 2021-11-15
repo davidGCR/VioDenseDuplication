@@ -3,7 +3,7 @@
 from torch.utils.data.sampler import WeightedRandomSampler
 # 
 # import src.VioNet.add_path
-import imports
+# import imports
 from numpy.core.numeric import indices
 import torch.utils.data as data
 import numpy as np
@@ -38,7 +38,7 @@ class TubeDataset(data.Dataset):
                        config=None,
                        tube_sample_strategy=MIDDLE_FRAMES,
                        tube_box=MIDDLE_BOX,
-                       key_frame=MIDDLE_KEYFRAME,
+                       key_frame=RGB_MIDDLE_KEYFRAME,
                        shape=(224,224)):
         self.config = config
         self.dataset = dataset
@@ -128,8 +128,8 @@ class TubeDataset(data.Dataset):
         tube_boxes = []
         if self.config['input_1']['type']=='rgb':
             frames_paths = [self.build_frame_name(path, i, frames_names_list) for i in frames_indices]
-            for j, fp in enumerate(frames_paths):
-                print(j, ' ', fp)
+            # for j, fp in enumerate(frames_paths):
+            #     print(j, ' ', fp)
             for i in frames_paths:
                 img = imread(i)
                 tube_images.append(img)
@@ -239,7 +239,7 @@ class TubeDataset(data.Dataset):
 
         # for i in range(len(sampled_frames_indices)):
         #     print('\ntube[{}] \n (1)frames_names_list: {}, \n(2)tube frames_name: {}, \n(3)sampled_frames_indices: {}'.format(i,frames_names_list, chosed_tubes[i]['frames_name'], sampled_frames_indices[i]))
-        print('sampled_frames_indices: ', sampled_frames_indices)
+        # print('sampled_frames_indices: ', sampled_frames_indices)
         # print('boxes_from_sampler: ', boxes, boxes[0].shape)
         video_images = []
         video_images_raw = []
@@ -250,7 +250,7 @@ class TubeDataset(data.Dataset):
             tube_images_t, tube_boxes_t, tube_boxes, tube_raw_clip_images, t_combination = self.load_input_1(path, frames_indices, frames_names_list, sampled_tube)
             video_images.append(torch.stack(tube_images_t, dim=0)) #added tensor: torch.Size([16, 224, 224, 3])
             video_images_raw.append(tube_raw_clip_images) #added PIL image
-            print('video_images[-1]: ', video_images[-1].size())
+            # print('video_images[-1]: ', video_images[-1].size())
             #Box extracted from tube
             tube_box = None
             if self.tube_box == MIDDLE_BOX:
@@ -291,14 +291,13 @@ class TubeDataset(data.Dataset):
         key_frames = []
         if self.config['input_2'] is not None:
             for k in range(len(video_images_raw)):
-                if self.config['input_2']['type'] == DYN_IMAGE:
+                if self.key_frame == DYNAMIC_IMAGE_KEYFRAME:
                     # key_frame, _ = self.load_input_2_di(sampled_frames_indices[k], path, frames_names_list)
-                    clip = []
                     key_frame = self.dynamic_image_fn(video_images[k])
                     if self.config['input_2']['spatial_transform']:
                         key_frame = self.config['input_2']['spatial_transform'](key_frame)
                 else:
-                    if self.key_frame == MIDDLE_KEYFRAME:
+                    if self.key_frame == RGB_MIDDLE_KEYFRAME:
                         m = int(video_images[k].size(0)/2) #using frames loaded from 3d branch
                         key_frame = video_images[k][m] #tensor 
                         key_frame = key_frame.numpy()
